@@ -41,7 +41,7 @@ Compatibilidade com modelos e com harnesses são eixos diferentes. Não há paco
 
 ## Próxima etapa
 
-**Revisão adversarial do desenho standalone → especificação executável → work packages → implementação → demonstração integrada.**
+**[Revisão adversarial do desenho standalone — issue #1](https://github.com/gmhelmold/context-continuity/issues/1) → especificação executável → work packages → implementação → demonstração integrada.**
 
 O primeiro incremento precisa provar um ciclo completo no OpenCode upstream, sem patch: fork isolado, poda, mensagens concorrentes preservadas, âncora intacta e recuperação do original. Um segundo adaptador deverá demonstrar que o núcleo não ficou acoplado ao primeiro host.
 

@@ -37,7 +37,7 @@ Não introduzidos: código de runtime, pacotes publicados, release, compatibilid
 
 ## Local de continuidade
 
-Novas revisões, especificações, issues e implementação desta feature pertencem a este repositório. O PR original deve ser encerrado sem merge após a verificação do destino, com um comentário apontando para cá. Seu commit e sua branch são preservados como origem histórica; nenhum código do HuGR-Orchestra precisa ser alterado para esta migração.
+Novas revisões, especificações, issues e implementação desta feature pertencem a este repositório. O PR original foi encerrado sem merge após a verificação do destino, com [comentário de redirecionamento](https://github.com/gmhelmold/HuGR-Orchestra/pull/54#issuecomment-5722022052). Seu commit e sua branch foram preservados como origem histórica; nenhum código do HuGR-Orchestra foi alterado nesta migração. A revisão adversarial continua no [issue #1](https://github.com/gmhelmold/context-continuity/issues/1).
 
 O documento Word anterior é material de origem de produto, descrito no RFC; esta operação migra o trabalho versionado do PR #54. Não converte esse Word em contrato executável nem publica artefatos de outras conversas.
 
