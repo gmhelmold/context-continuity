@@ -26,8 +26,12 @@ Validar cobertura do snapshot, preservação da cauda, integridade do protocolo 
 
 Commits e títulos de PR seguem `type(scope): resumo`. Branches curtas com hífens, sem prefixos com barra. Alterações documentais mantêm referências resolvíveis e estado da entrega explícito.
 
-Cada work package contém Success Criteria, Quality Standards, Completeness Criteria, Definition of Done e Invariants, além de dependências e evidências. Usar a matriz R01–R36/T01–T40; não marcar teste como concluído porque seu arquivo existe.
+Cada work package contém Success Criteria, Quality Standards, Completeness Criteria, Definition of Done e Invariants, além de dependências e evidências. Usar traceability.json, R01–R36 e os 55 subcasos de T01–T40; não marcar teste como concluído porque seu arquivo existe.
 
-Validação documental disponível: `python3 scripts/check-spec.py`, a partir da raiz. Ela verifica documentos e DDL de referência, não a aplicação. Nenhum comando de teste de runtime está definido ainda; ao implementá-lo, documentar e executar comandos reais, demonstrando o comportamento completo além de compilação/HTTP 200.
+Validações offline: `python3 scripts/check-spec.py`, `python3 scripts/check-reference-model.py` e `python3 scripts/test-spec-check.py`, a partir da raiz. Verificam documentos, DDL e modelos abstratos; não a aplicação nem o host. Nenhum comando de teste de runtime está definido ainda; ao implementá-lo, documentar e executar comandos reais, demonstrando o comportamento completo além de compilação/HTTP 200.
 
 Chamadas live de inferência e publicação de pacotes exigem orçamento/autorização e perfil definido. Não colocar credenciais de provider em CI de documentação. Não fazer downgrade de modo ou aumentar quotas silenciosamente.
+
+## Revisão 0.1.1
+
+REVIEW-002-RESOLUTION.md registra fechamento contratual B01–B16, não PASS de runtime. SPEC-07 é a autoridade de projeção/controle e SPEC-08 do piloto. ADR-001 distingue o perfil v1 somente-hooks do perfil HTTP local opt-in; não inserir essa rota ou reutilizar assinaturas sem configuração autorizada. Preserve os reviews históricos e o RFC v0.1.

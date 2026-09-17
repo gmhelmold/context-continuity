@@ -1,0 +1,1204 @@
+{
+  "schema_version": 1,
+  "revision": "0.1.1",
+  "requirements": [
+    {
+      "id": "R01",
+      "obligation": "Instalar via interface pública, sem alteração do host.",
+      "contract": "SPEC-04",
+      "owner": "WP-00",
+      "family": "T01",
+      "cases": [
+        "T01.host"
+      ]
+    },
+    {
+      "id": "R02",
+      "obligation": "Resolver escopo sem misturar sessões.",
+      "contract": "SPEC-01",
+      "owner": "WP-01",
+      "family": "T02",
+      "cases": [
+        "T02.contract"
+      ]
+    },
+    {
+      "id": "R03",
+      "obligation": "Admitir um proprietário/job por sessão, com fencing.",
+      "contract": "SPEC-02/03",
+      "owner": "WP-02",
+      "family": "T03",
+      "cases": [
+        "T03.storage"
+      ]
+    },
+    {
+      "id": "R04",
+      "obligation": "Manutenção não dispara manutenção recursiva.",
+      "contract": "SPEC-02",
+      "owner": "WP-03",
+      "family": "T04",
+      "cases": [
+        "T04.scheduler"
+      ]
+    },
+    {
+      "id": "R05",
+      "obligation": "Clone não executa tools locais ou remotas.",
+      "contract": "SPEC-01/04",
+      "owner": "WP-00",
+      "family": "T05",
+      "cases": [
+        "T05.host"
+      ]
+    },
+    {
+      "id": "R06",
+      "obligation": "Distinguir snapshot ativo, fidelidade do fork e cache.",
+      "contract": "SPEC-01/04",
+      "owner": "WP-03",
+      "family": "T06",
+      "cases": [
+        "T06.contract",
+        "T06.host"
+      ]
+    },
+    {
+      "id": "R07",
+      "obligation": "Identificar fontes por ID/revisão, não por texto ou ordem inferida.",
+      "contract": "SPEC-01",
+      "owner": "WP-01",
+      "family": "T07",
+      "cases": [
+        "T07.contract"
+      ]
+    },
+    {
+      "id": "R08",
+      "obligation": "Preservar toda a cauda posterior ao snapshot, uma vez.",
+      "contract": "SPEC-02",
+      "owner": "WP-04",
+      "family": "T08",
+      "cases": [
+        "T08.projection",
+        "T08.host"
+      ]
+    },
+    {
+      "id": "R09",
+      "obligation": "Substituir somente intervalo contíguo de grupos fechados.",
+      "contract": "SPEC-01/02",
+      "owner": "WP-04",
+      "family": "T09",
+      "cases": [
+        "T09.projection"
+      ]
+    },
+    {
+      "id": "R10",
+      "obligation": "Compactação nativa invalida proposta da epoch anterior.",
+      "contract": "SPEC-02/04",
+      "owner": "WP-04",
+      "family": "T10",
+      "cases": [
+        "T10.projection",
+        "T10.host"
+      ]
+    },
+    {
+      "id": "R11",
+      "obligation": "Revert/mutação de fonte não reaplica síntese stale.",
+      "contract": "SPEC-02",
+      "owner": "WP-04",
+      "family": "T11",
+      "cases": [
+        "T11.dependencies"
+      ]
+    },
+    {
+      "id": "R12",
+      "obligation": "Crash não publica metade da operação ou repete inferência órfã.",
+      "contract": "SPEC-03",
+      "owner": "WP-02",
+      "family": "T12",
+      "cases": [
+        "T12.storage",
+        "T12.publish",
+        "T12.host"
+      ]
+    },
+    {
+      "id": "R13",
+      "obligation": "Retry/publicação repetida é idempotente.",
+      "contract": "SPEC-02/03",
+      "owner": "WP-04",
+      "family": "T13",
+      "cases": [
+        "T13.projection"
+      ]
+    },
+    {
+      "id": "R14",
+      "obligation": "Gatilho usa entrada inteira, inclusive cacheada.",
+      "contract": "SPEC-02",
+      "owner": "WP-03",
+      "family": "T14",
+      "cases": [
+        "T14.scheduler"
+      ]
+    },
+    {
+      "id": "R15",
+      "obligation": "Reservar saída, missão e crescimento antes do fork.",
+      "contract": "SPEC-02",
+      "owner": "WP-03",
+      "family": "T15",
+      "cases": [
+        "T15.contract",
+        "T15.scheduler"
+      ]
+    },
+    {
+      "id": "R16",
+      "obligation": "Rearmamento impede loops no mesmo contexto.",
+      "contract": "SPEC-02",
+      "owner": "WP-03",
+      "family": "T16",
+      "cases": [
+        "T16.scheduler"
+      ]
+    },
+    {
+      "id": "R17",
+      "obligation": "Noop/ganho insuficiente mantém visão e não cria capítulo.",
+      "contract": "SPEC-01/02",
+      "owner": "WP-03",
+      "family": "T17",
+      "cases": [
+        "T17.scheduler"
+      ]
+    },
+    {
+      "id": "R18",
+      "obligation": "Overflow durante manutenção não provoca descarte ou request inválido.",
+      "contract": "SPEC-02/04",
+      "owner": "WP-06",
+      "family": "T18",
+      "cases": [
+        "T18.host"
+      ]
+    },
+    {
+      "id": "R19",
+      "obligation": "Fonte durável precede publicação que a remove da janela.",
+      "contract": "SPEC-03",
+      "owner": "WP-02",
+      "family": "T19",
+      "cases": [
+        "T19.storage"
+      ]
+    },
+    {
+      "id": "R20",
+      "obligation": "Fonte ausente/proibida não é reconstruída por palpite.",
+      "contract": "SPEC-03/05",
+      "owner": "WP-05",
+      "family": "T20",
+      "cases": [
+        "T20.tools"
+      ]
+    },
+    {
+      "id": "R21",
+      "obligation": "Âncoras ativas sobrevivem literalmente fora da sumarização.",
+      "contract": "SPEC-01/05",
+      "owner": "WP-05",
+      "family": "T21",
+      "cases": [
+        "T21.blocks"
+      ]
+    },
+    {
+      "id": "R22",
+      "obligation": "Revogação/versionamento de regra invalida manutenção obsoleta.",
+      "contract": "SPEC-02/05",
+      "owner": "WP-05",
+      "family": "T22",
+      "cases": [
+        "T22.blocks"
+      ]
+    },
+    {
+      "id": "R23",
+      "obligation": "Bloco curado respeita origem, escopo e orçamento.",
+      "contract": "SPEC-05",
+      "owner": "WP-05",
+      "family": "T23",
+      "cases": [
+        "T23.blocks"
+      ]
+    },
+    {
+      "id": "R24",
+      "obligation": "Pausa/desinstalação têm saída segura e explícita.",
+      "contract": "SPEC-04/05",
+      "owner": "WP-06",
+      "family": "T24",
+      "cases": [
+        "T24.host"
+      ]
+    },
+    {
+      "id": "R25",
+      "obligation": "Estado remoto não mantém conteúdo removido em segredo.",
+      "contract": "SPEC-01/04",
+      "owner": "WP-00",
+      "family": "T25",
+      "cases": [
+        "T25.host"
+      ]
+    },
+    {
+      "id": "R26",
+      "obligation": "Feedback é limitado e não transforma toda busca em âncora.",
+      "contract": "SPEC-05",
+      "owner": "WP-05",
+      "family": "T26",
+      "cases": [
+        "T26.feedback"
+      ]
+    },
+    {
+      "id": "R27",
+      "obligation": "Consolidação preserva lineage sem carregar capítulos indefinidamente.",
+      "contract": "SPEC-01/02",
+      "owner": "WP-04",
+      "family": "T27",
+      "cases": [
+        "T27.projection"
+      ]
+    },
+    {
+      "id": "R28",
+      "obligation": "Publicação não é confundida com emissão ou consumo pelo modelo.",
+      "contract": "SPEC-01/02",
+      "owner": "WP-04",
+      "family": "T28",
+      "cases": [
+        "T28.projection",
+        "T28.host"
+      ]
+    },
+    {
+      "id": "R29",
+      "obligation": "Outro plugin não invalida silenciosamente a garantia de entrada.",
+      "contract": "SPEC-04",
+      "owner": "WP-00",
+      "family": "T29",
+      "cases": [
+        "T29.host"
+      ]
+    },
+    {
+      "id": "R30",
+      "obligation": "Núcleo é independente de tipos/banco privados dos hosts.",
+      "contract": "SPEC-01/04",
+      "owner": "WP-01",
+      "family": "T30",
+      "cases": [
+        "T30.contract",
+        "T30.portability"
+      ]
+    },
+    {
+      "id": "R31",
+      "obligation": "Consulta não cruza projetos nem aceita paths como autorização.",
+      "contract": "SPEC-01/05",
+      "owner": "WP-05",
+      "family": "T31",
+      "cases": [
+        "T31.tools"
+      ]
+    },
+    {
+      "id": "R32",
+      "obligation": "Exclusão/exportação/importação preservam autorização e integridade.",
+      "contract": "SPEC-03",
+      "owner": "WP-02",
+      "family": "T32",
+      "cases": [
+        "T32.archive",
+        "T32.redaction"
+      ]
+    },
+    {
+      "id": "R33",
+      "obligation": "Compatibilidade é por versão/rota/capacidades verificadas.",
+      "contract": "SPEC-01/04",
+      "owner": "WP-00",
+      "family": "T33",
+      "cases": [
+        "T33.capabilities",
+        "T33.host"
+      ]
+    },
+    {
+      "id": "R34",
+      "obligation": "Avaliar continuidade contra baseline real, com ablação.",
+      "contract": "SPEC-CC-0.1",
+      "owner": "WP-07",
+      "family": "T34",
+      "cases": [
+        "T34.pilot"
+      ]
+    },
+    {
+      "id": "R35",
+      "obligation": "Medir custo/cache completos; desconhecido não vira zero.",
+      "contract": "SPEC-01/02",
+      "owner": "WP-07",
+      "family": "T35",
+      "cases": [
+        "T35.accounting",
+        "T35.pilot"
+      ]
+    },
+    {
+      "id": "R36",
+      "obligation": "Ativação, diagnóstico e UX não fazem inferência paga oculta.",
+      "contract": "SPEC-02/05",
+      "owner": "WP-06",
+      "family": "T36",
+      "cases": [
+        "T36.host"
+      ]
+    }
+  ],
+  "tests": [
+    {
+      "id": "T01.host",
+      "family": "T01",
+      "owner": "WP-00",
+      "requires_packages": [],
+      "class": "host",
+      "initial_status": "not_run",
+      "oracle": "Instalar host stock e pacote local; declarar perfil Native ou HTTP-Local. Verificar hash do host, configuração de rota consentida e rollback sem internals."
+    },
+    {
+      "id": "T02.contract",
+      "family": "T02",
+      "owner": "WP-01",
+      "requires_packages": [],
+      "class": "component",
+      "initial_status": "not_run",
+      "oracle": "Intercalar duas sessões/workspaces com IDs externos iguais; Scope/incarnation distintos. Dados e jobs não se misturam; entrada ambígua é recusada antes de rede."
+    },
+    {
+      "id": "T03.storage",
+      "family": "T03",
+      "owner": "WP-02",
+      "requires_packages": [
+        "WP-01"
+      ],
+      "class": "component",
+      "initial_status": "not_run",
+      "oracle": "Disputar lease/job/aux_run entre duas instâncias. Fence antigo não publica; quarantine impede novo run; lock de workspace não é substituído por lease expirável."
+    },
+    {
+      "id": "T04.scheduler",
+      "family": "T04",
+      "owner": "WP-03",
+      "requires_packages": [
+        "WP-01",
+        "WP-02"
+      ],
+      "class": "component",
+      "initial_status": "not_run",
+      "oracle": "Primary elegível cria um job; native_compaction, other e maintenance não recursam. Eventos simultâneos coalescem sem rede extra."
+    },
+    {
+      "id": "T05.host",
+      "family": "T05",
+      "owner": "WP-00",
+      "requires_packages": [],
+      "class": "host",
+      "initial_status": "not_run",
+      "oracle": "Endpoint sintético devolve function tool call ao clone. Zero despacho local/MCP, E_TOOL e zero sessões auxiliares no host; ferramentas remotas excluem perfil."
+    },
+    {
+      "id": "T06.contract",
+      "family": "T06",
+      "owner": "WP-01",
+      "requires_packages": [],
+      "class": "component",
+      "initial_status": "not_run",
+      "oracle": "Validar Capture parcial, SealedFrame, fingerprint e Manifest por schemas/vetores; sem executar rede, host ou certificação de prefixo live."
+    },
+    {
+      "id": "T06.host",
+      "family": "T06",
+      "owner": "WP-00",
+      "requires_packages": [],
+      "class": "host",
+      "initial_status": "not_run",
+      "oracle": "Comparar no recorder o body final efetivo do pai e do fork lógico; unknown/different impede complete. Cache não é inferido de endpoint sintético."
+    },
+    {
+      "id": "T07.contract",
+      "family": "T07",
+      "owner": "WP-01",
+      "requires_packages": [],
+      "class": "component",
+      "initial_status": "not_run",
+      "oracle": "Texto repetido mantém IDs diferentes; payload/role/metadata mudado com mesmas source_refs muda unit_digest; reinício mantém mapa de identidades e revisões."
+    },
+    {
+      "id": "T08.projection",
+      "family": "T08",
+      "owner": "WP-04",
+      "requires_packages": [
+        "WP-01",
+        "WP-02",
+        "WP-03"
+      ],
+      "class": "component",
+      "initial_status": "not_run",
+      "oracle": "Executar F-PUBLISH sobre implementação do renderer, partindo das raízes e preservando U009..U016 exatamente uma vez, inclusive após serialização do plano."
+    },
+    {
+      "id": "T08.host",
+      "family": "T08",
+      "owner": "WP-06",
+      "requires_packages": [
+        "WP-00",
+        "WP-05"
+      ],
+      "class": "host",
+      "initial_status": "not_run",
+      "oracle": "Receber cauda concorrente no OpenCode stock; verificar no endpoint que a próxima entrada tem a mesma sequência exata do oráculo F-PUBLISH."
+    },
+    {
+      "id": "T09.projection",
+      "family": "T09",
+      "owner": "WP-04",
+      "requires_packages": [
+        "WP-01",
+        "WP-02",
+        "WP-03"
+      ],
+      "class": "component",
+      "initial_status": "not_run",
+      "oracle": "Calls/results paralelos, lowering que funde mensagens, bordas e mídia opaca. Corte deve ser grupo fechado/inteiro; mapping ambíguo recusa poda, sem request inválido."
+    },
+    {
+      "id": "T10.projection",
+      "family": "T10",
+      "owner": "WP-04",
+      "requires_packages": [
+        "WP-01",
+        "WP-02",
+        "WP-03"
+      ],
+      "class": "component",
+      "initial_status": "not_run",
+      "oracle": "Fornecer eventos de reset sucesso/falha ao core; conferir epoch, invalidade de ready e preservação da View sem depender de host instalado."
+    },
+    {
+      "id": "T10.host",
+      "family": "T10",
+      "owner": "WP-06",
+      "requires_packages": [
+        "WP-00",
+        "WP-05"
+      ],
+      "class": "host",
+      "initial_status": "not_run",
+      "oracle": "Provocar compactação nativa real no host, bem-sucedida e falha; correlacionar observações à nova epoch antes do próximo despacho."
+    },
+    {
+      "id": "T11.dependencies",
+      "family": "T11",
+      "owner": "WP-04",
+      "requires_packages": [
+        "WP-01",
+        "WP-02",
+        "WP-03"
+      ],
+      "class": "component",
+      "initial_status": "not_run",
+      "oracle": "X sustenta A, B consolida A. Alterar X ou revogar âncora que ambos receberam invalida closure content, remove overlays e marca índice. History:supersedes não cria ciclo. Expansão que não cabe bloqueia despacho."
+    },
+    {
+      "id": "T12.storage",
+      "family": "T12",
+      "owner": "WP-02",
+      "requires_packages": [
+        "WP-01"
+      ],
+      "class": "component",
+      "initial_status": "not_run",
+      "oracle": "Interromper implementação de storage nos pontos staging, blob, referência e transação SQLite; reiniciar processo e provar integridade local sem renderer ou hook de host."
+    },
+    {
+      "id": "T12.publish",
+      "family": "T12",
+      "owner": "WP-04",
+      "requires_packages": [
+        "WP-01",
+        "WP-02",
+        "WP-03"
+      ],
+      "class": "component",
+      "initial_status": "not_run",
+      "oracle": "Falhar antes/depois do commit de Operation/Chapter/View/job no core; reabrir storage e conferir seleção integral, sem metade de publicação nem duplicação."
+    },
+    {
+      "id": "T12.host",
+      "family": "T12",
+      "owner": "WP-06",
+      "requires_packages": [
+        "WP-00",
+        "WP-05"
+      ],
+      "class": "host",
+      "initial_status": "not_run",
+      "oracle": "Reiniciar plugin/host após commit antes de forward; conferir requests reais e impedir replay de geração incerta ou sessão auxiliar órfã."
+    },
+    {
+      "id": "T13.projection",
+      "family": "T13",
+      "owner": "WP-04",
+      "requires_packages": [
+        "WP-01",
+        "WP-02",
+        "WP-03"
+      ],
+      "class": "component",
+      "initial_status": "not_run",
+      "oracle": "Repetir callback, finalize e render: um capítulo/job e nova View única; attempts de rede distintos registrados, sem repetir texto. Terminal não ressuscita."
+    },
+    {
+      "id": "T14.scheduler",
+      "family": "T14",
+      "owner": "WP-03",
+      "requires_packages": [
+        "WP-01",
+        "WP-02"
+      ],
+      "class": "component",
+      "initial_status": "not_run",
+      "oracle": "F-BUDGET C=1000000,I=900000,R=16000,H=650000: T=500000. T-1 não dispara, T dispara, cache read=450000 não reduz U."
+    },
+    {
+      "id": "T15.contract",
+      "family": "T15",
+      "owner": "WP-01",
+      "requires_packages": [],
+      "class": "component",
+      "initial_status": "not_run",
+      "oracle": "Validar tipos/domínios da configuração, presença C/R, intervalos numéricos e serialização da configuração resolvida; não exigir scheduler já implementado."
+    },
+    {
+      "id": "T15.scheduler",
+      "family": "T15",
+      "owner": "WP-03",
+      "requires_packages": [
+        "WP-01",
+        "WP-02"
+      ],
+      "class": "component",
+      "initial_status": "not_run",
+      "oracle": "Calcular B/G/F/T/L/N/M, antecipação por reservas e missão real; endpoint sintético não recebe chamada acima do limite."
+    },
+    {
+      "id": "T16.scheduler",
+      "family": "T16",
+      "owner": "WP-03",
+      "requires_packages": [
+        "WP-01",
+        "WP-02"
+      ],
+      "class": "component",
+      "initial_status": "not_run",
+      "oracle": "Rearmar por L→T ou N novo+cooldown; persistir digest/armed através de reinício. Mesma base com noop não produz loop de jobs."
+    },
+    {
+      "id": "T17.scheduler",
+      "family": "T17",
+      "owner": "WP-03",
+      "requires_packages": [
+        "WP-01",
+        "WP-02"
+      ],
+      "class": "component",
+      "initial_status": "not_run",
+      "oracle": "Noop, replace vazio/maior/ganho<M não publicam. Contabilizar wrapper/referências/blocos no ganho e custo incerto sem economia inventada."
+    },
+    {
+      "id": "T18.host",
+      "family": "T18",
+      "owner": "WP-06",
+      "requires_packages": [
+        "WP-00",
+        "WP-05"
+      ],
+      "class": "host",
+      "initial_status": "not_run",
+      "oracle": "Fork lento enquanto pai cresce acima de B: hold/rebase explícito, nenhum descarte de resultados. Dentro da margem pai avança, sem aguardar clone."
+    },
+    {
+      "id": "T19.storage",
+      "family": "T19",
+      "owner": "WP-02",
+      "requires_packages": [
+        "WP-01"
+      ],
+      "class": "component",
+      "initial_status": "not_run",
+      "oracle": "Pausas nas bordas reaproveitar-órfão/inserir-ref e listar-órfão/unlink. Mesmo lock protege ambas; duas sessões/import disputam quota reservada. Fsync/rename/commit falhos não deixam ref a parcial."
+    },
+    {
+      "id": "T20.tools",
+      "family": "T20",
+      "owner": "WP-05",
+      "requires_packages": [
+        "WP-01",
+        "WP-02",
+        "WP-04"
+      ],
+      "class": "component",
+      "initial_status": "not_run",
+      "oracle": "Referência missing/excluded/deleted não vira arquivo atual por path. Binário/UTF-8 inválido retorna text_unavailable; leitura explícita invalidated vem marcada, redacted não tem bytes."
+    },
+    {
+      "id": "T21.blocks",
+      "family": "T21",
+      "owner": "WP-05",
+      "requires_packages": [
+        "WP-01",
+        "WP-02",
+        "WP-04"
+      ],
+      "class": "component",
+      "initial_status": "not_run",
+      "oracle": "Dez ciclos de View mantêm bloco literal uma vez. Âncora não passa por resumo; versões e ordinais governam presença."
+    },
+    {
+      "id": "T22.blocks",
+      "family": "T22",
+      "owner": "WP-05",
+      "requires_packages": [
+        "WP-01",
+        "WP-02",
+        "WP-04"
+      ],
+      "class": "component",
+      "initial_status": "not_run",
+      "oracle": "Replace/deactivate sem job, em pause e após restart publicam View imediata. Nova versão mantém ordinal ativo; reativação aloca outro. Derivado que recebeu regra revogada fica invalidated."
+    },
+    {
+      "id": "T23.blocks",
+      "family": "T23",
+      "owner": "WP-05",
+      "requires_packages": [
+        "WP-01",
+        "WP-02",
+        "WP-04"
+      ],
+      "class": "component",
+      "initial_status": "not_run",
+      "oracle": "Tarefas A/B na mesma sessão recebem apenas seus blocos. Scope desconhecido não autoriza herança. Orçamento excessivo recusa conjunto sem remover outra regra."
+    },
+    {
+      "id": "T24.host",
+      "family": "T24",
+      "owner": "WP-06",
+      "requires_packages": [
+        "WP-00",
+        "WP-05"
+      ],
+      "class": "host",
+      "initial_status": "not_run",
+      "oracle": "Pause mantém overlay e listener; disable-prepared faz checkpoint e restaura baseURL antes de fechar módulo. Falha mantém pause e erro explícito; abrupt removal tem rollback documentado."
+    },
+    {
+      "id": "T25.host",
+      "family": "T25",
+      "owner": "WP-00",
+      "requires_packages": [],
+      "class": "host",
+      "initial_status": "not_run",
+      "oracle": "Rota stateful/Responses/WebSocket não prevista: complete inelegível, zero inferência de diagnóstico. Não fingir remoção de dados que ficaram em estado remoto."
+    },
+    {
+      "id": "T26.feedback",
+      "family": "T26",
+      "owner": "WP-05",
+      "requires_packages": [
+        "WP-01",
+        "WP-02",
+        "WP-04"
+      ],
+      "class": "component",
+      "initial_status": "not_run",
+      "oracle": "Três tarefas e leituras byte-overlap: só três chamadas distintas no mesmo WorkContext conhecido geram nota da interseção comum. Sem escopo não promover repetição. Nota criada em N expira no commit N+2; restart mantém expiração. Noop não consome recibos."
+    },
+    {
+      "id": "T27.projection",
+      "family": "T27",
+      "owner": "WP-04",
+      "requires_packages": [
+        "WP-01",
+        "WP-02",
+        "WP-03"
+      ],
+      "class": "component",
+      "initial_status": "not_run",
+      "oracle": "Projetar A..F, S1 cobre BC, S2 cobre S1D achatado em BCD; entrada A..FG produz AS2EFG. Repetir 2,10,64 consolidações com cauda/restart. Restore parcial expande replacement inteiro somente com consentimento; sem replay textual de resumos."
+    },
+    {
+      "id": "T28.projection",
+      "family": "T28",
+      "owner": "WP-04",
+      "requires_packages": [
+        "WP-01",
+        "WP-02",
+        "WP-03"
+      ],
+      "class": "component",
+      "initial_status": "not_run",
+      "oracle": "Aplicar callbacks selected/emitted/ack ao registro do core com relógio controlado; missing permanece null e commit não equivale a entrega."
+    },
+    {
+      "id": "T28.host",
+      "family": "T28",
+      "owner": "WP-06",
+      "requires_packages": [
+        "WP-00",
+        "WP-05"
+      ],
+      "class": "host",
+      "initial_status": "not_run",
+      "oracle": "Observar no transporte real do perfil commit sem forward, forward sem resposta e resposta associada, com timestamps fiéis e sem body stale."
+    },
+    {
+      "id": "T29.host",
+      "family": "T29",
+      "owner": "WP-00",
+      "requires_packages": [],
+      "class": "host",
+      "initial_status": "not_run",
+      "oracle": "Plugin altera system/tools/model depois de Capture. SealedFrame/codec terminal vê body novo e invalida ready anterior. Ensaio nativo sem fronteira não obtém complete por prova parcial."
+    },
+    {
+      "id": "T30.contract",
+      "family": "T30",
+      "owner": "WP-01",
+      "requires_packages": [],
+      "class": "component",
+      "initial_status": "not_run",
+      "oracle": "Executar mesmos contratos do núcleo contra dois formatos sintéticos sem imports internos de host, sem declarar Gemini homologado."
+    },
+    {
+      "id": "T30.portability",
+      "family": "T30",
+      "owner": "WP-07",
+      "requires_packages": [
+        "WP-06"
+      ],
+      "class": "host",
+      "initial_status": "not_run",
+      "oracle": "Fixar e instalar segundo adaptador real; reutilizar o núcleo e executar conformance do perfil sem reutilizar PASS de fixtures."
+    },
+    {
+      "id": "T31.tools",
+      "family": "T31",
+      "owner": "WP-05",
+      "requires_packages": [
+        "WP-01",
+        "WP-02",
+        "WP-04"
+      ],
+      "class": "component",
+      "initial_status": "not_run",
+      "oracle": "Campos path/session_id ou EntityRef de outro escopo são recusados sem revelar existência. Cursor inválido não recomeça busca; consulta é dado, não autorização."
+    },
+    {
+      "id": "T32.archive",
+      "family": "T32",
+      "owner": "WP-02",
+      "requires_packages": [
+        "WP-01"
+      ],
+      "class": "component",
+      "initial_status": "not_run",
+      "oracle": "Round-trip no storage de fonte/bloco/capítulo/Manifest/Operation mistos: IDs remapeados, citações estáveis e import sem ativação/execução; testar FKs e validação dos arquivos."
+    },
+    {
+      "id": "T32.redaction",
+      "family": "T32",
+      "owner": "WP-05",
+      "requires_packages": [
+        "WP-01",
+        "WP-02",
+        "WP-04"
+      ],
+      "class": "component",
+      "initial_status": "not_run",
+      "oracle": "Após projeção/consulta implementadas, excluir X de X→A→B; limpar bytes de derivados/index/notas/backups gerenciados, invalidar cursores e impedir recaptura por tombstone."
+    },
+    {
+      "id": "T33.capabilities",
+      "family": "T33",
+      "owner": "WP-01",
+      "requires_packages": [],
+      "class": "component",
+      "initial_status": "not_run",
+      "oracle": "Executar tabela verdade pura para required/fidelity/gate; campo ausente e unknown/different nunca habilitam complete, mesmo com indicação de cache hit."
+    },
+    {
+      "id": "T33.host",
+      "family": "T33",
+      "owner": "WP-00",
+      "requires_packages": [],
+      "class": "host",
+      "initial_status": "not_run",
+      "oracle": "Doctor e ensaio do host fixam versão/SDK/codec/rota; divergência real invalida certificado sem downgrade oculto nem calls pagas de diagnóstico."
+    },
+    {
+      "id": "T34.pilot",
+      "family": "T34",
+      "owner": "WP-07",
+      "requires_packages": [
+        "WP-06"
+      ],
+      "class": "live",
+      "initial_status": "not_run",
+      "oracle": "Plano pré-registrado SPEC-08 precede chamadas, pares/unidade sessão/rubrica/stop-rules definidos. Resultado negativo/inconclusivo segue critérios prévios; budget ausente bloqueia execução."
+    },
+    {
+      "id": "T35.accounting",
+      "family": "T35",
+      "owner": "WP-03",
+      "requires_packages": [
+        "WP-01",
+        "WP-02"
+      ],
+      "class": "component",
+      "initial_status": "not_run",
+      "oracle": "Normalizar uso/cache/reserva por attempt do executor; ausência permanece unknown, categorias não somam duas vezes e cancelamento não implica estorno."
+    },
+    {
+      "id": "T35.pilot",
+      "family": "T35",
+      "owner": "WP-07",
+      "requires_packages": [
+        "WP-06"
+      ],
+      "class": "live",
+      "initial_status": "not_run",
+      "oracle": "Medir total de pai/workers/clone/recuperação/retrabalho e custo por tarefa aceita segundo plano prévio; zero aceitas não produz custo unitário zero."
+    },
+    {
+      "id": "T36.host",
+      "family": "T36",
+      "owner": "WP-06",
+      "requires_packages": [
+        "WP-00",
+        "WP-05"
+      ],
+      "class": "host",
+      "initial_status": "not_run",
+      "oracle": "enabled=false + doctor/inspect: zero calls. Configuração local exige consentimento e perfil. Avisos distinguem prepared/published/emitted e não mascaram rota ou quota."
+    },
+    {
+      "id": "T37.contract",
+      "family": "T37",
+      "owner": "WP-01",
+      "requires_packages": [],
+      "class": "component",
+      "initial_status": "not_run",
+      "oracle": "Fuzz dos schemas do núcleo e manifesto congelado: campos extras, Unicode/números/indices/ranges inválidos são rejeitados; sem exigir retry/reparo do executor."
+    },
+    {
+      "id": "T37.executor",
+      "family": "T37",
+      "owner": "WP-03",
+      "requires_packages": [
+        "WP-01",
+        "WP-02"
+      ],
+      "class": "component",
+      "initial_status": "not_run",
+      "oracle": "Resposta com formato inválido pode consumir apenas o segundo AttemptPermit; erro seguinte encerra. Contar HTTP físico no endpoint, sem terceira chamada."
+    },
+    {
+      "id": "T38.paging",
+      "family": "T38",
+      "owner": "WP-05",
+      "requires_packages": [
+        "WP-01",
+        "WP-02",
+        "WP-04"
+      ],
+      "class": "component",
+      "initial_status": "not_run",
+      "oracle": "Implementar tool com paginação intra-linha UTF-8, CRLF, envelope mínimo e cursor: recompor bytes sem perda/repetição ou retornar E_BUDGET."
+    },
+    {
+      "id": "T38.archive",
+      "family": "T38",
+      "owner": "WP-02",
+      "requires_packages": [
+        "WP-01"
+      ],
+      "class": "component",
+      "initial_status": "not_run",
+      "oracle": "Validar limites de bytes, hashes e relações do arquivo de export/import no storage; sem exigir paginação da tool ainda não implementada."
+    },
+    {
+      "id": "T39.projection",
+      "family": "T39",
+      "owner": "WP-04",
+      "requires_packages": [
+        "WP-01",
+        "WP-02",
+        "WP-03"
+      ],
+      "class": "component",
+      "initial_status": "not_run",
+      "oracle": "Mudar system/tools/variant/config do SealedFrame sintético atual; core rejeita ready antigo antes de selecionar envelope."
+    },
+    {
+      "id": "T39.host",
+      "family": "T39",
+      "owner": "WP-06",
+      "requires_packages": [
+        "WP-00",
+        "WP-05"
+      ],
+      "class": "host",
+      "initial_status": "not_run",
+      "oracle": "Mudar configuração e plugin posterior no turno atual do OpenCode; recorder mostra veto na fronteira terminal, sem envio do body anterior."
+    },
+    {
+      "id": "T40.executor",
+      "family": "T40",
+      "owner": "WP-03",
+      "requires_packages": [
+        "WP-01",
+        "WP-02"
+      ],
+      "class": "component",
+      "initial_status": "not_run",
+      "oracle": "Executar cliente HTTP real contra endpoint sintético: 429, reparo, timeout, late response, permit único e máximo2 requests auxiliares por job."
+    },
+    {
+      "id": "T40.host",
+      "family": "T40",
+      "owner": "WP-06",
+      "requires_packages": [
+        "WP-00",
+        "WP-05"
+      ],
+      "class": "host",
+      "initial_status": "not_run",
+      "oracle": "Contar requests do executor e retries do pai separadamente na integração; reload/cancelamento não repetem auxiliares órfãos nem perdem contadores."
+    }
+  ],
+  "work_packages": [
+    {
+      "id": "WP-00",
+      "title": "Prova das fronteiras públicas e transporte terminal",
+      "dependencies": [],
+      "cases": [
+        "T01.host",
+        "T05.host",
+        "T06.host",
+        "T25.host",
+        "T29.host",
+        "T33.host"
+      ],
+      "requirements": [
+        "R01",
+        "R05",
+        "R06",
+        "R25",
+        "R29",
+        "R33"
+      ]
+    },
+    {
+      "id": "WP-01",
+      "title": "Contratos, identidade e configuração",
+      "dependencies": [],
+      "cases": [
+        "T02.contract",
+        "T06.contract",
+        "T07.contract",
+        "T15.contract",
+        "T30.contract",
+        "T33.capabilities",
+        "T37.contract"
+      ],
+      "requirements": [
+        "R02",
+        "R06",
+        "R07",
+        "R15",
+        "R30",
+        "R33"
+      ]
+    },
+    {
+      "id": "WP-02",
+      "title": "Ledger e persistência transacional",
+      "dependencies": [
+        "WP-01"
+      ],
+      "cases": [
+        "T03.storage",
+        "T12.storage",
+        "T19.storage",
+        "T32.archive",
+        "T38.archive"
+      ],
+      "requirements": [
+        "R03",
+        "R12",
+        "R19",
+        "R32"
+      ]
+    },
+    {
+      "id": "WP-03",
+      "title": "Scheduler e executor com admissão física",
+      "dependencies": [
+        "WP-01",
+        "WP-02"
+      ],
+      "cases": [
+        "T04.scheduler",
+        "T14.scheduler",
+        "T15.scheduler",
+        "T16.scheduler",
+        "T17.scheduler",
+        "T35.accounting",
+        "T37.executor",
+        "T40.executor"
+      ],
+      "requirements": [
+        "R04",
+        "R06",
+        "R14",
+        "R15",
+        "R16",
+        "R17",
+        "R35"
+      ]
+    },
+    {
+      "id": "WP-04",
+      "title": "Projeção achatada e publicação",
+      "dependencies": [
+        "WP-01",
+        "WP-02",
+        "WP-03"
+      ],
+      "cases": [
+        "T08.projection",
+        "T09.projection",
+        "T10.projection",
+        "T11.dependencies",
+        "T12.publish",
+        "T13.projection",
+        "T27.projection",
+        "T28.projection",
+        "T39.projection"
+      ],
+      "requirements": [
+        "R08",
+        "R09",
+        "R10",
+        "R11",
+        "R12",
+        "R13",
+        "R27",
+        "R28"
+      ]
+    },
+    {
+      "id": "WP-05",
+      "title": "Consulta, blocos, feedback e operações",
+      "dependencies": [
+        "WP-01",
+        "WP-02",
+        "WP-04"
+      ],
+      "cases": [
+        "T20.tools",
+        "T21.blocks",
+        "T22.blocks",
+        "T23.blocks",
+        "T26.feedback",
+        "T31.tools",
+        "T32.redaction",
+        "T38.paging"
+      ],
+      "requirements": [
+        "R20",
+        "R21",
+        "R22",
+        "R23",
+        "R26",
+        "R31",
+        "R32"
+      ]
+    },
+    {
+      "id": "WP-06",
+      "title": "Plugin instalável, handoff e ciclo integrado",
+      "dependencies": [
+        "WP-00",
+        "WP-05"
+      ],
+      "cases": [
+        "T08.host",
+        "T10.host",
+        "T12.host",
+        "T18.host",
+        "T24.host",
+        "T28.host",
+        "T36.host",
+        "T39.host",
+        "T40.host"
+      ],
+      "requirements": [
+        "R08",
+        "R10",
+        "R12",
+        "R18",
+        "R24",
+        "R28",
+        "R36"
+      ]
+    },
+    {
+      "id": "WP-07",
+      "title": "Conformance, portabilidade e piloto",
+      "dependencies": [
+        "WP-06"
+      ],
+      "cases": [
+        "T30.portability",
+        "T34.pilot",
+        "T35.pilot"
+      ],
+      "requirements": [
+        "R30",
+        "R34",
+        "R35"
+      ]
+    }
+  ]
+}

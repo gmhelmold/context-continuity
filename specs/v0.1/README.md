@@ -1,65 +1,52 @@
-# SPEC-CC-0.1 — especificação executável de Context Continuity
+# SPEC-CC-0.1 — especificação de Context Continuity
 
-Estado: **especificação proposta para implementação, revisão documental**. Data: 2026-09-17. Não existe plugin implementado, pacote publicado, host homologado ou benchmark executado nesta entrega.
-
-Origem: [RFC-CSC-001 v0.2](../../docs/designs/continuous-self-compaction/RFC-001.md). Revisão: [REVIEW-001](../../docs/reviews/REVIEW-001.md). Esta especificação é um refinamento normativo: em divergências de comportamento, seus contratos explícitos prevalecem sobre exemplos e decisões ainda abertas do RFC. O snapshot v0.1 histórico não é alterado.
+**Revisão 0.1.1: correções contratuais da REVIEW-002.** Especificação proposta, sem plugin implementado, pacote publicado ou host homologado. Origem: [RFC standalone](../../docs/designs/continuous-self-compaction/RFC-001.md). A [resolução B01–B16](../../docs/reviews/REVIEW-002-RESOLUTION.md) registra mudanças e limites de prova.
 
 ## Documentos normativos
 
-| Documento | Fecha |
+| Contrato | Autoridade |
 |---|---|
-| [01 — Contratos](01-contracts.md) | Identidades, unidades, snapshots, propostas, capacidades, interfaces e erros. |
-| [02 — Ciclo de execução](02-lifecycle.md) | Fórmulas, defaults, seleção do intervalo, concorrência, publicação, retries e recuperação. |
-| [03 — Persistência](03-ledger.md) | Armazenamento privado portátil, tabelas, transações, fontes, exportação e exclusão. |
-| [04 — OpenCode](04-opencode.md) | Binding fixado, pontos públicos, gate de compatibilidade e comportamento incompatível. |
-| [05 — Tools e experiência](05-tools-ux.md) | Busca/leitura, âncoras, contexto curado, comandos e feedback. |
-| [06 — Aceitação](06-acceptance.md) | 36 requisitos e 40 casos de aceitação, com oráculos observáveis. |
-| [Work packages](WORK-PACKAGES.md) | Oito entregas, dependências, cinco axiomas e evidências. |
+| [SPEC-01](01-contracts.md) | Identidades, payloads efetivos, Captures/SealedFrames, Manifest, propostas e capacidades. |
+| [SPEC-02](02-lifecycle.md) | Fórmulas, estados, permissões de tentativa física, cancelamento e publicação terminal. |
+| [SPEC-03](03-ledger.md) | DDL, persistência, lock de workspace, quota, operações, tombstones e recuperação. |
+| [SPEC-04](04-opencode.md) | Perfis OC-V1-NATIVE/OC-V1-HTTP-LOCAL e gate P01–P14. |
+| [SPEC-05](05-tools-ux.md) | Busca/leitura byte-safe, blocos, WorkContext e notas determinísticas. |
+| [SPEC-06](06-acceptance.md) | 36 requisitos, 40 famílias e 55 subcasos de aceitação. |
+| [SPEC-07](07-state-operations.md) | Projeção achatada, invalidação transitiva, restore/correção e arquivos portáveis. |
+| [SPEC-08](08-evaluation.md) | Protocolo pré-registrado, métricas, budget e decisão do piloto. |
+| [Work packages](WORK-PACKAGES.md) | Oito pacotes com cinco axiomas e DoDs sem dependências retroativas. |
+| [traceability.json](traceability.json) | Fonte única do mapa requisito/casos/donos/dependências. |
 
-## Decisões fechadas nesta revisão
+## Decisões que substituem ambiguidades anteriores
 
-**D01 — Independência.** Núcleo em TypeScript/ESM, sem imports de tipos internos de hosts. Ele recebe dados JSON do adaptador e referências opacas em memória. Não depende de Atlas/Maestro/HuGR. Bibliotecas públicas de protocolos pertencem ao adaptador, não ao núcleo.
+Núcleo TypeScript/ESM independente do host. Ledger local do produto, sem acesso a DB/transcripts privados. Overlay atual contém cobertura de RAÍZES originais; não exige encontrar um resumo antigo no transcript bruto. View materializada também contém versões e ordinais de blocos, atualizados atomicamente sem esperar uma poda.
 
-**D02 — Persistência.** SQLite local pertencente ao produto, um banco por workspace autorizado; fontes grandes em diretório privado por hash. Não escrever em banco do host. A primeira implementação usa um driver de SQLite compatível com seu ambiente; schema/transações são os mesmos. O runtime Bun do OpenCode não é requisito do núcleo.
+Capture parcial não autoriza publicar nem gerar. SealedFrame final incorpora system/tools/defaults/metadata efetivos. Aplicar View no ponto terminal, manter cauda e hashes, então despachar a entrada validada. O modo complete exige todas as capacidades verificadas, fidelidade verified e gate pass; cache hit é métrica independente.
 
-**D03 — Unidade de poda.** Um intervalo contíguo de unidades de protocolo concluídas por job. Não cortar tool/result ou blocos opacos indivisíveis. Consolidação de capítulos usa o mesmo mecanismo. Nada de reorganização global arbitrária no MVP.
+A [ADR-001](../../docs/decisions/ADR-001-terminal-boundary.md) escolhe para a prova completa no OpenCode v1.18.31 um plugin com rota HTTP loopback opt-in e executor HTTP próprio. Isto NÃO é requisito de todos os hosts/núcleo. O perfil v1 somente-hooks fica sem complete; não fingir que oferece captura final ou controle dos retries internos. API key explícita/fixture local no primeiro perfil, sem extrair tokens de assinaturas. Não houve instalação dessa rota na máquina pessoal.
 
-**D04 — Execução.** Um job ativo por sessão, coordenador em processo no primeiro plugin; lease/fencing para detectar duas instâncias. Sem serviço de cloud, cron do sistema ou daemon obrigatório. Processo auxiliar só entra em outro adaptador se o ciclo de vida do host exigir.
+Gatilho padrão 50%, reservas e quotas versionadas, um job/run local por sessão. Até duas tentativas HTTP auxiliares admitidas antes da conexão. Retry do pai pertence ao host e é contabilizado separadamente. Quarantine local e remote_state unknown não viram sucesso nem reembolso fictício.
 
-**D05 — Fork.** Mesmo modelo/variante do pai, snapshot ativo e instrução no sufixo. Cache é best effort medido, não condição de correção. Fidelidade do request e isolamento de execução são propriedades separadas. Não reaproveitar assinaturas por caminhos não autorizados.
+Ledger tem Manifest congelado com refs tipadas. Correção/supersessão invalida dependências content transitivamente; exclusão também limpa derivados/cópias gerenciadas e impede recaptura. Restore parcial expande o replacement inteiro somente após consentimento; leitura arbitrária de trecho é context_read. Operações humanas não fabricam jobs LLM.
 
-**D06 — Disparo.** 50% da janela configurada é default, antecipado por orçamento e teto operacional. Gatilho por tarefa é complementar e opcional. Fórmulas, rearmamento e valores de partida estão em SPEC-02; não são limites universais de qualidade do modelo.
+Feedback conserva WorkContext e recortes realmente entregues. Notas são criadas pelo núcleo de forma determinística, bounded e com expiração por publication_seq. As âncoras não dependem de um resumo conservá-las.
 
-**D07 — Publicação.** Overlay declarativo persistido no banco do produto. A cada chamada, o adaptador o aplica sobre unidades identificadas do host. Não apagar transcript, não depender de uma mutação irreversível no histórico do host e não confundir publicação com entrega ao provider.
+## Como ler os estados de validação
 
-**D08 — Proteções.** Âncoras de usuário não são sumarizadas nem revogadas pelo maintainer. Dados externos nunca se tornam instruções de sistema. Originais são preservados dentro da política autorizada; retenção não se sobrepõe a exclusão solicitada.
+Revisão contratual, teste de documento, modelo abstrato, componente real, host integrado e piloto são classes distintas. Nenhum dos 55 subcasos de runtime passa porque scripts documentais passaram. O teste agregado Tnn só passa quando todos os seus subcasos aplicáveis têm evidência.
 
-**D09 — API do produto.** Duas tools de leitura (`context_search`, `context_read`), mais comandos de controle para o usuário. O clone não tem ferramentas de projeto executáveis. MCP é uma futura embalagem dessas tools, não mecanismo universal de poda.
+Prova do host: OpenCode v1.18.31 / a97622c801f4ca571530ddc51076af659a9c32cd, P01–P14. SDK/codec/artefato da instalação devem ser registrados no ensaio; documentação v2 não substitui a versão fixada. Nenhum perfil está homologado nesta revisão. O segundo adaptador continua Gemini CLI a fixar em seu trabalho, sem suporte presumido a marcas/modelos.
 
-**D10 — Alvo inicial.** OpenCode v1.18.31, commit `a97622c801f4ca571530ddc51076af659a9c32cd`, primeiro ensaio de compatibilidade. A documentação pública v2 é perfil distinto. Não há troca silenciosa de versão para fazer um teste passar.
+## Verificações desta etapa
 
-**D11 — Modos.** `complete`, `assisted`, `unsupported`. A combinação host+versão+transporte+modelo+autenticação é homologada, não só a marca do modelo. Na ausência de prova de substituição/isolamento, complete não pode ser ativado. Nenhum downgrade pago silencioso.
+```sh
+python3 scripts/check-spec.py
+python3 scripts/check-reference-model.py
+python3 scripts/test-spec-check.py
+```
 
-**D12 — Release.** Não publicar até G-OC-01 e os testes do ciclo vertical passarem. Gateway, prewarming, busca vetorial e suporte integral a cinco hosts são extensões, não dependências deste MVP.
+O primeiro valida links/fragmentos, reciprocidade, grafo e DDL de referência. O segundo executa dez modelos de contrato (incluindo 64 consolidações, bytes UTF-8 e tabela de capacidades). O terceiro exige rejeição de dez mutações documentais controladas. Não são runtime do produto, ensaio de provider ou benchmark.
 
-## Natureza dos contratos
+## Critério de avanço
 
-DEVE indica obrigação do produto proposto; NÃO DEVE proíbe comportamento; PODE indica opção explícita. Tipos e nomes neste diretório são APIs propostas de Context Continuity, não símbolos existentes do OpenCode. Não instalar nem anunciar comandos como disponíveis até a implementação.
-
-Atomização significa: entrada, precondição, transição, efeito durável, erro e prova especificados. Não significa duplicar o mesmo algoritmo em cada documento. SPEC-01 é autoridade de tipos; SPEC-02, de transições; SPEC-03, de persistência; SPEC-04, do binding; SPEC-05, da interface. Conflito entre eles bloqueia a implementação afetada até correção documental.
-
-## O que permanece como ensaio, e não como decisão escondida
-
-`G-OC-01`: demonstrar as capacidades combinadas do plugin em OpenCode stock. A leitura estática confirmou hooks, mas não certificou fork fiel/isolado nem aplicação final. O resultado de falha está especificado: não ativar complete, registrar capacidade ausente e propor um novo perfil público separadamente. WP-00 executa essa prova antes de WP-06.
-
-O benchmark determina utilidade e calibração; não redefine livremente a política durante uma execução. Reservas/configuração são versionadas. Provider/modelo da prova live devem ser selecionados entre rotas explicitamente autorizadas na instalação; não é necessário inventar uma credencial ou escolher um modelo que o usuário não possui. O manifesto do ensaio deve registrar a escolha exata antes da chamada. Ensaios offline não precisam de credenciais.
-
-## Orçamento da primeira implementação
-
-Primeiro ciclo: um workspace local, um orquestrador, workers já existentes, fontes textuais e mensagens/tool outputs cuja estrutura seja conhecida. Mídia e blocos opacos são preservados e protegidos; não convertidos para texto. Sua presença não implica suporte à compactação do conteúdo multimodal.
-
-O núcleo pode ser implementado/testado antes da homologação do host. O plugin completo não pode ser lançado antes dela. O segundo adaptador, Gemini CLI, serve para testar independência real; versões e documentação dele devem ser fixadas no respectivo trabalho, sem fingir que foram auditadas nesta entrega.
-
-## Critério de conclusão da especificação
-
-Documentos coerentes; cada requisito R01–R36 tem caso de aceitação e dono de implementação; cada work package tem Success Criteria, Quality Standards, Completeness Criteria, Definition of Done e Invariants; limitações de integração estão nominadas, com prova e efeito de falha; nenhuma promessa de runtime se baseia em um teste de documento.
+Contratos revisados e coerentes liberam implementação por pacote após revisão do PR. WP-00 diagnostica capacidades; só gate positivo permite modo complete do WP-06. O núcleo pode avançar com fixtures sem exigir sua própria integração futura no DoD. Release e gasto live têm gates próprios, incluindo orçamento explícito em SPEC-08.

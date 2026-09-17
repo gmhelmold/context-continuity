@@ -16,7 +16,7 @@ concurrency:
 
 jobs:
   specification:
-    name: Links, traceability and reference DDL
+    name: Document integrity and reference models
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -25,4 +25,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Validate documentation only
-        run: python3 scripts/check-spec.py
+        run: |
+          python3 scripts/check-spec.py
+          python3 scripts/check-reference-model.py
+          python3 scripts/test-spec-check.py

@@ -1,292 +1,305 @@
-# Work packages — Context Continuity v0.1
+# Work packages — Context Continuity 0.1.1
 
-Estado: **pacotes especificados, não executados**. Contratos: [índice](README.md). Aceitação: [SPEC-06](06-acceptance.md). Cada pacote termina com evidências, não apenas código ou texto de agente.
+Pacotes especificados, não executados. Fonte de rastreabilidade: [traceability.json](traceability.json). Contratos em [índice](README.md).
 
-## Ordem e fronteiras
+## Ordem
 
-```text
-WP-00 ────────────────────────────────────────────┐
-WP-01 → WP-02 → WP-03 → WP-04 → WP-05 ────────────┤→ WP-06 → WP-07
-```
+WP-00 é investigação independente de interfaces. WP-01→WP-02→WP-03→WP-04→WP-05 constrói núcleo. WP-06 depende do gate positivo WP-00 e do núcleo; WP-07 depende do pacote integrado. Investigação negativa conclui diagnóstico, não libera complete. Subcasos evitam exigir scheduler/host no DoD de tipos/storage.
 
-WP-00 pode ocorrer em paralelo à implementação do núcleo, mas seu PASS é obrigatório para o modo completo de WP-06. Falha no gate não autoriza patch do host nem substitui o produto por memória MCP com o mesmo nome. Pacotes independentes podem avançar contra adapter sintético; release continua bloqueada no perfil que falhou.
+## WP-00 — Prova das fronteiras públicas e transporte terminal
 
-Todos usam branches pequenas, testes do código real e documentação de comandos executados. Não publicar pacote npm ou benchmark sem autorização/validação próprias. Não aumentar escopo para cinco integrações completas no primeiro ciclo.
+**Dependências:** nenhuma implementação anterior; especificação revisada.
 
-## WP-00 — Provar a fronteira pública do OpenCode
+**Requisitos vinculados:** R01, R05, R06, R25, R29, R33.
 
-**Dependências:** especificação revisada; OpenCode upstream v1.18.31 no commit fixado. **Contratos:** SPEC-04; R01/R05/R25/R29/R33. **Testes:** T01, T05, T06, T25, T29, T33 e passos P01–P10 de G-OC-01.
+**Casos de conclusão:** T01.host, T05.host, T06.host, T25.host, T29.host, T33.host.
 
 ### Trabalho atômico
 
-1. Criar workspace sintético e instalação stock isolada, registrar hashes/versões/SDK sem ler credenciais da instalação pessoal.
-2. Carregar plugin mínimo de ensaio por interface pública; instrumentar frames e saída de transporte em provider controlado.
-3. Reproduzir tool loop, duas sessões, fork com resposta retardada e tentativa de tool auxiliar sem efeito.
-4. Confirmar publicação com cauda, reset nativo, ordem de plugins e handoff; executar P01–P10.
-5. Publicar CapabilityReport com pass/fail/unknown por propriedade, evidências sanitizadas e lacuna exata quando houver.
+1. Instalar host stock isolado e provider recorder sintético; fixar SDK/codec e hashes.
+2. Executar Capture→seal→veto por plugin/rota pública e confirmar P01–P14, incluindo plugin posterior.
+3. Contar requests auxiliares no endpoint e confirmar zero tool dispatch/sessões auxiliares persistidas.
+4. Relatar capacidades exatas e handoff da rota; não iniciar chamadas live.
 
 ### Success Criteria
 
-Existe prova reproduzível das capacidades combinadas exigidas pelo perfil, ou diagnóstico precisamente delimitado que mantém complete indisponível. Encontrar uma incompatibilidade verificável é conclusão legítima do ensaio, mas não libera WP-06 em modo completo.
+Demonstrar P01–P14 no perfil público escolhido, ou registrar exatamente a capacidade ausente sem liberar complete. Captura parcial, selo terminal e retries devem aparecer no recorder.
 
 ### Quality Standards
 
-Usar somente APIs/hooks públicos do commit fixado. Distinguir stub de provider live. Não chamar permissões deny-all de isolamento cache-safe sem conferir os schemas finais. Não usar claims de documentação como testes.
+Testar implementação real do componente, com fixtures sintéticas/relógio controlado quando adequado. Storage usa SQLite/FS reais; host usa instalação stock; live só com budget aprovado. Não duplicar algoritmo num mock e chamar isso de prova.
 
 ### Completeness Criteria
 
-Todos os P01–P10 possuem resultado e artefato ou blocker específico. Captura, geração, publicação, recuperação e remoção estão cobertas. Não basta demonstrar que uma tool MCP funciona.
+Cobrir sessão intercalada, codec, mudança no turno atual, zero tool dispatch, attempts físicos e restauração de baseURL; um hook funcionando não encerra o gate.
 
 ### Definition of Done
 
-Relatório versionado; comandos reais documentados; fixtures sintéticas reproduzíveis; host intacto; flags de capacidade conservadoras. Se necessário, abrir ADR separado para nova versão/interface pública; sem inventar workaround implícito. Relatório deve explicar claramente se o gate de release está liberado ou bloqueado.
+Todos os casos de conclusão do pacote passam com artefatos e comandos reproduzíveis; documentação e registro coerentes. WP-00 pode concluir investigação negativa explicitamente, sem habilitar dependente em modo completo. Testes de gate/integração futuros não são antecipados nem bloqueiam circularmente o componente.
 
 ### Invariants
 
-I1/I2/I5/I7/I11/I12/I13 do RFC: entrada em andamento intacta; cauda preservada; zero tools do clone; request válido; capacidade verdadeira; sem internals; isolamento de escopo.
+Host stock intacto; listener somente loopback opt-in; nenhuma credencial pessoal nos artefatos; investigação negativa nunca equivale a suporte completo.
 
-**Evidência esperada:** manifesto de versões, traces de requests sem auth, contador de efeitos zero, diffs de payloads, teste de desinstalação e CapabilityReport.
+**Evidência esperada:** comandos e commit, resultado por subcaso, fixtures e hashes; traces sanitizados quando cabíveis. Não equivale a release ou autorização automática de gasto.
 
-## WP-01 — Contratos, normalização e configuração do núcleo
+## WP-01 — Contratos, identidade e configuração
 
-**Dependências:** especificação; não depende do PASS do host. **Contratos:** SPEC-01 e configuração de SPEC-02; R02/R07/R30. **Testes:** T02, T07, T30, T37; validação de configuração de T15.
+**Dependências:** nenhuma implementação anterior; especificação revisada.
+
+**Requisitos vinculados:** R02, R06, R07, R15, R30, R33.
+
+**Casos de conclusão:** T02.contract, T06.contract, T07.contract, T15.contract, T30.contract, T33.capabilities, T37.contract.
 
 ### Trabalho atômico
 
-1. Criar núcleo TypeScript/ESM e schemas de Scope/Unit/Frame/Snapshot/Proposal/Capabilities/Error sem import de host.
-2. Implementar criação de IDs, canonicalização/digests e validação estrita dos control planes.
-3. Implementar resolução/versionamento de config e rejeição de limites desconhecidos/inválidos.
-4. Criar dois adaptadores sintéticos com formatos nativos diferentes; preservar payload opaco e identidade de protocolo.
-5. Demonstrar isolamento de mensagens iguais, IDs iguais entre hosts e mutação de revisão.
+1. Implementar tipos estritos, canonicalização, hash de fonte/payload/unidade e identidade persistível.
+2. Implementar Manifest tipado/congelado, WorkContext e validação de proposta sem campos de notas ocultos.
+3. Resolver configuração e tabela verdade de complete; captura parcial não recebe autoridade de envio.
+4. Testar dois formatos sintéticos, payload repetido/modificado e vetores Unicode/hash.
 
 ### Success Criteria
 
-O núcleo interpreta os contratos sem depender de OpenCode; dados inválidos não entram em estado publicável. Os dois formatos de teste satisfazem as mesmas invariantes sem cópia de política.
+Dois formatos nativos compartilham os mesmos contratos; identidades/digests/Manifest e tabela de capacidades rejeitam entradas ambíguas antes de estado publicável.
 
 ### Quality Standards
 
-Type checking estrito, ausência de any no núcleo, schemas testados em limites; normalização não perde campos nativos. APIs pequenas correspondem aos contratos, sem abstrações de hosts inexistentes.
+Testar implementação real do componente, com fixtures sintéticas/relógio controlado quando adequado. Storage usa SQLite/FS reais; host usa instalação stock; live só com budget aprovado. Não duplicar algoritmo num mock e chamar isso de prova.
 
 ### Completeness Criteria
 
-Todos os tipos/erros publicados em SPEC-01 têm representação e validação. Limites de tamanho, Unicode, números e manifesto são testados. Unknown não vira valor vazio validado.
+Cobrir fronteiras Unicode/números, fonte versus payload, referências tipadas, WorkContext desconhecido, schema estrito e revisões persistíveis; reparo/retry é prova posterior WP-03.
 
 ### Definition of Done
 
-T02/T07/T30/T37 passam contra implementação; configuração inválida testada; comandos reais de teste/typecheck registrados; dependências do núcleo inspecionadas; nenhum package install/release fictício anunciado.
+Todos os casos de conclusão do pacote passam com artefatos e comandos reproduzíveis; documentação e registro coerentes. WP-00 pode concluir investigação negativa explicitamente, sem habilitar dependente em modo completo. Testes de gate/integração futuros não são antecipados nem bloqueiam circularmente o componente.
 
 ### Invariants
 
-Escopo deriva da integração, nunca do modelo; hashes não normalizam conteúdo; grupos opacos preservados; núcleo não conhece tabelas privadas; IDs de execução são fornecidos pelo harness.
+Origem/escopo não vêm do modelo; payload opaco não vira vazio; same source_refs não mascara role diferente; Capture não recebe autoridade de SealedFrame.
 
-**Evidência esperada:** resultados de testes de contrato, fuzz de schema, vetores de hash, grafo de imports e prova dos dois formatos sintéticos.
+**Evidência esperada:** comandos e commit, resultado por subcaso, fixtures e hashes; traces sanitizados quando cabíveis. Não equivale a release ou autorização automática de gasto.
 
-## WP-02 — Persistência, ledger e transações
+## WP-02 — Ledger e persistência transacional
 
-**Dependências:** WP-01. **Contratos:** SPEC-03; R03/R12/R19/R32. **Testes:** T03, T12, T19, T32 e integridade de T38.
+**Dependências:** WP-01.
+
+**Requisitos vinculados:** R03, R12, R19, R32.
+
+**Casos de conclusão:** T03.storage, T12.storage, T19.storage, T32.archive, T38.archive.
 
 ### Trabalho atômico
 
-1. Implementar schema/migração v1 e armazenamento privado por workspace, sem abrir DB do host.
-2. Implementar fonte inline/blob, hash/fsync/rename, quota e estados de disponibilidade.
-3. Implementar lease, fencing, unique active job e publicação transacional com CAS.
-4. Implementar startup/crash recovery sem repetir geração incerta e backup/migração segura.
-5. Implementar export/import namespace separado, exclusão cancelando jobs e GC apenas de órfãos elegíveis.
+1. Implementar schema, migrations, root map, jobs/attempts/operations e manifests.
+2. Implementar lock de workspace, staging/reserva de quota/ref/GC e reader pins.
+3. Implementar lease/fence, View CAS, backups/catalog e recovery sem replay de rede.
+4. Implementar ArchiveManifest/Records, remapeamento e namespace arquivo, FKs completas e quotas.
 
 ### Success Criteria
 
-Nenhuma view referencia fonte parcial/inexistente por falha de gravação, nenhuma publicação é parcial e dois processos não assumem a mesma sessão simultaneamente.
+Commit nunca expõe fonte parcial; quota e GC não disputam reuso de blob; operações humanas têm proveniência sem LLM; importação cria somente arquivo isolado.
 
 ### Quality Standards
 
-Testar SQLite e filesystem reais, com falhas injetadas nos pontos de persistência; permissões locais verificadas. SQL parametrizado; refs de capítulos/feedback/visões sempre conferidas dentro do mesmo escopo.
+Testar implementação real do componente, com fixtures sintéticas/relógio controlado quando adequado. Storage usa SQLite/FS reais; host usa instalação stock; live só com budget aprovado. Não duplicar algoritmo num mock e chamar isso de prova.
 
 ### Completeness Criteria
 
-Schema, quotas, arquivos grandes/vazios, migrações, owner expirado, exclusão, import/export e garbage collection cobertos. FK e cascades de exclusão testados com todos os relacionamentos populados.
+Testar SQLite/FS e restart, todos relacionamentos de FK, lock de workspace, reservas concorrentes, staged/orphan blobs, namespace e manifesto de arquivo; teste de hook fica em WP-06.
 
 ### Definition of Done
 
-T03/T12/T19/T32 passam incluindo reinício de processo. Ler fonte retorna bytes/hash originais. DDL validar sozinho não satisfaz DoD. Diretórios de teste limpos; histórico sintético não vai para telemetria real.
+Todos os casos de conclusão do pacote passam com artefatos e comandos reproduzíveis; documentação e registro coerentes. WP-00 pode concluir investigação negativa explicitamente, sem habilitar dependente em modo completo. Testes de gate/integração futuros não são antecipados nem bloqueiam circularmente o componente.
 
 ### Invariants
 
-Fontes precedem publicação; rollback integral; callback antigo perde autoridade; credenciais ausentes; fonte capturada não é substituída pelo arquivo atual; exclusão não é revertida por job tardio.
+Fontes precedem publicação; lock do SO não é lease expirável; fence antigo perde autoridade; export não carrega auth; tombstone impede recriação por callback.
 
-**Evidência esperada:** traces de transações, fault injection, diretórios e permissões verificados, teste de migração/rollback, manifestos de export/import sintéticos.
+**Evidência esperada:** comandos e commit, resultado por subcaso, fixtures e hashes; traces sanitizados quando cabíveis. Não equivale a release ou autorização automática de gasto.
 
-## WP-03 — Agendador preventivo e executor auxiliar
+## WP-03 — Scheduler e executor com admissão física
 
-**Dependências:** WP-01/WP-02. **Contratos:** SPEC-02; R04/R06/R14–R17. **Testes:** T04, T06, T14–T17, T37, T40.
+**Dependências:** WP-01, WP-02.
+
+**Requisitos vinculados:** R04, R06, R14, R15, R16, R17, R35.
+
+**Casos de conclusão:** T04.scheduler, T14.scheduler, T15.scheduler, T16.scheduler, T17.scheduler, T35.accounting, T37.executor, T40.executor.
 
 ### Trabalho atômico
 
-1. Implementar B/G/F/T/L/N/M com defaults resolvidos e contagem total de contexto.
-2. Implementar seleção determinística de runs seguros, cauda protegida e consolidação alternativa.
-3. Implementar admissão, coalescência, rearmamento, quotas e deadline por job.
-4. Implementar executor por contrato de adaptador: snapshot imutável, missão no sufixo e nenhuma tool despachada pelo núcleo.
-5. Implementar parse/validação/ganho, noop, retry ou reparo dentro de duas chamadas físicas e cancelamento de callbacks tardios.
+1. Implementar trigger 50% com reservas, seleção lógica, rearmamento e coalescência.
+2. Congelar EffectiveFrame/Manifest/mission e criar AttemptPermit por request físico.
+3. Implementar executor HTTP sem retries/tools/continuations implícitos, máximo2 permits.
+4. Implementar stop local/quarantine, remote unknown, deadline e contabilização conservadora.
 
 ### Success Criteria
 
-O gatilho dispara preventivamente uma vez, não bloqueia o pai dentro da margem e produz somente propostas bounded/validáveis. Nenhum cenário cria loops de compaction ou gastos infinitos.
+Gatilho/rearmamento não fazem loop; permits limitam requests HTTP auxiliares reais, mantendo progresso do pai e contabilização de reserva incerta.
 
 ### Quality Standards
 
-Relógio e provider controláveis; código do scheduler real; contagens de chamadas/entrada incluem retries e cache; status desconhecido preservado. Sem esperar LLM no hook de envio.
+Testar implementação real do componente, com fixtures sintéticas/relógio controlado quando adequado. Storage usa SQLite/FS reais; host usa instalação stock; live só com budget aprovado. Não duplicar algoritmo num mock e chamar isso de prova.
 
 ### Completeness Criteria
 
-Bordas T-1/T, limites desconhecidos, F real excedido, ganho insuficiente, duas formas de rearmamento, tarefas simultâneas, timeout e quota esgotada testados.
+Cobrir T-1/T, F real, noop, retry OU reparo, deadline, quarantine, late callback e quota; medir endpoint sintético, não só contar chamadas ao mock fork.
 
 ### Definition of Done
 
-T04/T06/T14–T17/T37/T40 passam com adapter sintético. Geração live continua condicionada ao perfil autorizado, não à existência de uma key no ambiente. Missão e schema versionados com as mesmas regras da spec.
+Todos os casos de conclusão do pacote passam com artefatos e comandos reproduzíveis; documentação e registro coerentes. WP-00 pode concluir investigação negativa explicitamente, sem habilitar dependente em modo completo. Testes de gate/integração futuros não são antecipados nem bloqueiam circularmente o componente.
 
 ### Invariants
 
-Um job ativo por sessão; contexto cacheado conta na janela; same digest não repete sem condição; no máximo duas tentativas totais; clone sem efeitos; job terminal não ressuscita.
+Máximo2 requests auxiliares por job; sem retries/tools implícitos; cache continua na ocupação; terminal não publica; local stop desconhecido não libera outro run.
 
-**Evidência esperada:** vetores de orçamento, timeline concorrente, contadores de chamadas e relatório de todos os estados terminais.
+**Evidência esperada:** comandos e commit, resultado por subcaso, fixtures e hashes; traces sanitizados quando cabíveis. Não equivale a release ou autorização automática de gasto.
 
-## WP-04 — Projeção e publicação da visão
+## WP-04 — Projeção achatada e publicação
 
-**Dependências:** WP-01/WP-02/WP-03. **Contratos:** SPEC-01/02/03; R08–R11/R13/R27/R28. **Testes:** T08–T13, T27–T28, T39 e parte de T29.
+**Dependências:** WP-01, WP-02, WP-03.
+
+**Requisitos vinculados:** R08, R09, R10, R11, R12, R13, R27, R28.
+
+**Casos de conclusão:** T08.projection, T09.projection, T10.projection, T11.dependencies, T12.publish, T13.projection, T27.projection, T28.projection, T39.projection.
 
 ### Trabalho atômico
 
-1. Implementar overlay por unidades/versões, sem mutar payloads do frame original.
-2. Validar snapshot/prefixo/fingerprint/política/epoch/fence contra frame ATUAL.
-3. Aplicar a síntese na posição do intervalo coberto e preservar toda a cauda; render idempotente em retry.
-4. Integrar commit de Chapter/View/Job e registro selected/emitted/acknowledged.
-5. Implementar reset nativo/revert/mutação, consolidação DAG, revalidação e rejeição de propostas stale.
+1. Implementar renderer achatado sobre raízes originais e composição de capítulos, não replay de strings.
+2. Implementar seal/fingerprint atual, CAS de View e emissions separadas.
+3. Implementar closure content versus history, invalidação e supressão de raízes com tombstone.
+4. Implementar plano/commit de restore com expansão explícita e Operation de correção sem job.
+5. Provar 2/10/64 consolidações, restart e mutações que perderiam cauda ou payload.
 
 ### Success Criteria
 
-F-PUBLISH é exatamente preservada com concorrência, e qualquer alteração de base/política invalida a proposta em vez de ocultar eventos. Nenhum callback publica fora de seu escopo/fence.
+Partindo sempre das raízes brutas, várias consolidações/restore/restart produzem sequência exata, sem resumo fantasma ou cauda duplicada.
 
 ### Quality Standards
 
-Golden tests e testes de propriedades contra formatos diferentes, falhas de commit, payloads opacos e chamadas paralelas. Comparar conteúdo e ordem, não apenas contagem de mensagens.
+Testar implementação real do componente, com fixtures sintéticas/relógio controlado quando adequado. Storage usa SQLite/FS reais; host usa instalação stock; live só com budget aprovado. Não duplicar algoritmo num mock e chamar isso de prova.
 
 ### Completeness Criteria
 
-Cauda concorrente, system/tools/model changes, native failure/success, retry, crash e capítulos consolidados cobertos. Seleção de view não é rotulada como consumo comprovado.
+Cobrir 2/10/64 ciclos, overlap, source/role/config drift, CAS, content closure, history supersedes, correção humana e restore expandido; teste host fica WP-06.
 
 ### Definition of Done
 
-T08–T13/T27–T28/T39 passam; mutações que apagam tail ou pulam CAS são detectadas pelos testes. Nenhuma transformação exige editar transcript em disco. Reversão de view não reexecuta efeitos.
+Todos os casos de conclusão do pacote passam com artefatos e comandos reproduzíveis; documentação e registro coerentes. WP-00 pode concluir investigação negativa explicitamente, sem habilitar dependente em modo completo. Testes de gate/integração futuros não são antecipados nem bloqueiam circularmente o componente.
 
 ### Invariants
 
-I1–I4/I6–I9: entrada passada intacta; cauda única; fontes duráveis; âncoras preservadas; um escritor lógico; protocolo/budget válidos; commit íntegro; ledger fora da janela infinita.
+Coverage física não depende de S1 existir no host; View é única seleção; inválido sai do presente; falta de orçamento bloqueia em vez de reviver derivado incorreto.
 
-**Evidência esperada:** arrays/envelopes antes/depois, trace de commit/failure, DAG de capítulos e testes de mutação dirigidos.
+**Evidência esperada:** comandos e commit, resultado por subcaso, fixtures e hashes; traces sanitizados quando cabíveis. Não equivale a release ou autorização automática de gasto.
 
-## WP-05 — Consulta, âncoras, blocos curados e feedback
+## WP-05 — Consulta, blocos, feedback e operações
 
-**Dependências:** WP-01/WP-02/WP-04. **Contratos:** SPEC-05; R20–R23/R26/R31. **Testes:** T20–T23, T26, T31, T38.
+**Dependências:** WP-01, WP-02, WP-04.
+
+**Requisitos vinculados:** R20, R21, R22, R23, R26, R31, R32.
+
+**Casos de conclusão:** T20.tools, T21.blocks, T22.blocks, T23.blocks, T26.feedback, T31.tools, T32.redaction, T38.paging.
 
 ### Trabalho atômico
 
-1. Implementar context_search/context_read com escopo injetado, limites, resultados parciais e cursores.
-2. Implementar versionamento/autoridade de anchors/curated blocks e orçamento de ativação.
-3. Implementar recibos apenas do conteúdo efetivamente retornado e priorização de feedback bounded.
-4. Implementar notas temporárias, expiração e correção sem promover memória de agente a regra do usuário.
-5. Exercitar a sequência poda 30→consulta→poda 31 com omissão corretiva e lookup normal separados.
+1. Implementar search/read, cursores byte-safe/HMAC e recortes com autoridade.
+2. Ligar comandos de bloco à publicação imediata de View em pause ou sem job.
+3. Implementar receipt idempotente com WorkContext e notas determinísticas bounded, seq de expiração.
+4. Implementar correção/redaction de derivados/index/notas/backups e consulta após exclusão.
+5. Verificar restore/arquivo pela UX sem executar efeitos externos.
 
 ### Success Criteria
 
-O agente recupera o trecho certo sem reidratar a sessão inteira; âncoras sobrevivem à compactação; feedback ajusta somente recortes pertinentes e não cresce sem limite.
+Leitura reconstrói bytes sob orçamento; regras mudam imediatamente; notas ajustam recorte e expiram sem crescer; exclusão não reaparece por busca/derivados.
 
 ### Quality Standards
 
-Sem SQL/regex/shell executados pela query; fontes e autoridade exibidas; cursors assinados e verificados; exclusão/revisão concorrente tratadas. Conteúdo ausente nunca é reconstruído pela ferramenta.
+Testar implementação real do componente, com fixtures sintéticas/relógio controlado quando adequado. Storage usa SQLite/FS reais; host usa instalação stock; live só com budget aprovado. Não duplicar algoritmo num mock e chamar isso de prova.
 
 ### Completeness Criteria
 
-Consulta vazia, texto repetido, fonte missing, range, quota, cursor expirado, escopo diferente, bloco excessivo/revogado e feedback sem escopo cobertos. Binários não são tratados como texto vazio.
+Cobrir linha gigante, CRLF/UTF-8, cursor e envelope mínimo, escopos A/B/null, três reads distintos, seqN+2, pause e limpeza dos derivados/índices/backups gerenciados.
 
 ### Definition of Done
 
-T20–T23/T26/T31/T38 passam. Busca e leitura funcionam com ledger real; teste mostra âncora literal após dez ciclos estruturais e nota temporária expirando conforme contrato. Não anunciar ganho semântico só por essa fixture.
+Todos os casos de conclusão do pacote passam com artefatos e comandos reproduzíveis; documentação e registro coerentes. WP-00 pode concluir investigação negativa explicitamente, sem habilitar dependente em modo completo. Testes de gate/integração futuros não são antecipados nem bloqueiam circularmente o componente.
 
 ### Invariants
 
-Origem não ganha autoridade; usuário controla sua regra; não atravessar workspace/session; não fixar capítulo inteiro por lookup; limites são aplicados pelo backend, não pelo modelo.
+Origem não ganha autoridade; regra humana não é reescrita pelo clone; cursor sempre progride; nota é determinística e não promove lookup normal a âncora permanente.
 
-**Evidência esperada:** respostas reais das tools, versões de blocos, recibos de leitura, teste de cursor/escopo e timeline de retenção.
+**Evidência esperada:** comandos e commit, resultado por subcaso, fixtures e hashes; traces sanitizados quando cabíveis. Não equivale a release ou autorização automática de gasto.
 
-## WP-06 — Plugin OpenCode instalável e saída segura
+## WP-06 — Plugin instalável, handoff e ciclo integrado
 
-**Dependências:** WP-00 PASS para o perfil completo; WP-01–WP-05. **Contratos:** SPEC-04/05; R18/R24/R36. **Testes:** T01, T05, T08–T11, T18, T24, T28–T29, T33, T36.
+**Dependências:** WP-00, WP-05.
+
+**Requisitos vinculados:** R08, R10, R12, R18, R24, R28, R36.
+
+**Casos de conclusão:** T08.host, T10.host, T12.host, T18.host, T24.host, T28.host, T36.host, T39.host, T40.host.
 
 ### Trabalho atômico
 
-1. Empacotar adaptador nativo por entrypoint público, opções do plugin e declaração de capacidades.
-2. Ligar hooks às operações do núcleo com correlação de sessão/turno comprovada no gate.
-3. Integrar fluxo normal, compactação nativa, pause/resume e diagnóstico sem inferência oculta.
-4. Registrar duas tools desde ativação, comandos/status mínimos e tratamento de colisões.
-5. Testar tarball em instalação limpa, upgrade de perfil, disable-prepare/handoff, remoção e reinício.
+1. Empacotar plugin + perfil nativo e rota local opt-in usando somente configuração pública.
+2. Correlacionar captures, requests finais, resets e segredo local sem sair upstream.
+3. Executar todos P01–P14 no tarball final; instalar, pausar, reiniciar e remover com handoff/baseURL restaurada.
+4. Repetir testes host integrados, inclusive quota, cancelamento e regra alterada no turno atual.
 
 ### Success Criteria
 
-Uma instalação stock executa o ciclo completo sem patch/manual cleanup; erros de manutenção não corrompem a sessão e a desativação tem resultado previsível.
+Tarball instalado no OpenCode stock executa o ciclo completo e sai com rota/checkpoint válidos, sem internals ou tarefa manual escondida.
 
 ### Quality Standards
 
-Teste pelo pacote empacotado, não somente imports locais. Não anunciar compatibilidade com versões não testadas. Sem postinstall que execute modelo, sem telemetria de prompts e sem reaproveitamento não autorizado de credenciais.
+Testar implementação real do componente, com fixtures sintéticas/relógio controlado quando adequado. Storage usa SQLite/FS reais; host usa instalação stock; live só com budget aprovado. Não duplicar algoritmo num mock e chamar isso de prova.
 
 ### Completeness Criteria
 
-Instalação, ativação, uso paralelo, reconstrução, compactação nativa, pausa, exportação e remoção documentados no perfil real. Orquestrador continua ao lado do maintainer dentro da margem; esperas excepcionais visíveis.
+Repetir P01–P14 no pacote final, correlacionar captures/SSE/attempts, testar token local, restart, reset, pausa, upgrade e remoção; absent capability impede complete.
 
 ### Definition of Done
 
-G-OC-01 permanece válido no pacote final; testes de integração acima passam; documentação contém comando de instalação real somente quando o artefato existir. Publicação de release é decisão separada, não efeito colateral deste pacote.
+Todos os casos de conclusão do pacote passam com artefatos e comandos reproduzíveis; documentação e registro coerentes. WP-00 pode concluir investigação negativa explicitamente, sem habilitar dependente em modo completo. Testes de gate/integração futuros não são antecipados nem bloqueiam circularmente o componente.
 
 ### Invariants
 
-Não contornar ausência de interface; isolamento do clone; overlay reaplicado sem duplicação; integração parcial explicitada; nenhuma garantia ativa é prometida depois de remover o plugin.
+Nenhum host fork obrigatório; mesma entrada efetiva para clone; headers locais não saem upstream; sem credenciais extraídas ou listener público; pause não desconecta o pai.
 
-**Evidência esperada:** tarball/hash, instalação limpa gravada/logada, frames e capítulos do ciclo integrado, relatório de saída e comandos reproduzíveis.
+**Evidência esperada:** comandos e commit, resultado por subcaso, fixtures e hashes; traces sanitizados quando cabíveis. Não equivale a release ou autorização automática de gasto.
 
-## WP-07 — Conformance, piloto e prova de portabilidade
+## WP-07 — Conformance, portabilidade e piloto
 
-**Dependências:** WP-06; testes de contrato podem ser preparados após WP-01. **Contratos:** SPEC-06; R30/R34/R35. **Testes:** T30, T34, T35 e regressão T01–T40 aplicável ao perfil.
+**Dependências:** WP-06.
+
+**Requisitos vinculados:** R30, R34, R35.
+
+**Casos de conclusão:** T30.portability, T34.pilot, T35.pilot.
 
 ### Trabalho atômico
 
-1. Consolidar suíte de conformance por capacidade e relatório pass/fail/blocked, sem transformar not_run em pass.
-2. Fixar versão/interfaces do segundo adaptador Gemini CLI em relatório próprio; implementar o mínimo para executar o mesmo ciclo de contrato, sem tipos do primeiro host no núcleo.
-3. Preparar piloto com baseline real, poda simples e produto completo; incluir ablação de âncoras/curated blocks.
-4. Executar somente ensaios live previamente orçados/autorizados, registrar tarefas aceitas, correções, erros, custo e latência por fase da sessão.
-5. Publicar resultados positivos/negativos e decidir calibração/release com base neles.
+1. Executar conformance e segundo adaptador real com versão fixada.
+2. Congelar evaluation-plan com oráculos, critérios, horizon e orçamento explicitamente autorizado.
+3. Executar piloto pareado somente após aprovação de budget; contabilizar falhas/intervenções/custos reais.
+4. Publicar resultados positivos/negativos/inconclusivos e decisão conforme protocolo prévio.
 
 ### Success Criteria
 
-Portabilidade é demonstrada por reutilização do núcleo, não por uma lista de logos. O piloto identifica se o mecanismo melhora continuidade e a que custo, sem garantia prévia de resultado favorável.
+Segundo host real reutiliza núcleo; piloto produz decisão rastreável ao plano prévio mesmo quando negativa/inconclusiva, sem atribuir ganho do conjunto ao clone sem contraste.
 
 ### Quality Standards
 
-Modelos/rotas/versões fixados por ensaio, tarefas iniciais equivalentes, repetições e variabilidade reportadas; contar maintainer/recuperações/retries/retrabalho. Um reviewer LLM não é a única autoridade de aceite.
+Testar implementação real do componente, com fixtures sintéticas/relógio controlado quando adequado. Storage usa SQLite/FS reais; host usa instalação stock; live só com budget aprovado. Não duplicar algoritmo num mock e chamar isso de prova.
 
 ### Completeness Criteria
 
-Cada capacidade anunciada tem teste executado no host correspondente. Perfil Gemini não comprovado permanece sem suporte anunciado. Comparações incluem o harness real com suas proteções nativas; não baseline artificialmente pior.
+Separar conformance, portabilidade e produto; publicar todos os pares e censuras, custos unknown, oráculos, thresholds prévios e orçamento; não estender gasto para buscar resultado favorável.
 
 ### Definition of Done
 
-Relatório reprodutível com evidências sanitizadas e limitações; custos unknown identificados; resultados de segunda integração separados dos mocks. Se poda simples empatar ou vencer, registrar e simplificar antes de prometer superioridade. Nenhum threshold de ganho é inventado retroativamente para declarar sucesso.
+Todos os casos de conclusão do pacote passam com artefatos e comandos reproduzíveis; documentação e registro coerentes. WP-00 pode concluir investigação negativa explicitamente, sem habilitar dependente em modo completo. Testes de gate/integração futuros não são antecipados nem bloqueiam circularmente o componente.
 
 ### Invariants
 
-Tamanho de contexto não é qualidade; cache hit não é verdade; instalação não é suporte; nenhuma execução paga escondida; nenhuma inferência de economia a partir de taxa de compressão apenas.
+Sessão é unidade independente; instalação não é suporte; token savings não é qualidade; nenhuma call live sem orçamento; regressão crítica impede release mesmo com média boa.
 
-**Evidência esperada:** conformance report, perfil do segundo host, dataset sintético/manifestos, métricas por execução e análise de falhas/ablação.
-
-## Critério comum de entrega
-
-Cada pacote deve ligar seu PR aos requisitos/testes executados, incluir comandos reais, explicar qualquer blocked e manter os documentos coerentes. Os cinco axiomas são obrigatórios mesmo em pacote de investigação. Prova de capacidade indisponível pode concluir WP-00 como investigação, mas nunca como aprovação de release completa.
-
-Etapa atual: estes pacotes são o plano executável da especificação. Nenhum está concluído nesta publicação documental.
+**Evidência esperada:** comandos e commit, resultado por subcaso, fixtures e hashes; traces sanitizados quando cabíveis. Não equivale a release ou autorização automática de gasto.
