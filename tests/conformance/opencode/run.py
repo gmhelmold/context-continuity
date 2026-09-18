@@ -23,7 +23,7 @@ class Recorder(ThreadingHTTPServer):
  daemon_threads=True
  def __init__(self):
   super().__init__(('127.0.0.1',0),ResponseHandler)
-  self.records=[];self.lock=threading.Lock();self.stages={};self.aux_counts={};self.releases={}
+  self.records=[];self.lock=threading.Lock();self.stages={};self.aux_counts={};self.releases={};self.native_fault_sessions=set();self.transport_disconnects=0
  def record(self,path,headers,body):
   with self.lock:
    # auth values/capture tokens never enter retained artifacts
@@ -32,6 +32,13 @@ class Recorder(ThreadingHTTPServer):
   return row
 
 class ResponseHandler(BaseHTTPRequestHandler):
+ protocol_version="HTTP/1.1"
+ def handle(self):
+  try:super().handle()
+  except (ConnectionResetError,BrokenPipeError):
+   # Deliberate cancellation/crash closes keep-alive connections. Count only
+   # transport disconnects here; all other exceptions remain visible failures.
+   with self.server.lock:self.server.transport_disconnects+=1
  def log_message(self,*_):pass
  def do_POST(self):
   size=int(self.headers.get('Content-Length','0'))
@@ -42,6 +49,10 @@ class ResponseHandler(BaseHTTPRequestHandler):
   def flatten(v):return v if isinstance(v,str) else '\n'.join(x.get('text','') for x in v if isinstance(x,dict))
   texts=list(map(flatten,texts));last=texts[-1] if texts else ''
   auxiliary=last.startswith('CC_AUXILIARY::')
+  if any('CC_NATIVE_RESET::'+sid in last for sid in self.server.native_fault_sessions):
+   row['native_failure']=True
+   raw=json.dumps({'error':{'message':'controlled native compaction failure','type':'invalid_request_error'}}).encode()
+   self.send_response(400);self.send_header('Content-Type','application/json');self.send_header('Content-Length',str(len(raw)));self.end_headers();self.wfile.write(raw);return
   content='CC_FINAL: synthetic response';reason='stop';calls=None
   if auxiliary:
    _,scenario,rest=last.split('::',2);run=rest.split('.',1)[0]
@@ -50,13 +61,13 @@ class ResponseHandler(BaseHTTPRequestHandler):
     release=self.server.releases.setdefault(run,threading.Event())
    if scenario in ('happy','stale'):release.wait(5)
    if scenario=='cancel':release.wait(3)
-   if scenario=='rate' and n<=2:
+   if scenario in ('rate','server-error') and n<=2:
     raw=json.dumps({'error':{'message':'synthetic rate limit','type':'rate_limit'}}).encode()
-    self.send_response(429);self.send_header('Content-Type','application/json');self.send_header('Retry-After','0');self.send_header('Content-Length',str(len(raw)));self.end_headers();self.wfile.write(raw);return
+    self.send_response(503 if scenario=='server-error' else 429);self.send_header('Content-Type','application/json');self.send_header('Retry-After','0');self.send_header('Content-Length',str(len(raw)));self.end_headers();self.wfile.write(raw);return
    if scenario=='tool':
     reason='tool_calls';calls=[{'id':'aux_forbidden','type':'function','function':{'name':'cc_probe','arguments':'{}'}}];content=None
    elif scenario=='repair' and n==1:content='deliberately invalid fixture JSON'
-   else:content=json.dumps({'summary':'CC_SUMMARY: completed seed; retain protocol v1.'})
+   else:content=json.dumps({'summary':'CC_SUMMARY::'+run+': completed history; retain protocol v1.'})
   else:
    markers=[t for t in texts if t.startswith('RUN::')]
    if markers:
@@ -92,15 +103,15 @@ class Probe:
   self.recorder=Recorder();threading.Thread(target=self.recorder.serve_forever,daemon=True).start()
   self.port=free_port();self.gateway=free_port();self.secret=secrets.token_hex(24);self.password=secrets.token_hex(24)
   self.control=root/'control.json';write_json(self.control,{})
-  self.trace=root/'hooks.jsonl';self.results=[];self.process=None;self.log=None
+  self.trace=root/'hooks.jsonl';self.checkpoint=root/'probe-checkpoint.json';self.created_sessions=[];self.results=[];self.process=None;self.log=None
   self.config={'$schema':'https://opencode.ai/config.json','model':'cc-fixture/probe','small_model':'cc-fixture/probe','enabled_providers':['cc-fixture'],'share':'disabled','autoupdate':False,'compaction':{'auto':True,'prune':False},'permission':{'*':'deny','cc_probe':'allow'},'plugin':[(HERE/'gateway-plugin.mjs').as_uri(),(HERE/'later-plugin.mjs').as_uri()],'provider':{'cc-fixture':{'npm':'@ai-sdk/openai-compatible','name':'CC OFFLINE FIXTURE','options':{'baseURL':f'http://127.0.0.1:{self.gateway}/v1','apiKey':'synthetic-not-a-real-key'},'models':{'probe':{'name':'Probe','limit':{'context':100000,'output':4096},'tool_call':True}}}}}
   write_json(self.workspace/'opencode.json',self.config)
-  self.env={'PATH':os.environ['PATH'],'HOME':str(self.home),'TMPDIR':str(root),'XDG_DATA_HOME':str(root/'data'),'XDG_CONFIG_HOME':str(root/'config'),'XDG_CACHE_HOME':str(root/'cache'),'XDG_STATE_HOME':str(root/'state'),'CC_TRACE':str(self.trace),'CC_CONTROL':str(self.control),'CC_GATEWAY_PORT':str(self.gateway),'CC_FIXTURE_UPSTREAM':f'http://127.0.0.1:{self.recorder.server_port}/v1/chat/completions','CC_LOCAL_SECRET':self.secret,'OPENCODE_SERVER_PASSWORD':self.password,'OPENCODE_DISABLE_AUTOUPDATE':'true','OPENCODE_DISABLE_DEFAULT_PLUGINS':'true','OPENCODE_DISABLE_LSP_DOWNLOAD':'true','OPENCODE_DISABLE_MODELS_FETCH':'true','NO_PROXY':'127.0.0.1,localhost'}
- def call(self,path,body=None,method=None):
+  self.env={'PATH':os.environ['PATH'],'HOME':str(self.home),'TMPDIR':str(root),'XDG_DATA_HOME':str(root/'data'),'XDG_CONFIG_HOME':str(root/'config'),'XDG_CACHE_HOME':str(root/'cache'),'XDG_STATE_HOME':str(root/'state'),'CC_TRACE':str(self.trace),'CC_CHECKPOINT':str(self.checkpoint),'CC_CONTROL':str(self.control),'CC_GATEWAY_PORT':str(self.gateway),'CC_FIXTURE_UPSTREAM':f'http://127.0.0.1:{self.recorder.server_port}/v1/chat/completions','CC_LOCAL_SECRET':self.secret,'OPENCODE_SERVER_PASSWORD':self.password,'OPENCODE_DISABLE_AUTOUPDATE':'true','OPENCODE_DISABLE_DEFAULT_PLUGINS':'true','OPENCODE_DISABLE_LSP_DOWNLOAD':'true','OPENCODE_DISABLE_MODELS_FETCH':'true','NO_PROXY':'127.0.0.1,localhost'}
+ def call(self,path,body=None,method=None,timeout=60):
   headers={'Content-Type':'application/json','Authorization':'Basic '+base64.b64encode(('opencode:'+self.password).encode()).decode()}
   req=Request(f'http://127.0.0.1:{self.port}'+path,data=None if body is None else json.dumps(body).encode(),headers=headers,method=method)
   try:
-   with urlopen(req,timeout=60) as r:
+   with urlopen(req,timeout=timeout) as r:
     data=r.read();return json.loads(data) if data else None
   except HTTPError as e:raise RuntimeError(f'host HTTP {e.code}: {e.read()[:500]!r}') from e
  def start(self):
@@ -133,7 +144,7 @@ class Probe:
   if reply.get('info',{}).get('error'):raise AssertionError(json.dumps(reply['info']['error']))
   return reply
  def session(self,tag):
-  s=self.call('/session',{'title':'CC synthetic '+tag})['id'];self.prompt(s,'SEED::'+tag);return s
+  s=self.call('/session',{'title':'CC synthetic '+tag})['id'];self.created_sessions.append(s);self.prompt(s,'SEED::'+tag);return s
  def check(self,name,fn):
   before=len(self.recorder.records)
   try:
@@ -143,7 +154,8 @@ class Probe:
  def run(self):
   self.start()
   version=subprocess.check_output([str(self.binary),'--version'],env=self.env,text=True).strip();assert version==HOST_VERSION,version
-  initial_sessions=self.call('/session')
+  print('BOOTSTRAP isolated host workspace',flush=True)
+  initial_sessions=self.call('/session',timeout=180)
   def happy():
    s=self.session('happy');write_json(self.control,{'session':s,'run':'happy1','scenario':'happy'})
    self.prompt(s,'RUN::happy::happy')
@@ -170,11 +182,11 @@ class Probe:
    s=self.session(scenario);write_json(self.control,{'session':s,'run':scenario+'1','scenario':scenario})
    self.prompt(s,f'RUN::{scenario}::{scenario}')
    ev=self.wait_event('aux-failed' if scenario!='repair' else 'aux-ready',s)
-   counts=self.recorder.aux_counts[scenario+'1'];assert counts==(2 if scenario in ('rate','repair') else 1),counts
+   counts=self.recorder.aux_counts[scenario+'1'];assert counts==(2 if scenario in ('rate','server-error','repair') else 1),counts
    if scenario=='tool':assert ev['code']=='E_TOOL';assert len([e for e in self.events() if e['kind']=='tool-effect' and e['session']==s])==3
-   if scenario=='rate':assert ev['code']=='E_RATE'
+   if scenario in ('rate','server-error'):assert ev['code']=='E_RATE'
    return {'session':s,'physical_auxiliary_requests':counts,'result':ev.get('code','ready')}
-  for scenario in ('tool','rate','repair'):self.check('auxiliary-'+scenario,lambda scenario=scenario:rejected_aux(scenario))
+  for scenario in ('tool','rate','server-error','repair'):self.check('auxiliary-'+scenario,lambda scenario=scenario:rejected_aux(scenario))
   def stale():
    s=self.session('stale');write_json(self.control,{'session':s,'run':'stale1','scenario':'stale','policy':0})
    with concurrent.futures.ThreadPoolExecutor() as pool:
@@ -219,6 +231,98 @@ class Probe:
    assert not [e for e in self.events() if e['kind']=='view-applied' and e['session']==s]
    return {'session':s,'local_stop_observed':True,'remote_state':'unknown','late_publish':False}
   self.check('real-auxiliary-cancellation-no-late-publication',cancellation)
+  def repeated_consolidation():
+   sid=self.session('chain');prior=None;rounds=[];covered_count=0
+   for index in range(4):
+    if index==3:
+     write_json(self.control,{})
+     self.stop();self.start()
+     start=len(self.recorder.records)
+     self.prompt(sid,'AFTER_RESTART::chain')
+     restored=self.wait_event('checkpoint-restored',sid)
+     assert restored['replacements']==1
+     resumed=[r for r in self.recorder.records[start:] if not r.get('auxiliary')]
+     assert len(resumed)==1
+     value=json.dumps(resumed[0]['body'])
+     assert prior in value and 'SEED::chain' not in value
+    run=f'chain{index}';marker=f'RUN::chain-{index}::happy'
+    before=self.call('/session/'+sid+'/message')
+    write_json(self.control,{'session':sid,'run':run,'scenario':'happy','consolidate':True})
+    begin=len(self.recorder.records)
+    self.prompt(sid,marker)
+    records=self.recorder.records[begin:]
+    primary=[r for r in records if not r.get('auxiliary') and marker in json.dumps(r['body'])]
+    auxiliary=[r for r in records if r.get('auxiliary') and '::'+run+'.' in json.dumps(r['body'])]
+    assert len(primary)==4 and len(auxiliary)==1,(len(primary),len(auxiliary))
+    prefix=dict(auxiliary[0]['body']);prefix['messages']=prefix['messages'][:-1]
+    assert prefix==primary[0]['body'],'fork did not inherit the projected view'
+    if prior:assert prior in json.dumps(prefix) and 'SEED::chain' not in json.dumps(prefix)
+    newest='CC_SUMMARY::'+run+': completed history; retain protocol v1.'
+    final=primary[-1]['body']['messages']
+    user_index=next(i for i,m in enumerate(final) if m.get('content')==marker)
+    assert final[user_index-1]=={'role':'assistant','content':newest}
+    assert all(m['role'] in ('system','developer') for m in final[:user_index-1])
+    assert len([m for m in final if m['role']=='tool'])==3
+    assert 'SEED::chain' not in json.dumps(final)
+    if prior:assert prior not in json.dumps(final)
+    current=self.wait_event('view-applied',sid)
+    expected_ids=[m['info']['id'] for m in before if m['parts'] and not m['info'].get('error')]
+    assert current['ids']==expected_ids,'coverage must flatten to the original native IDs'
+    assert len(current['ids'])>covered_count
+    plan=next(x for x in json.loads(self.checkpoint.read_text())['sessions'] if x['id']==sid)
+    assert len(plan['view'])==1 and plan['view'][0]['ids']==expected_ids
+    assert all(not ident.startswith('summary:') for ident in expected_ids)
+    covered_count=len(expected_ids);prior=newest;rounds.append({'round':index+1,'covered_native_roots':covered_count,'prefix_equal':True})
+   transcript=self.call('/session/'+sid+'/message')
+   assert 'SEED::chain' in json.dumps(transcript) and 'CC_SUMMARY' not in json.dumps(transcript)
+   return {'session':sid,'rounds':rounds,'restart_after_round':3,'native_history_preserved':True,'active_replacements':1}
+  self.check('repeated-consolidation-flattened-and-restart',repeated_consolidation)
+  def failed_native_reset():
+   sid=self.session('native-failure');write_json(self.control,{'session':sid,'run':'native-failure1','scenario':'happy'})
+   self.prompt(sid,'RUN::native-failure::happy');self.wait_event('view-applied',sid)
+   row=lambda:next(x for x in json.loads(self.checkpoint.read_text())['sessions'] if x['id']==sid)
+   old=row();assert len(old['view'])==1
+   self.recorder.native_fault_sessions.add(sid)
+   self.call('/session/'+sid+'/summarize',{'providerID':'cc-fixture','modelID':'probe','auto':False})
+   failure=self.wait_event('native-failed',sid)
+   assert failure['status']==400 and failure['preserved_replacements']==1
+   assert row()['epoch']==old['epoch'] and row()['view']==old['view']
+   assert not [e for e in self.events() if e['kind']=='native-ended' and e.get('session')==sid]
+   history=self.call('/session/'+sid+'/message')
+   assert any(m['info'].get('summary') and m['info'].get('error') for m in history),'host did not record the failed compaction'
+   write_json(self.control,{})
+   # This host retries the unfinished native compaction on continuation.
+   # Prove preservation across failure/restart before allowing that retry to succeed.
+   self.stop();self.start()
+   self.call('/session/'+sid+'/message')
+   recovery=self.wait_event('checkpoint-restored',sid)
+   assert recovery['epoch']==old['epoch'] and recovery['replacements']==1
+   assert row()['view']==old['view']
+   self.recorder.native_fault_sessions.remove(sid)
+   begin=len(self.recorder.records);self.prompt(sid,'AFTER_FAILED_NATIVE_RESET')
+   self.wait_event('native-ended',sid)
+   assert row()['epoch']==old['epoch']+1 and row()['view']==[]
+   after=[r for r in self.recorder.records[begin:] if not r.get('auxiliary')]
+   assert after and 'AFTER_FAILED_NATIVE_RESET' in json.dumps(after[-1]['body'])
+   assert len([e for e in self.events() if e['kind']=='native-ended' and e.get('session')==sid])==1
+   self.prompt(sid,'AFTER_SUCCESSFUL_NATIVE_RESET')
+   return {'session':sid,'failed_reset_preserves_view':True,'preserved_across_restart':True,'epoch_advances_only_on_success':True,'host_retries_pending_reset':True}
+  self.check('failed-native-reset-preserves-published-view',failed_native_reset)
+  def crash_auxiliary():
+   sid=self.session('crash');write_json(self.control,{'session':sid,'run':'crash1','scenario':'cancel'})
+   self.prompt(sid,'RUN::crash::cancel');event=self.wait_event('aux-start',sid)
+   saved=next(x for x in json.loads(self.checkpoint.read_text())['sessions'] if x['id']==sid)
+   assert saved['pending_job']==event['job']
+   # Kill only this fixture's child, not an installed/user OpenCode process.
+   self.process.kill();self.process.wait(timeout=10)
+   if self.log:self.log.close()
+   self.start();self.prompt(sid,'AFTER_CRASH_NO_REPLAY')
+   recovery=self.wait_event('checkpoint-restored',sid)
+   assert recovery['orphaned_job']==event['job']
+   assert self.recorder.aux_counts['crash1']==1
+   assert not [e for e in self.events() if e['kind']=='view-applied' and e.get('session')==sid]
+   return {'session':sid,'orphaned_job_recorded':True,'auxiliary_requests':1,'replayed':False,'late_published':False}
+  self.check('process-crash-does-not-replay-auxiliary',crash_auxiliary)
   def handoff():
    # Small raw history fits: prove route restoration without writing host internals.
    write_json(self.control,{})
@@ -231,15 +335,18 @@ class Probe:
    return {'new_session':s,'direct_route_works':True,'no_host_database_edits':True}
   self.check('route-restoration-and-plugin-removal',handoff)
   final_sessions=self.call('/session')
-  assert len(final_sessions)==len(initial_sessions)+10,'unexpected auxiliary host session'
+  assert len(final_sessions)==len(initial_sessions)+len(self.created_sessions),'unexpected auxiliary host session'
   assert digest(self.binary.read_bytes())==self.binary_hash,'host binary changed'
-  return {'schema_version':1,'probe_only':True,'host_version':version,'host_binary_sha256':digest(self.binary.read_bytes()),'platform':os.uname().sysname+'-'+os.uname().machine,'product_base':'81d790abbba236a75b29648487602eade93336ea','checks':self.results,'gate_status':'in_progress','initial_host_sessions':len(initial_sessions),'final_host_sessions':len(final_sessions),'physical_requests':len(self.recorder.records),'physical_auxiliary_requests':sum(self.recorder.aux_counts.values()),'live_inference':False,'product_complete_enabled':False}
+  return {'schema_version':1,'probe_only':True,'host_version':version,'host_binary_sha256':digest(self.binary.read_bytes()),'platform':os.uname().sysname+'-'+os.uname().machine,'product_base':'020f4caddafd0cbe4a5e2964f784bc7dd5dfea4f','checks':self.results,'gate_status':'in_progress','initial_host_sessions':len(initial_sessions),'final_host_sessions':len(final_sessions),'physical_requests':len(self.recorder.records),'physical_auxiliary_requests':sum(self.recorder.aux_counts.values()),'transport_disconnects':self.recorder.transport_disconnects,'probe_sources':{str(p.relative_to(HERE.parents[2])):digest(p.read_bytes()) for p in (HERE/'gateway-plugin.mjs',HERE/'later-plugin.mjs',HERE/'run.py')},'live_inference':False,'product_complete_enabled':False}
 
 def main():
  parser=argparse.ArgumentParser();parser.add_argument('--binary',required=True,type=Path);parser.add_argument('--out',required=True,type=Path);args=parser.parse_args()
  root=args.out.resolve();probe=Probe(args.binary.resolve(),root)
  try:
-  report=probe.run();write_json(root/'report.json',report)
+  try:report=probe.run()
+  except Exception as exc:
+   report={'schema_version':1,'probe_only':True,'gate_status':'in_progress','live_inference':False,'product_complete_enabled':False,'checks':[*probe.results,{'check':'fixture-setup-or-run','result':'fail','error':type(exc).__name__+': '+str(exc)}]}
+  write_json(root/'report.json',report)
   # Traces contain exclusively generated fixtures. Local authorization values are excluded.
   write_json(root/'wire-records.json',probe.recorder.records)
   print('RESULT',json.dumps({'pass':sum(x['result']=='pass' for x in report['checks']),'fail':sum(x['result']=='fail' for x in report['checks']),'out':str(root)}),flush=True)

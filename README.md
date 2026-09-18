@@ -48,3 +48,5 @@ Próximo gate: revisar estes contratos e executar a prova pública WP-00; implem
 ## Prova de integração em andamento
 
 [WP-00: sonda executável com OpenCode stock](docs/conformance/OPENCODE-WP00.md). Dez checks locais aprovados com provider sintético e fonte/hash do binário registrados. É uma prova parcial das interfaces, não release, core implementado ou autorização de modo completo. A issue #3 permanece aberta.
+
+**Continuidade da prova WP-00:** a [extensão de consolidações e reinício](docs/conformance/OPENCODE-WP00-CONTINUITY.md) exercita 14 checks em OpenCode stock com provider sintético. Não é release de plugin nem aprovação integral do gate.
