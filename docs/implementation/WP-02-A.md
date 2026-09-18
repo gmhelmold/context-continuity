@@ -60,3 +60,7 @@ O primeiro CI do head 0465478 encontrou um teste excessivamente específico: hav
 **Invariants:** nenhuma recriação por leitura; nenhuma sobrescrita de banco existente; Session/View0 atômicos; owner antigo não substitui owner novo; fonte/histórico de usuário nunca usado em teste; nenhum PASS de provider, cache ou qualidade semântica inferido de SQLite.
 
 T03.storage e T12.storage recebem parcelas executadas, mas continuam incompletos nos seus escopos agregados. T19.storage/T32.archive/T38.archive ainda exigem suas implementações. O próximo corte deve persistir as identidades e fontes com as mesmas fronteiras, antes de admitir jobs ou publicar capítulos.
+
+## Revisão de integração e alternativa local
+
+A [reconciliação de integração](WP-02-A-INTEGRATION.md) registra a disposição do ZIP local anterior e nove regressões adicionais de schema/commit. O total histórico acima é preservado; os resultados finais pertencem ao head efetivamente testado no PR #25.

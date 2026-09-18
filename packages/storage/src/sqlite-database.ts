@@ -14,7 +14,7 @@ const DDL = readFileSync(new URL('./schema-v1.sql', import.meta.url), 'utf8');
 const DDL_DIGEST = hashSource(Buffer.from(DDL));
 const OPEN_OPTIONS = { enableForeignKeyConstraints: true, enableDoubleQuotedStringLiterals: false, allowExtension: false };
 function shape(db: DatabaseSync): string {
-  return hashPayload(db.prepare("SELECT type,name,tbl_name,sql FROM sqlite_schema WHERE name NOT LIKE 'sqlite_%' ORDER BY type,name").all());
+  return hashPayload(db.prepare("SELECT type,name,tbl_name,sql FROM sqlite_schema WHERE name NOT GLOB 'sqlite_*' ORDER BY type,name").all());
 }
 const EXPECTED_SHAPE = (() => {
   const db = new DatabaseSync(':memory:', OPEN_OPTIONS);
