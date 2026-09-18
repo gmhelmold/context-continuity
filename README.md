@@ -4,7 +4,7 @@
 
 Produto standalone: núcleo comum, ledger local e integrações nativas por harness. Não depende de HuGR-Orchestra, Atlas ou Maestro.
 
-> **Estado: especificação 0.1.2 proposta, com correções de revisão.** Sem plugin implementado, pacote instalável, integração homologada ou benchmark. A verificação documental e os modelos de referência NÃO executam o produto.
+> **Estado: especificação 0.1.2, sondas e primeiros contratos do núcleo.** Sem plugin distribuível, integração integralmente homologada ou benchmark. A verificação documental e os modelos de referência NÃO executam o produto.
 
 ## Método
 
@@ -25,7 +25,7 @@ A rota HTTP local é específica do primeiro perfil v1, configurada por baseURL 
 
 ## Entrada para implementação
 
-[Especificação 0.1.1](specs/v0.1/README.md), [aceitação](specs/v0.1/06-acceptance.md) e [work packages](specs/v0.1/WORK-PACKAGES.md). São 36 requisitos, 40 famílias, 55 subcasos e oito pacotes. Cada pacote tem seus cinco axiomas e apenas provas compatíveis com suas dependências.
+[Especificação 0.1.2](specs/v0.1/README.md), [aceitação](specs/v0.1/06-acceptance.md) e [work packages](specs/v0.1/WORK-PACKAGES.md). São 36 requisitos, 40 famílias, 55 subcasos e oito pacotes. Cada pacote tem seus cinco axiomas e apenas provas compatíveis com suas dependências.
 
 A [REVIEW-002](docs/reviews/REVIEW-002.md) preserva os 16 achados no commit auditado. A [resolução](docs/reviews/REVIEW-002-RESOLUTION.md) mapeia cada correção, sem converter decisão de desenho em suporte comprovado.
 
@@ -37,7 +37,7 @@ python3 scripts/check-reference-model.py
 python3 scripts/test-spec-check.py
 ```
 
-CI verifica links inclusive fragmentos, rastreabilidade recíproca, dependências, DDL de referência e modelos abstratos; rejeita mutações documentais dirigidas. Não prova comportamento de modelo, cache ou instalação do plugin. Todos os testes de runtime permanecem not_run até execução específica.
+CI verifica links inclusive fragmentos, rastreabilidade recíproca, dependências, DDL de referência e modelos abstratos; rejeita mutações documentais dirigidas. Não prova comportamento de modelo, cache ou instalação do plugin. Estados iniciais do plano permanecem not_run; resultados executados são registrados por incremento, sem promover os demais casos.
 
 ## Histórico
 
@@ -55,4 +55,8 @@ Próximo gate: revisar estes contratos e executar a prova pública WP-00; implem
 
 [REVIEW-003 — resolução](docs/reviews/REVIEW-003-RESOLUTION.md) registra C01–C12 e seus limites de prova. O oráculo agora confronta conteúdo retido completo com ingress e recorder independentes; uma campanha com controle positivo deve rejeitar seis implementações deliberadamente incorretas. O codec textual recusa mídia/partes desconhecidas.
 
-A sonda atual tem 16 checks de host e 12 testes de componentes, incluindo regra já publicada, resumo vazio, retenção limitada de captures, streams nativos interrompidos e transporte com cancelamento/backpressure. Essas quantidades não são os 55 subcasos do produto; core, ledger distribuível, inferência live e gate completo continuam pendentes. Comandos em [tests/conformance/opencode](tests/conformance/opencode/README.md).
+A sonda atual tem 16 checks de host e 12 testes de componentes, incluindo regra já publicada, resumo vazio, retenção limitada de captures, streams nativos interrompidos e transporte com cancelamento/backpressure. Essas quantidades não são os 55 subcasos do produto; core completo, ledger distribuível, inferência live e gate completo continuam pendentes. Comandos em [tests/conformance/opencode](tests/conformance/opencode/README.md).
+
+## Núcleo em implementação
+
+[WP-01/A — configuração e capacidades](docs/implementation/WP-01-A.md): módulos TypeScript puros em `packages/core/src`, validação estrita e decisão de modo sem fallback silencioso. `npm ci --ignore-scripts` prepara o tooling; `npm run check:core` e `npm run test:core` verificam a implementação. Dois subcasos do WP-01 estão cobertos; o pacote completo e a homologação do host permanecem abertos.
