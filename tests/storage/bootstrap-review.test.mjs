@@ -53,9 +53,9 @@ async function interruptAt(f,phase) {
   const barrier=join(f.directory,'child-barrier');
   const params=JSON.stringify({directory:f.directory,workspace,binding,config,barrier,phase});
   const script=`import {SqliteSessionStore} from ${JSON.stringify(moduleURL)};
-import {DatabaseSync} from 'node:sqlite';import {writeFileSync} from 'node:fs';
+import {DatabaseSync} from 'node:sqlite';import {writeFileSync,renameSync} from 'node:fs';
 const p=${params};
-const wait=()=>{writeFileSync(p.barrier,p.phase,{mode:0o600});Atomics.wait(new Int32Array(new SharedArrayBuffer(4)),0,0);};
+const wait=()=>{writeFileSync(p.barrier+'.tmp',p.phase,{mode:0o600});renameSync(p.barrier+'.tmp',p.barrier);Atomics.wait(new Int32Array(new SharedArrayBuffer(4)),0,0);};
 const original=DatabaseSync.prototype.exec;
 if(p.phase==='session-after') {
  const s=SqliteSessionStore.open(p.directory,p.workspace,()=>100000);

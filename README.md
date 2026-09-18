@@ -80,3 +80,6 @@ A sonda atual tem 16 checks de host e 12 testes de componentes, incluindo regra 
 ## Ledger em implementação
 
 [WP-02/A — SQLite e sessões](docs/implementation/WP-02-A.md): inicialização exclusiva, Session/View0 atômicos, reabertura e leases com fencing. `npm run check:storage` / `npm run test:storage` usam SQLite e FS reais. É a fundação transacional; blobs, jobs, publicação, migrações/backups e arquivo portátil continuam no WP-02. Não habilita modo complete ou instalação do produto.
+
+
+**Coerência de abertura SQLite:** [inspeção em snapshot único](docs/implementation/WP-02-A-INSPECTION.md), sem confundir transação de leitura com persistência de conteúdo já implementada.

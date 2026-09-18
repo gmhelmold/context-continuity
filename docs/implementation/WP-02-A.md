@@ -64,3 +64,6 @@ T03.storage e T12.storage recebem parcelas executadas, mas continuam incompletos
 ## Revisão de integração e alternativa local
 
 A [reconciliação de integração](WP-02-A-INTEGRATION.md) registra a disposição do ZIP local anterior e nove regressões adicionais de schema/commit. O total histórico acima é preservado; os resultados finais pertencem ao head efetivamente testado no PR #25.
+
+
+**Inspeção de abertura:** [correção de coerência de leitura](WP-02-A-INSPECTION.md) cobre snapshot único, writer concorrente e rollback. Não acrescenta captura de fontes ou conclusão do WP-02.

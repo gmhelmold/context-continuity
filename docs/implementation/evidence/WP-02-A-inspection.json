@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "scope": "WP-02/A inspection correction only",
+  "base_commit": "777ecafb4e6feb0bd8b6343e8d2aa5ff300fff7a",
+  "node": "v22.17.1",
+  "platform": "Darwin-x86_64",
+  "before": {
+    "tests": 4,
+    "pass": 0,
+    "fail": 4,
+    "log_sha256": "fba2d95851345b0629b473919b2c8c895edd69433a04f8f58bcbefe9a3882646"
+  },
+  "after": {
+    "tests": 4,
+    "pass": 4,
+    "fail": 0,
+    "log_sha256": "2c6cbff95e212eca65be6a98b7e7a9a023c8324e871269cac826bfd33410dd53"
+  },
+  "source_sha256": {
+    "packages/storage/src/sqlite-database.ts": "af32bd75aeaabc953f027b3750714c0a073a022d50a61c1596732a4f6ae923a1",
+    "tests/storage/inspection-snapshot.test.mjs": "0ff9ca9623c7e8e48c9c02cc4d76fe4eca20af0ced7f0aca42cbf325bcbcd3d3",
+    "tests/storage/bootstrap-review.test.mjs": "eca93470b18f5f0fb991087c2cee55357db19b53d185019c250bf960ee39407a"
+  },
+  "full_validation": "See final-head PR logs; not inferred from these four tests",
+  "root_or_source_capture_implemented": false,
+  "live_inference": false
+}

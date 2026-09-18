@@ -57,6 +57,18 @@ function configure(db: DatabaseSync): void {
   }
 }
 function inspect(db: DatabaseSync, identity: WorkspaceIdentity): void {
+  // Metadata, schema and integrity must describe one committed SQLite snapshot.
+  // Keep this read transaction separate from journal negotiation and bootstrap.
+  db.exec('BEGIN');
+  try {
+    inspectState(db, identity);
+    db.exec('COMMIT');
+  } catch (error) {
+    if (db.isTransaction) db.exec('ROLLBACK');
+    throw error;
+  }
+}
+function inspectState(db: DatabaseSync, identity: WorkspaceIdentity): void {
   if (scalar(db, 'user_version') !== SCHEMA_VERSION || scalar(db, 'application_id') !== APPLICATION_ID) {
     throw new StorageError('E_CAPABILITY', 'unsupported or incomplete database schema');
   }
