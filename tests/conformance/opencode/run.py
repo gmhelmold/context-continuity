@@ -11,7 +11,8 @@ from pathlib import Path
 from http.server import BaseHTTPRequestHandler,ThreadingHTTPServer
 from urllib.request import Request,urlopen
 from urllib.error import HTTPError
-from oracle import exact_retained, native_tools, protocol
+from oracle import exact_retained, native_tools, protocol, witnessed_sequence
+from ingress_witness import IngressWitness
 
 HERE=Path(__file__).resolve().parent
 HOST_VERSION="1.18.31"
@@ -105,9 +106,10 @@ class Probe:
   self.workspace=root/'workspace';self.workspace.mkdir();self.home=root/'home';self.home.mkdir()
   self.recorder=Recorder();threading.Thread(target=self.recorder.serve_forever,daemon=True).start()
   self.port=free_port();self.gateway=free_port();self.secret=secrets.token_hex(24);self.password=secrets.token_hex(24)
+  self.witness=IngressWitness(self.gateway);threading.Thread(target=self.witness.serve_forever,daemon=True).start()
   self.control=root/'control.json';write_json(self.control,{})
   self.trace=root/'hooks.jsonl';self.checkpoint=root/'probe-checkpoint.json';self.created_sessions=[];self.results=[];self.process=None;self.log=None
-  self.config={'$schema':'https://opencode.ai/config.json','model':'cc-fixture/probe','small_model':'cc-fixture/probe','enabled_providers':['cc-fixture'],'share':'disabled','autoupdate':False,'compaction':{'auto':True,'prune':False},'permission':{'*':'deny','cc_probe':'allow'},'plugin':[(HERE/'gateway-plugin.mjs').as_uri(),(HERE/'later-plugin.mjs').as_uri()],'provider':{'cc-fixture':{'npm':'@ai-sdk/openai-compatible','name':'CC OFFLINE FIXTURE','options':{'baseURL':f'http://127.0.0.1:{self.gateway}/v1','apiKey':'synthetic-not-a-real-key'},'models':{'probe':{'name':'Probe','limit':{'context':100000,'output':4096},'tool_call':True}}}}}
+  self.config={'$schema':'https://opencode.ai/config.json','model':'cc-fixture/probe','small_model':'cc-fixture/probe','enabled_providers':['cc-fixture'],'share':'disabled','autoupdate':False,'compaction':{'auto':True,'prune':False},'permission':{'*':'deny','cc_probe':'allow'},'plugin':[(HERE/'gateway-plugin.mjs').as_uri(),(HERE/'later-plugin.mjs').as_uri()],'provider':{'cc-fixture':{'npm':'@ai-sdk/openai-compatible','name':'CC OFFLINE FIXTURE','options':{'baseURL':f'http://127.0.0.1:{self.witness.server_port}/v1','apiKey':'synthetic-not-a-real-key'},'models':{'probe':{'name':'Probe','limit':{'context':100000,'output':4096},'tool_call':True}}}}}
   write_json(self.workspace/'opencode.json',self.config)
   self.env={'PATH':os.environ['PATH'],'HOME':str(self.home),'TMPDIR':str(root),'XDG_DATA_HOME':str(root/'data'),'XDG_CONFIG_HOME':str(root/'config'),'XDG_CACHE_HOME':str(root/'cache'),'XDG_STATE_HOME':str(root/'state'),'CC_TRACE':str(self.trace),'CC_CHECKPOINT':str(self.checkpoint),'CC_CONTROL':str(self.control),'CC_GATEWAY_PORT':str(self.gateway),'CC_FIXTURE_UPSTREAM':f'http://127.0.0.1:{self.recorder.server_port}/v1/chat/completions','CC_LOCAL_SECRET':self.secret,'OPENCODE_SERVER_PASSWORD':self.password,'OPENCODE_DISABLE_AUTOUPDATE':'true','OPENCODE_DISABLE_DEFAULT_PLUGINS':'true','OPENCODE_DISABLE_LSP_DOWNLOAD':'true','OPENCODE_DISABLE_MODELS_FETCH':'true','NO_PROXY':'127.0.0.1,localhost'}
  def call(self,path,body=None,method=None,timeout=60):
@@ -131,7 +133,7 @@ class Probe:
    try:self.process.wait(timeout=10)
    except subprocess.TimeoutExpired:self.process.kill();self.process.wait()
   if self.log:self.log.close()
- def close(self):self.stop();self.recorder.shutdown();self.recorder.server_close()
+ def close(self):self.stop();self.witness.shutdown();self.witness.server_close();self.recorder.shutdown();self.recorder.server_close()
  def events(self):
   if not self.trace.exists():return []
   lines=self.trace.read_text().splitlines();return [json.loads(line) for line in lines if line]
@@ -173,6 +175,8 @@ class Probe:
    assert len(aux)==1
    recorded_prefix=dict(aux[0]['body']);recorded_prefix['messages']=recorded_prefix['messages'][:-1]
    assert recorded_prefix==records[0]['body'],'independent recorder detected a changed fork prefix'
+   witnessed=[r for r in self.witness.records if 'RUN::happy::happy' in json.dumps(r['body'])]
+   witnessed_sequence(witnessed,records,[('RUN::happy::happy','CC_SUMMARY::happy1: completed history; retain protocol v1.')])
    final=records[-1]['body'];joined=json.dumps(final)
    assert 'CC_SUMMARY' in joined and 'SEED::happy' not in joined, 'E_ORACLE_COVERAGE'
    assert len([m for m in final['messages'] if m['role']=='tool'])==3, 'E_ORACLE_CARDINALITY'
@@ -240,7 +244,7 @@ class Probe:
    return {'session':s,'local_stop_observed':True,'remote_state':'unknown','late_publish':False}
   self.check('real-auxiliary-cancellation-no-late-publication',cancellation)
   def repeated_consolidation():
-   sid=self.session('chain');prior=None;rounds=[];covered_count=0
+   sid=self.session('chain');prior=None;rounds=[];covered_count=0;prior_marker=None
    for index in range(4):
     if index==3:
      write_json(self.control,{})
@@ -266,6 +270,9 @@ class Probe:
     assert prefix==primary[0]['body'],'fork did not inherit the projected view'
     if prior:assert prior in json.dumps(prefix) and 'SEED::chain' not in json.dumps(prefix)
     newest='CC_SUMMARY::'+run+': completed history; retain protocol v1.'
+    witnessed=[r for r in self.witness.records if marker in json.dumps(r['body'])]
+    choices=[(marker,newest)]+([] if prior is None else [(prior_marker,prior)])
+    witnessed_sequence(witnessed,primary,choices)
     final_body=primary[-1]['body'];final=final_body['messages']
     raw=[e['body'] for e in self.events() if e['kind']=='ingress' and e.get('session')==sid and e['request_kind']=='primary' and marker in json.dumps(e['body'])][-1]
     exact_retained(raw,final_body,marker,newest)
@@ -385,6 +392,7 @@ def main():
   write_json(root/'report.json',report)
   # Traces contain exclusively generated fixtures. Local authorization values are excluded.
   write_json(root/'wire-records.json',probe.recorder.records)
+  write_json(root/'ingress-records.json',probe.witness.records)
   print('RESULT',json.dumps({'pass':sum(x['result']=='pass' for x in report['checks']),'fail':sum(x['result']=='fail' for x in report['checks']),'out':str(root)}),flush=True)
   return int(any(x['result']=='fail' for x in report['checks']))
  finally:probe.close()

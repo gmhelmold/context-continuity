@@ -32,6 +32,7 @@ jobs:
           python3 scripts/check-canonical.py
           python3 scripts/check-storage-contracts.py
           node --test tests/conformance/opencode/test-components.mjs
+          python3 tests/conformance/opencode/test-witness.py
       - name: Download exact official host artifact
         shell: bash
         run: |

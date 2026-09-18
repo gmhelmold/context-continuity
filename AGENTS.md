@@ -55,3 +55,7 @@ Identity/roots e o serializador compartilhado estão em packages/core/src; scrip
 ## Núcleo WP-01/C
 
 Manifest/proposal/frame seguem SPEC-10. Forma válida não equivale a fonte verificada ou autorização de dispatch. Preservar testes de associação de sessão/manifesto e a campanha com controle positivo e cinco mutantes. Fonte/captura deserializada precisa de nova verificação; não restaurar WeakSet/WeakMap como prova de homologação. Registro em docs/implementation/WP-01-C.md.
+
+## Perfis terminais após REVIEW-004
+
+SPEC-11 é obrigatório: sealFrame/assertFrameUnchanged recebem perfil explícito; não reconstruir aliases/limites por nome. Cada codec valida seus grupos indivisíveis. Execute também test-witness.py; a campanha stock agora exige controle mais oito mutantes, incluindo pré-ingresso. D02/D03 continuam abertos em #21; não os marcar resolvidos pela integração das correções D01/D04/D05.
