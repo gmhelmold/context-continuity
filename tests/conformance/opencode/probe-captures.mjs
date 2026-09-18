@@ -46,6 +46,12 @@ export class Captures {
     if(!entry||entry.revoked) throw error('E_CAPTURE');
     entry.active++; entry.touched=this.now(); return entry.capture;
   }
+  // Recheck a previously acquired handle after every asynchronous admission boundary.
+  // Active entries stay pinned, but revocation/disposal never grants new effects.
+  assertActive(token,capture) {
+    const entry=this.tokens.get(token);
+    if(this.closed||!entry||entry.revoked||entry.active<1||entry.capture!==capture) throw error('E_CAPTURE_REVOKED');
+  }
   release(token) {
     const entry=this.tokens.get(token);
     if(entry) {entry.active=Math.max(0,entry.active-1);entry.touched=this.now();}

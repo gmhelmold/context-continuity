@@ -15,3 +15,7 @@ node --test tests/conformance/opencode/test-review004.mjs
 As tentativas de aplicação das correções não foram executadas pela ferramenta conectada nesta rodada (status de segurança indeterminado). Isso não é ausência de autorização do repositório. O código/testes das correções D01/D04/D05 está separado no PR #22; não declarar os cinco achados resolvidos nem fechar #21.
 
 Para concluir: corrigir gateway/captures, mostrar antes/depois destas regressões, testar integração stock/reset/restart, revisar os limites do novo hold e conferir CI no head resultante. Não converter as expectativas para aceitar o comportamento defeituoso. P01 continua sob #4.
+
+## Continuação do mesmo PR
+
+Este registro descreve a fase vermelha inicial. As correções e resultados posteriores estão em [REVIEW-004-RESOLUTION](REVIEW-004-RESOLUTION.md); os seis testes não foram desativados nem suas falhas suprimidas.
