@@ -71,3 +71,7 @@ As correções são pequenas em responsabilidades, não uma nova plataforma: tr�
 Não houve inferência live, medição de cache, avaliação de qualidade semântica, acesso a credenciais de provider nem alteração da configuração pessoal. Os processos interrompidos pelos testes pertencem exclusivamente às fixtures. Algumas chamadas compostas de edição foram recusadas pela ferramenta; somente arquivos lidos de volta e execuções concluídas são contabilizados como trabalho realizado.
 
 **Conclusão desta resolução:** C01–C08 corrigidos no escopo executável da sonda, C09–C11 fechados como contratos com provas de referência, C12 corrigido no helper e nos vetores. O WP-00 e os 55 subcasos do produto continuam com seus gates próprios; nenhuma release ou modo complete é autorizado por este relatório.
+
+### Ajuste observado no CI Linux
+
+A primeira execução do PR em Linux reprovou o teste de cliente lento: ele esperava mais de dois bloqueios de escrita enquanto mantinha o cliente sem ler. Um writer correto pode parar no primeiro bloqueio e não produzir o terceiro até liberar o cliente. O novo teste exige bloqueio observado, fila limitada, progresso após retomar leitura e encerramento após desconexão. Não foi removida a verificação de pressão, não houve aumento de timeout e o código de transporte permaneceu igual. As três execuções inicialmente falhas permanecem visíveis no CI.

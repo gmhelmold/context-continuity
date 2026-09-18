@@ -113,7 +113,12 @@ test('C07 slow client applies backpressure with bounded writable queue',async()=
   const client=connect(proxy.address().port,'127.0.0.1');client.on('error',()=>{});
   try {
     await once(client,'connect');client.pause();client.write('POST /v1/chat/completions HTTP/1.1\r\nHost: 127.0.0.1\r\nContent-Length: 2\r\n\r\n{}');
-    await until(()=>stats.drains>2);assert.ok(stats.maxBuffered<1024*1024);assert.ok(sent>0);
+    // A conforming writer may stop at the FIRST blocked write. Requiring a
+    // third drain before releasing the paused client deadlocks on larger HWMs.
+    await until(()=>stats.drains>=1);assert.ok(stats.maxBuffered<1024*1024);assert.ok(sent>0);
+    const before=stats.bytes;client.resume();
+    await until(()=>stats.bytes>before); // resuming the peer releases flow control
+    assert.ok(stats.maxBuffered<1024*1024);
     client.destroy();await until(()=>stats.stopped);
   }finally{client.destroy();await close(proxy);await close(up);}
 });
