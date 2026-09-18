@@ -1,4 +1,4 @@
-# Work packages — Context Continuity 0.1.1
+# Work packages — Context Continuity 0.1.2
 
 Pacotes especificados, não executados. Fonte de rastreabilidade: [traceability.json](traceability.json). Contratos em [índice](README.md).
 
@@ -303,3 +303,7 @@ Todos os casos de conclusão do pacote passam com artefatos e comandos reproduz�
 Sessão é unidade independente; instalação não é suporte; token savings não é qualidade; nenhuma call live sem orçamento; regressão crítica impede release mesmo com média boa.
 
 **Evidência esperada:** comandos e commit, resultado por subcaso, fixtures e hashes; traces sanitizados quando cabíveis. Não equivale a release ou autorização automática de gasto.
+
+## Resoluções vinculantes da REVIEW-003
+
+WP-00 preserva os oráculos negativos C01/C02 e regressões de lifecycle C03–C08. WP-01 implementa ToolExecutionRef e JCS (C09/C12). WP-02 implementa owners/reservas reconciliáveis e OriginCoverage opaca (C09–C11). WP-03 a WP-06 devem conservar esses critérios ao substituir a sonda pelo core. Não promover checkpoint de teste a ledger. Os cinco axiomas e os 55 subcasos continuam obrigatórios; as provas incrementais não são PASS agregado.

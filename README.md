@@ -4,7 +4,7 @@
 
 Produto standalone: núcleo comum, ledger local e integrações nativas por harness. Não depende de HuGR-Orchestra, Atlas ou Maestro.
 
-> **Estado: especificação 0.1.1 proposta, com correções de revisão.** Sem plugin implementado, pacote instalável, integração homologada ou benchmark. A verificação documental e os modelos de referência NÃO executam o produto.
+> **Estado: especificação 0.1.2 proposta, com correções de revisão.** Sem plugin implementado, pacote instalável, integração homologada ou benchmark. A verificação documental e os modelos de referência NÃO executam o produto.
 
 ## Método
 
@@ -50,3 +50,9 @@ Próximo gate: revisar estes contratos e executar a prova pública WP-00; implem
 [WP-00: sonda executável com OpenCode stock](docs/conformance/OPENCODE-WP00.md). Dez checks locais aprovados com provider sintético e fonte/hash do binário registrados. É uma prova parcial das interfaces, não release, core implementado ou autorização de modo completo. A issue #3 permanece aberta.
 
 **Continuidade da prova WP-00:** a [extensão de consolidações e reinício](docs/conformance/OPENCODE-WP00-CONTINUITY.md) exercita 14 checks em OpenCode stock com provider sintético. Não é release de plugin nem aprovação integral do gate.
+
+## Correções da revisão integrada
+
+[REVIEW-003 — resolução](docs/reviews/REVIEW-003-RESOLUTION.md) registra C01–C12 e seus limites de prova. O oráculo agora confronta conteúdo retido completo com ingress e recorder independentes; uma campanha com controle positivo deve rejeitar seis implementações deliberadamente incorretas. O codec textual recusa mídia/partes desconhecidas.
+
+A sonda atual tem 16 checks de host e 12 testes de componentes, incluindo regra já publicada, resumo vazio, retenção limitada de captures, streams nativos interrompidos e transporte com cancelamento/backpressure. Essas quantidades não são os 55 subcasos do produto; core, ledger distribuível, inferência live e gate completo continuam pendentes. Comandos em [tests/conformance/opencode](tests/conformance/opencode/README.md).

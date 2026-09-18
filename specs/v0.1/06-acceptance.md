@@ -171,7 +171,7 @@ Texto repetido mantém IDs diferentes; payload/role/metadata mudado com mesmas s
 
 Subcasos normativos: T07.contract. Evidência inclui comando, commit, configuração/fixture e resultado por subcaso; não só nome do teste.
 
-**T07.contract:** Texto repetido mantém IDs diferentes; payload/role/metadata mudado com mesmas source_refs muda unit_digest; reinício mantém mapa de identidades e revisões.
+**T07.contract:** Texto repetido mantém IDs diferentes; payload/role/metadata mudado com mesmas source_refs muda unit_digest; reinício mantém mapa de identidades e revisões. Vetores JCS fixos devem igualar bytes de números/Unicode entre produtor Python e serializador JavaScript; inteiros de precisão não representável são recusados antes de arredondar.
 
 
 ### T08 — Cauda preservada
@@ -220,7 +220,7 @@ Storage: staging/fsync/ref/GC e restart. Publish: commit de Operation/Chapter/Vi
 
 Subcasos normativos: T12.storage, T12.publish, T12.host. Evidência inclui comando, commit, configuração/fixture e resultado por subcaso; não só nome do teste.
 
-**T12.storage:** Interromper implementação de storage nos pontos staging, blob, referência e transação SQLite; reiniciar processo e provar integridade local sem renderer ou hook de host.
+**T12.storage:** Interromper implementação de storage nos pontos staging, blob, referência e transação SQLite; reiniciar processo e provar integridade local sem renderer ou hook de host. Cobrir também owner de stager/reader/exporter morto: liveness lock verificável, reserva órfã liberada e owner vivo conservado; TTL/PID isolados não autorizam limpeza.
 
 **T12.publish:** Falhar antes/depois do commit de Operation/Chapter/View/job no core; reabrir storage e conferir seleção integral, sem metade de publicação nem duplicação.
 
@@ -289,7 +289,7 @@ Pausas nas bordas reaproveitar-órfão/inserir-ref e listar-órfão/unlink. Mesm
 
 Subcasos normativos: T19.storage. Evidência inclui comando, commit, configuração/fixture e resultado por subcaso; não só nome do teste.
 
-**T19.storage:** Pausas nas bordas reaproveitar-órfão/inserir-ref e listar-órfão/unlink. Mesmo lock protege ambas; duas sessões/import disputam quota reservada. Fsync/rename/commit falhos não deixam ref a parcial.
+**T19.storage:** Pausas nas bordas reaproveitar-órfão/inserir-ref e listar-órfão/unlink. Mesmo lock protege ambas; duas sessões/import disputam quota reservada. Fsync/rename/commit falhos não deixam ref a parcial. Reconciliar pins/reservas por owner e operação sob o lock do workspace; arquivos incompletos continuam na quota até remoção confirmada.
 
 
 ### T20 — Ausência explícita
@@ -352,7 +352,7 @@ Três tarefas e leituras byte-overlap: só três chamadas distintas no mesmo Wor
 
 Subcasos normativos: T26.feedback. Evidência inclui comando, commit, configuração/fixture e resultado por subcaso; não só nome do teste.
 
-**T26.feedback:** Três tarefas e leituras byte-overlap: só três chamadas distintas no mesmo WorkContext conhecido geram nota da interseção comum. Sem escopo não promover repetição. Nota criada em N expira no commit N+2; restart mantém expiração. Noop não consome recibos.
+**T26.feedback:** Três tarefas e leituras byte-overlap: só três chamadas distintas no mesmo WorkContext conhecido geram nota da interseção comum. Sem escopo não promover repetição. Nota criada em N expira no commit N+2; restart mantém expiração. Noop não consome recibos. Replay da mesma ToolExecutionRef antes/depois de restart preserva retrieval_id; argumentos/resultado diferentes são E_CONFLICT, três execuções distintas iguais contam três.
 
 
 ### T27 — Consolidação e lineage
@@ -410,7 +410,7 @@ Archive: export manifest misto fonte/âncora/capítulo, import para namespace no
 
 Subcasos normativos: T32.archive, T32.redaction. Evidência inclui comando, commit, configuração/fixture e resultado por subcaso; não só nome do teste.
 
-**T32.archive:** Round-trip no storage de fonte/bloco/capítulo/Manifest/Operation mistos: IDs remapeados, citações estáveis e import sem ativação/execução; testar FKs e validação dos arquivos.
+**T32.archive:** Round-trip no storage de fonte/bloco/capítulo/Manifest/Operation mistos: IDs remapeados, citações estáveis e import sem ativação/execução; testar FKs e validação dos arquivos. OriginCoverage preserva IDs/digests opacos de origem sem remapear nem materializar host; referências de conteúdo continuam localmente resolvíveis e schema antigo é recusado.
 
 **T32.redaction:** Após projeção/consulta implementadas, excluir X de X→A→B; limpar bytes de derivados/index/notas/backups gerenciados, invalidar cursores e impedir recaptura por tombstone.
 
@@ -474,7 +474,7 @@ Subcasos normativos: T38.paging, T38.archive. Evidência inclui comando, commit,
 
 **T38.paging:** Implementar tool com paginação intra-linha UTF-8, CRLF, envelope mínimo e cursor: recompor bytes sem perda/repetição ou retornar E_BUDGET.
 
-**T38.archive:** Validar limites de bytes, hashes e relações do arquivo de export/import no storage; sem exigir paginação da tool ainda não implementada.
+**T38.archive:** Validar limites de bytes, hashes e relações do arquivo de export/import no storage; sem exigir paginação da tool ainda não implementada. Testar capítulos consolidados em epochs diferentes e consistência dos RootRefs opacos para mesma origem/epoch/revisão; ausência de host antigo não impede leitura.
 
 
 ### T39 — Mudança de modelo e perfil

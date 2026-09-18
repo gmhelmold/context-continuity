@@ -4,7 +4,7 @@
 
 Context Continuity é standalone. Não importar internals de HuGR-Orchestra, Atlas, Maestro ou bancos privados de hosts. OpenCode upstream é a integração de referência, não uma dependência do núcleo.
 
-Etapa atual: especificação atômica proposta, em revisão. Não existe runtime implementado ou pacote de produto publicado. A implementação deve seguir os work packages; não criar releases ou compatibilidades fictícias para aparentar progresso.
+Etapa atual: especificação 0.1.2 e sondas executáveis isoladas. Ainda não existe core de produto completo ou pacote publicado. A implementação deve seguir os work packages; não criar releases ou compatibilidades fictícias para aparentar progresso.
 
 ## Fontes de verdade
 
@@ -12,7 +12,7 @@ Entrada normativa para implementação: `specs/v0.1/README.md` e os contratos re
 
 `docs/reviews/REVIEW-001.md` é revisão estática do autor, não auditoria independente. `docs/history/RFC-CSC-001-v0.1.md` é snapshot histórico byte a byte: não editar ou formatar. Origem e hashes estão em `docs/MIGRATION.md`.
 
-Distinguir decisão normativa, evidência estática, teste executado e hipótese. Registrar host/versão/commit, rota/modelo/variante/transporte/auth type quando houver homologação. O gate G-OC-01 ainda não foi executado; sua descrição não é PASS.
+Distinguir decisão normativa, evidência estática, teste executado e hipótese. Registrar host/versão/commit, rota/modelo/variante/transporte/auth type quando houver homologação. O gate G-OC-01 tem provas incrementais; não está homologado integralmente.
 
 ## Engenharia
 
@@ -28,7 +28,7 @@ Commits e títulos de PR seguem `type(scope): resumo`. Branches curtas com hífe
 
 Cada work package contém Success Criteria, Quality Standards, Completeness Criteria, Definition of Done e Invariants, além de dependências e evidências. Usar traceability.json, R01–R36 e os 55 subcasos de T01–T40; não marcar teste como concluído porque seu arquivo existe.
 
-Validações offline: `python3 scripts/check-spec.py`, `python3 scripts/check-reference-model.py` e `python3 scripts/test-spec-check.py`, a partir da raiz. Verificam documentos, DDL e modelos abstratos; não a aplicação nem o host. Nenhum comando de teste de runtime está definido ainda; ao implementá-lo, documentar e executar comandos reais, demonstrando o comportamento completo além de compilação/HTTP 200.
+Validações offline: `python3 scripts/check-spec.py`, `python3 scripts/check-reference-model.py` e `python3 scripts/test-spec-check.py`, a partir da raiz. Verificam documentos, DDL e modelos abstratos; não a aplicação nem o host. Os comandos das sondas estão em tests/conformance/opencode/README.md; distinguem componente, host sintético e testes futuros do core.
 
 Chamadas live de inferência e publicação de pacotes exigem orçamento/autorização e perfil definido. Não colocar credenciais de provider em CI de documentação. Não fazer downgrade de modo ou aumentar quotas silenciosamente.
 
@@ -39,3 +39,7 @@ REVIEW-002-RESOLUTION.md registra fechamento contratual B01–B16, não PASS de 
 ## Sondas de integração
 
 `tests/conformance/opencode` contém somente o ensaio isolado WP-00, não runtime distribuível. Execute pelo comando documentado com binário stock e diretório novo. Não use dados, HOME, configuração ou credenciais pessoais. Provas parciais ficam em docs/conformance; não marcar o gate ou subcasos agregados como PASS sem cobertura completa.
+
+## Revisão 0.1.2
+
+SPEC-09 e as alterações C09–C12 nos contratos são vinculantes. Rodar também check-canonical.py, check-storage-contracts.py e os testes Node dos componentes. O CI de mutações precisa detectar código incorreto; uma campanha sem controle positivo não é evidência. Preserve reviews e resultados históricos, acrescentando corrigendum.

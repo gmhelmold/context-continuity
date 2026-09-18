@@ -1,12 +1,12 @@
 # SPEC-01 — contratos do núcleo e dos adaptadores
 
-Revisão 0.1.1. Normativo para [SPEC-CC-0.1](README.md). Contratos de produto proposto, não APIs implementadas dos hosts. Resolve B01–B05/B08–B10 da REVIEW-002.
+Revisão 0.1.2. Normativo para [SPEC-CC-0.1](README.md). Contratos de produto proposto, não APIs implementadas dos hosts. Resolve B01–B05/B08–B10 da REVIEW-002.
 
 ## 1. Representação e identidades
 
 Objetos de controle usam `schema_version: 1` e rejeitam campos adicionais. Inteiros de contadores/revisões estão em 0..Number.MAX_SAFE_INTEGER; overflow falha. Datas UTC ISO-8601; deadlines do processo usam relógio monotônico. IDs de entidades são UUIDs gerados pelo núcleo. IDs externos são strings opacas de 1..512 bytes UTF-8; nunca inferir ordem de timestamp, texto ou nome.
 
-`canonicalJSON`: chaves ordenadas recursivamente por code units UTF-16; arrays preservados; JSON sem espaços; UTF-8; rejeitar undefined, números não finitos e Unicode malformado. Strings de conteúdo não são normalizadas/trimadas. `sha256` produz 64 caracteres hexadecimais minúsculos. Código de hash tem vetores de referência; JSON nativo incompatível deve ser protegido, não descartado.
+`canonicalJSON` segue RFC 8785/JCS: chaves ordenadas recursivamente por code units UTF-16, arrays preservados, JSON sem espaços e UTF-8. Primitivos usam a serialização ECMAScript de números IEEE-754 binary64: -0 → 0, 1.0 → 1 e 1e-7 sem zero extra no expoente. Rejeitar undefined, NaN/Infinity, chaves duplicadas decodificadas e Unicode malformado. Inteiros de controle continuam limitados a MAX_SAFE_INTEGER; produtores com inteiros de precisão maior não podem arredondá-los silenciosamente. Texto original de fonte nunca passa por canonicalização. Não usar json.dumps como oráculo numérico equivalente a JSON.stringify. Strings de conteúdo não são normalizadas/trimadas. `sha256` produz 64 caracteres hexadecimais minúsculos. Código de hash tem vetores de referência; JSON nativo incompatível deve ser protegido, não descartado.
 
 ```ts
 type Scope = {
@@ -185,6 +185,7 @@ type View = {
 type Chapter = {
   chapter_id: string; session_key: string; digest: string | null // null somente redacted
   operation_id: string
+  host_epoch: number
   logical_coverage: readonly string[]
   root_coverage: readonly RootRef[]
   parent_chapters: readonly ChapterRef[]
@@ -241,3 +242,13 @@ Required: identity, root_mapping, final_capture, final_veto, substitution, sourc
 ## 9. Erros
 
 Todos: `{code,retryable,message,job_id?}` sem prompts/segredos. E_SCOPE acesso recusado; E_CAPABILITY capacidade ausente; E_SCHEMA formato inválido; E_BUDGET limite insuficiente; E_NO_GAIN sem poda; E_SOURCE fonte ausente; E_STALE snapshot antigo; E_PROTOCOL envelope inválido; E_OWNER fence inválido; E_STORAGE I/O/quota; E_TIMEOUT deadline; E_RATE limitação; E_TOOL tool auxiliar recusada; E_CANCELLED execução cancelada; E_CURSOR cursor inválido; E_CONFLICT versão/plano divergente. Nenhum catch transforma erro em sucesso.
+
+## 10. Identidade durável de leitura (C09)
+
+`ToolExecutionRef={host_epoch:number, host_message_id:string, tool_call_id:string}` é obtido pelo adaptador, junto de Scope/incarnation. A chave de idempotência é `(session_key,incarnation,host_epoch,host_message_id,tool_call_id)`, não o texto lido. `Receipt` inclui essa chave, request_digest e response_digest, além dos campos de SPEC-05. request_digest cobre argumentos normalizados, alvo/revisão, cursor/range, reason e WorkContext; response_digest cobre exatamente o resultado preparado e seu returned_range.
+
+Mesmo execution-ref com request_digest diferente é E_CONFLICT; replay idêntico reaproveita retrieval_id e não conta outro uso. Antes de devolver replay, revalidar autorização/tombstone/revisão; proibir reutilizar bytes revogados. Resultado diferente para a mesma execução é conflito, não overwrite do recibo anterior. Três execuções distintas de leitura igual geram três recibos. Sem identidade pública estável, leitura pode funcionar sem promoção adaptativa; não inventar identidade por conteúdo. Essa capacidade ausente deve ser declarada. Recibo prova resultado produzido, não atenção/uso cognitivo do modelo.
+
+Referência numérica: [RFC 8785 §§3.2.2.3 e 3.2.3](https://www.rfc-editor.org/rfc/rfc8785). A ponte Python de testes delega ao serializador JS compartilhado; vetores de saída fixados são o oráculo, não duas implementações supostamente independentes.
+
+No modo com feedback, required.identity inclui ToolExecutionRef estável. Sua ausência impede complete com promoção adaptativa; leitura assistida exige consentimento e diagnóstico.

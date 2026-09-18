@@ -1,6 +1,6 @@
 # SPEC-03 — ledger, persistência e recuperação
 
-Normativo, revisão 0.1.1. Persistência pertence ao produto; não usa tabelas privadas do host. O schema é de implementação futura, não uma migração executada nesta entrega.
+Normativo, revisão 0.1.2. Persistência pertence ao produto; não usa tabelas privadas do host. O schema é de implementação futura, não uma migração executada nesta entrega.
 
 ## 1. Localização e isolamento
 
@@ -116,6 +116,7 @@ CREATE TABLE operations (
 CREATE TABLE chapters (
   chapter_id TEXT PRIMARY KEY, session_key TEXT NOT NULL,
   operation_id TEXT NOT NULL,
+  host_epoch INTEGER NOT NULL CHECK(host_epoch>=0),
   digest TEXT,
   coverage_json TEXT NOT NULL CHECK(json_valid(coverage_json)),
   logical_json TEXT NOT NULL CHECK(json_valid(logical_json)),
@@ -159,6 +160,11 @@ CREATE TABLE dependencies (
 );
 CREATE TABLE retrievals (
   retrieval_id TEXT PRIMARY KEY,
+  incarnation TEXT NOT NULL,
+  host_epoch INTEGER NOT NULL CHECK(host_epoch>=0),
+  host_message_id TEXT NOT NULL, tool_call_id TEXT NOT NULL,
+  request_digest TEXT NOT NULL CHECK(length(request_digest)=64 AND request_digest NOT GLOB '*[^0-9a-f]*'),
+  response_digest TEXT NOT NULL CHECK(length(response_digest)=64 AND response_digest NOT GLOB '*[^0-9a-f]*'),
   session_key TEXT NOT NULL REFERENCES sessions(session_key) ON DELETE CASCADE,
   chapter_id TEXT,
   source_ref_json TEXT CHECK(source_ref_json IS NULL OR json_valid(source_ref_json)),
@@ -168,6 +174,8 @@ CREATE TABLE retrievals (
   reason TEXT NOT NULL CHECK(reason IN ('lookup','missing_detail','omitted_rule','correction')),
   declared_by TEXT NOT NULL CHECK(declared_by IN ('agent','user','unspecified')),
   created_at TEXT NOT NULL, consumed_by_job TEXT,
+  UNIQUE(session_key,incarnation,host_epoch,host_message_id,tool_call_id),
+  FOREIGN KEY(session_key,incarnation) REFERENCES sessions(session_key,incarnation) ON DELETE CASCADE,
   FOREIGN KEY(session_key,chapter_id) REFERENCES chapters(session_key,chapter_id),
   FOREIGN KEY(session_key,consumed_by_job) REFERENCES jobs(session_key,job_id)
 );
@@ -181,14 +189,25 @@ CREATE TABLE emissions (
   UNIQUE(session_key,frame_id,transport_attempt)
 );
 CREATE TABLE blobs (digest TEXT PRIMARY KEY, size_bytes INTEGER NOT NULL CHECK(size_bytes>=0), created_at TEXT NOT NULL);
+CREATE TABLE storage_owners (
+  owner_id TEXT PRIMARY KEY, process_instance TEXT NOT NULL,
+  liveness_lock_key TEXT NOT NULL UNIQUE,
+  state TEXT NOT NULL CHECK(state IN ('active','retired')),
+  created_at TEXT NOT NULL
+);
 CREATE TABLE storage_reservations (
-  reservation_id TEXT PRIMARY KEY, owner_id TEXT NOT NULL,
+  reservation_id TEXT PRIMARY KEY, owner_id TEXT NOT NULL REFERENCES storage_owners(owner_id),
+  operation_id TEXT NOT NULL, staging_path_key TEXT,
   kind TEXT NOT NULL CHECK(kind IN ('staging','read_pin','export_pin')),
   blob_digest TEXT, session_key TEXT, incarnation TEXT,
   size_bytes INTEGER NOT NULL CHECK(size_bytes>=0), created_at TEXT NOT NULL
 );
 CREATE TABLE tombstones (scope_hash TEXT NOT NULL, identity TEXT NOT NULL, reason TEXT NOT NULL, PRIMARY KEY(scope_hash,identity));
-CREATE TABLE managed_files (path_key TEXT PRIMARY KEY, kind TEXT NOT NULL, scopes_json TEXT NOT NULL CHECK(json_valid(scopes_json)));
+CREATE TABLE managed_files (
+  path_key TEXT PRIMARY KEY, kind TEXT NOT NULL, operation_id TEXT NOT NULL,
+  state TEXT NOT NULL CHECK(state IN ('staging','complete','cleanup_pending')),
+  scopes_json TEXT NOT NULL CHECK(json_valid(scopes_json))
+);
 CREATE INDEX chapters_by_session ON chapters(session_key,created_at,chapter_id);
 CREATE INDEX retrievals_by_session ON retrievals(session_key,created_at,retrieval_id);
 ```
@@ -244,3 +263,17 @@ Export/import usa ArchiveManifest/ArchiveRecords de SPEC-07, snapshot consistent
 ## 7. Provas de storage
 
 T03.storage: lease, unique jobs/runs e fence. T12.storage: durabilidade local, restart e fonte antes da ref. T19.storage: blob antigo competindo com GC e duas sessões na quota. T32.archive/redaction: todas as FKs e arrays resolvidos, identidade remapeada, tombstones e derivados. Essas provas usam implementação futura com driver/FS reais; teste do DDL/modelo nesta etapa não homologa plugin.
+
+## 8. Recibos e reconciliação de reservas (C09/C11)
+
+A transação de recibo faz SELECT/INSERT pela chave única de SPEC-01 §10. Chave existente com os mesmos digests devolve o mesmo retrieval_id; com digests diferentes, E_CONFLICT. Revalidar política antes de qualquer resposta; recibos não são cache de autorização. Não exportar execution-ref, pois importação de arquivo não pode criar novos usos adaptativos numa sessão.
+
+**Liveness de storage:** cada processo abre arquivo privado `owners/<UUID>.lock`, adquire lock exclusivo de SO e o mantém por toda a vida. UUID/process_instance jamais são reutilizados. Registro storage_owners e reservas são expostos só depois da aquisição. PID/boot-id são diagnóstico opcional, nunca prova suficiente de vida; TTL sozinho não remove reserva. O processo só cria reservas com owner active e seu lock comprovadamente detido.
+
+Na recuperação, sob lock de workspace, tentar adquirir o lock do owner antigo **sem bloquear**. Busy significa vivo: conservar pins, staging e quota. Falha de inspeção significa unknown: manter proteção e reportar E_CAPABILITY, não limpar por idade. Aquisição bem-sucedida significa que nenhum processo detém aquele owner; segurá-lo enquanto marca retired e reconcilia as reservas em transação. Não usar teste reentrante no próprio owner; ele é conhecido como vivo pelo handle mantido. Lock de liveness não serializa dados; a inspeção não espera seu dono enquanto segura o workspace, evitando inversão.
+
+Reconciliação por kind: read_pin remove apenas a reserva órfã; export_pin remove pins e staging gerenciado incompleto, nunca exportação concluída do usuário; staging remove só arquivos temporários catalogados daquela operação, depois libera reserva. Operação já concluída conserva fontes/blobs referenciados e libera reserva redundante. Falha de remoção fica cleanup_pending e continua contabilizando bytes. Arquivo órfão final continua cobrado até GC elegível. Checar novamente refs/incarnation/tombstones e quota na mesma autoridade do workspace.
+
+Owner retired não volta a active. Reinício cria owner novo; callbacks antigos perdem autoridade. Arquivos de liveness podem permanecer como tombstones pequenos; não desvincular o arquivo enquanto outro processo poderia ainda usar seu inode. O profile de filesystem que não suporta locks verificáveis não habilita essas garantias. T12.storage/T19.storage precisam cobrir stager, reader e exporter mortos e também um owner vivo/lento. Ensaios de referência de locks não são a implementação futura do ledger.
+
+`storage_reservations.operation_id` agrupa uma operação local de armazenamento; não é FK para uma geração de LLM. `staging_path_key` e managed_files.path_key são chaves relativas geradas, nunca paths arbitrários. managed_files.operation_id/state permitem distinguir staging incompleto de exportação finalizada. Antes de remover staging órfão, conferir essa identidade e state sob o lock; complete nunca é removido como se fosse temp.

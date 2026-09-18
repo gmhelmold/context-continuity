@@ -1,6 +1,6 @@
 # SPEC-02 — ciclo de execução e publicação
 
-Normativo, revisão 0.1.1; tipos em [SPEC-01](01-contracts.md), persistência em [SPEC-03](03-ledger.md). Todos os valores abaixo são defaults de engenharia do piloto, não limites cognitivos comprovados.
+Normativo, revisão 0.1.2; tipos em [SPEC-01](01-contracts.md), persistência em [SPEC-03](03-ledger.md). Todos os valores abaixo são defaults de engenharia do piloto, não limites cognitivos comprovados.
 
 ## 1. Configuração resolvida
 
@@ -78,7 +78,7 @@ Para consolidação, fontes citadas pelas correções/recuperações recentes po
 | queued | fontes duráveis + envelope válido | running | Incrementar attempts, registrar início e chamar fork. |
 | queued | fonte/config/escopo inválido | rejected | Sem chamada; liberar reserva comprovadamente não usada. |
 | running | proposta válida, ganho ≥M | ready | Persistir proposta e fontes, sem alterar visão. |
-| running | noop ou ganho <M | rejected | E_NO_GAIN, sem capítulo. |
+| running | noop, vazio/whitespace ou ganho <M | rejected | E_NO_GAIN, sem capítulo. |
 | running | falha transitória elegível | running | No máximo um retry, dentro do deadline original. |
 | running | formato inválido elegível | running | No máximo um reparo; compartilha o mesmo limite total de attempts. |
 | running | timeout, tool_call, overflow, falha final | failed | Cancelar; manter visão. |
@@ -140,3 +140,5 @@ Pause cancela queued/running/ready, mas mantém overlays válidos e consulta. Co
 ## 10. Provas de implementação
 
 Fixtures devem cobrir bordas exatas `T-1/T`, cooldown, rearmamento por L e por N, mensagens simultâneas, alterações em fontes antigas, callbacks tardios, falha de disco antes/depois do commit e coalescência de eventos. T14–T18/T40 validam orçamento; T08–T13/T28–T29 validam publicação. São requisitos futuros, não resultados executados nesta versão.
+
+C03–C08 são refinados por [SPEC-09](09-review003-boundaries.md): estado da proposta é explícito; View publicada também é revalidada; captures/transporte têm lifecycle próprio e reset sem sucesso observado não avança epoch.
