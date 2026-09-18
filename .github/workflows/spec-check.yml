@@ -29,3 +29,6 @@ jobs:
           python3 scripts/check-spec.py
           python3 scripts/check-reference-model.py
           python3 scripts/test-spec-check.py
+          python3 scripts/check-canonical.py
+          python3 scripts/check-storage-contracts.py
+          node --test tests/conformance/opencode/test-components.mjs

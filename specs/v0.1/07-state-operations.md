@@ -1,6 +1,6 @@
 # SPEC-07 — projeção, operações e portabilidade
 
-Normativo, revisão 0.1.1. Tipos em [SPEC-01](01-contracts.md), transações em [SPEC-03](03-ledger.md). Sem runtime implementado. Fecha composição e mudanças de estado B02/B05/B06/B11.
+Normativo, revisão 0.1.2. Tipos em [SPEC-01](01-contracts.md), transações em [SPEC-03](03-ledger.md). Sem runtime implementado. Fecha composição e mudanças de estado B02/B05/B06/B11.
 
 ## 1. Projeção achatada, sem replay de resumos
 
@@ -68,7 +68,7 @@ Exportação cria diretório novo privado, nunca zip autoextraído nem sobrescri
 
 ```ts
 type ArchiveManifest = {
-  schema_version: 1
+  schema_version: 2
   archive_id: string
   origin: { adapter_id: string; session_key: string; incarnation: string }
   created_at: string
@@ -77,7 +77,7 @@ type ArchiveManifest = {
   files: readonly { path: string; digest: string; size_bytes: number; media_type: string }[]
 }
 type ArchiveRecords = {
-  schema_version: 1
+  schema_version: 2
   sources: readonly ArchiveSource[]
   manifests: readonly Manifest[]
   chapters: readonly ArchiveChapter[]
@@ -87,7 +87,25 @@ type ArchiveRecords = {
 }
 ```
 
-ArchiveSource = SourceRef (digest null permitido apenas em registro indisponível/redacted, nunca em citação válida) + availability + media_type + size_bytes + `file_path:string|null` + native_refs; ArchiveChapter = Chapter + `proposal:null` permitido SÓ para redacted; ArchiveBlock = BlockRef + kind/authority/text|null/scope/created_at; ArchiveOperation = operation_id/kind/actor/input_digest/job_id|null/created_at (job_id é proveniência histórica opaca, não job importado); ArchiveDependency = from EntityRef/to EntityRef/relation content|history. Tipos e limites não relacionados são os de SPEC-01; campos adicionais são rejeitados. Arrays são ordenados por ID/revisão e digests canônicos; manifesto de Claim conserva índice, kind, recorte e autoridade.
+ArchiveSource = SourceRef (digest null permitido apenas em registro indisponível/redacted, nunca em citação válida) + availability + media_type + size_bytes + `file_path:string|null` + native_refs; ArchiveChapter = Omit<Chapter, "root_coverage" | "logical_coverage"> + OriginCoverage abaixo; `proposal:null` permitido SÓ para redacted; ArchiveBlock = BlockRef + kind/authority/text|null/scope/created_at; ArchiveOperation = operation_id/kind/actor/input_digest/job_id|null/created_at (job_id é proveniência histórica opaca, não job importado); ArchiveDependency = from EntityRef/to EntityRef/relation content|history. Tipos e limites não relacionados são os de SPEC-01; campos adicionais são rejeitados. Arrays são ordenados por ID/revisão e digests canônicos; manifesto de Claim conserva índice, kind, recorte e autoridade.
+
+### Cobertura de origem é proveniência, não unidade executável (C10)
+
+```ts
+type OriginCoverage = {
+  origin_coverage: {
+    adapter_id: string; session_key: string; incarnation: string; host_epoch: number
+    roots: readonly RootRef[]
+    logical_ids: readonly string[]
+  }
+}
+```
+
+Cada capítulo exportado carrega este objeto, com IDs/hashes originais. RootRef e logical_ids dentro de origin_coverage são **opacos de origem**: não são refs para root_units locais nem autorização para reconstruir input. O arquivo não afirma comprovar correspondência ao request do host; não infere agrupamento a partir de textos/native_refs. Leitura de capítulo expõe essa proveniência como tal. Restore em sessão ativa a partir dessas refs é E_CAPABILITY.
+
+Validar domínio/formatos/revisões, unicidade/ordem declarada, origem igual ao manifesto, host_epoch igual ao capítulo e consistência do digest para o mesmo `(origin,epoch,unit_id,revision)` em todos os capítulos. Dependências source/chapter/block/manifest continuam resolvíveis integralmente no próprio arquivo. Um RootRef opaco nunca pode ocupar EntityRef de uma claim. Cobertura opaca vazia só quando capítulo redacted ou operação sem cobertura já definida. logical_ids ficam identificadores históricos, não resolvidos por busca textual.
+
+Import NÃO remapeia nenhum ID/digest dentro de origin_coverage, nem consulta o banco/host antigo. Remapeia apenas entidades locais resolvíveis e preserva origin_digest do registro completo de origem. O agrupamento original está disponível como proveniência, mas bytes de wire não são reconstruídos. Archive schema 2 é incompatível com o rascunho anterior: recusar schema 1, sem migrar por adivinhação. Não há arquivo de usuário a migrar nesta fase.
 
 Somente `records.json` e `sources/<digest-prefix>/<digest>` são paths permitidos; arquivos únicos e totalmente enumerados. Fontes inline também viram files. Sem variáveis de ambiente, headers, request envelope, credenciais, jobs executáveis, emissions, View ativa ou leases. Bytes excluídos têm file_path=null e disponibilidade explícita, não arquivo vazio fingindo captura. Limites: manifest 8 MiB, records 64 MiB, até 100000 records e quota restante do workspace; por fonte permanece limite da captura. Falha de quota remove apenas staging criado pela operação.
 
@@ -95,7 +113,7 @@ Somente `records.json` e `sources/<digest-prefix>/<digest>` são paths permitido
 
 Import valida integralmente schema, limites antes de alocar, digests, paths relativos exatos, ausência de links, arquivos inesperados, ranges UTF-8, índices, DAG, refs e status. Nenhum dado é executado. Registros inválidos não entram parcialmente no namespace visível.
 
-Criar `archive_namespace` UUID novo e mapear de forma determinística `(namespace,kind,old_id)` para IDs locais via tabela persistida; preservar revisões e bytes de conteúdo. Reescrever TODAS as refs (sources, manifests, chapters, blocks, operations, deps) em passe único validado; conservar IDs originais em mapa de proveniência, separado da autorização. Recalcular digests de records com IDs remapeados; conservar `origin_digest` verificável para manifesto/capítulo original. Indices de Claim e excerpt_digest NÃO mudam. Nenhum import assume host_session_id original, cria lease ou ativa bloco.
+Criar `archive_namespace` UUID novo e mapear de forma determinística `(namespace,kind,old_id)` para IDs locais via tabela persistida; preservar revisões e bytes de conteúdo. Reescrever todas as refs LOCAIS resolvíveis (sources, manifests, chapters, blocks, operations, deps), excluindo explicitamente origin_coverage em passe único validado; conservar IDs originais em mapa de proveniência, separado da autorização. Recalcular digests de records com IDs remapeados; conservar `origin_digest` verificável para manifesto/capítulo original. Indices de Claim e excerpt_digest NÃO mudam. Nenhum import assume host_session_id original, cria lease ou ativa bloco.
 
 Importações são arquivos somente leitura. Consulta exige seleção explícita do arquivo pelo usuário; não unir implicitamente ao contexto do host. Round-trip deve manter bytes e resolução semântica de cada índice, mesmo que IDs locais mudem. Remoção do arquivo remove namespace/catálogos e respeita refcounts de blobs. Exportações concluídas externas ficam fora do domínio de apagamento automático.
 

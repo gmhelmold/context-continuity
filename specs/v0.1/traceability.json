@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "revision": "0.1.1",
+  "revision": "0.1.2",
   "requirements": [
     {
       "id": "R01",
@@ -450,7 +450,7 @@
       "requires_packages": [],
       "class": "component",
       "initial_status": "not_run",
-      "oracle": "Texto repetido mantém IDs diferentes; payload/role/metadata mudado com mesmas source_refs muda unit_digest; reinício mantém mapa de identidades e revisões."
+      "oracle": "Texto repetido mantém IDs diferentes; payload/role/metadata mudado com mesmas source_refs muda unit_digest; reinício mantém mapa de identidades e revisões. Vetores JCS fixos devem igualar bytes de números/Unicode entre produtor Python e serializador JavaScript; inteiros de precisão não representável são recusados antes de arredondar."
     },
     {
       "id": "T08.projection",
@@ -537,7 +537,7 @@
       ],
       "class": "component",
       "initial_status": "not_run",
-      "oracle": "Interromper implementação de storage nos pontos staging, blob, referência e transação SQLite; reiniciar processo e provar integridade local sem renderer ou hook de host."
+      "oracle": "Interromper implementação de storage nos pontos staging, blob, referência e transação SQLite; reiniciar processo e provar integridade local sem renderer ou hook de host. Cobrir também owner de stager/reader/exporter morto: liveness lock verificável, reserva órfã liberada e owner vivo conservado; TTL/PID isolados não autorizam limpeza."
     },
     {
       "id": "T12.publish",
@@ -655,7 +655,7 @@
       ],
       "class": "component",
       "initial_status": "not_run",
-      "oracle": "Pausas nas bordas reaproveitar-órfão/inserir-ref e listar-órfão/unlink. Mesmo lock protege ambas; duas sessões/import disputam quota reservada. Fsync/rename/commit falhos não deixam ref a parcial."
+      "oracle": "Pausas nas bordas reaproveitar-órfão/inserir-ref e listar-órfão/unlink. Mesmo lock protege ambas; duas sessões/import disputam quota reservada. Fsync/rename/commit falhos não deixam ref a parcial. Reconciliar pins/reservas por owner e operação sob o lock do workspace; arquivos incompletos continuam na quota até remoção confirmada."
     },
     {
       "id": "T20.tools",
@@ -741,7 +741,7 @@
       ],
       "class": "component",
       "initial_status": "not_run",
-      "oracle": "Três tarefas e leituras byte-overlap: só três chamadas distintas no mesmo WorkContext conhecido geram nota da interseção comum. Sem escopo não promover repetição. Nota criada em N expira no commit N+2; restart mantém expiração. Noop não consome recibos."
+      "oracle": "Três tarefas e leituras byte-overlap: só três chamadas distintas no mesmo WorkContext conhecido geram nota da interseção comum. Sem escopo não promover repetição. Nota criada em N expira no commit N+2; restart mantém expiração. Noop não consome recibos. Replay da mesma ToolExecutionRef antes/depois de restart preserva retrieval_id; argumentos/resultado diferentes são E_CONFLICT, três execuções distintas iguais contam três."
     },
     {
       "id": "T27.projection",
@@ -832,7 +832,7 @@
       ],
       "class": "component",
       "initial_status": "not_run",
-      "oracle": "Round-trip no storage de fonte/bloco/capítulo/Manifest/Operation mistos: IDs remapeados, citações estáveis e import sem ativação/execução; testar FKs e validação dos arquivos."
+      "oracle": "Round-trip no storage de fonte/bloco/capítulo/Manifest/Operation mistos: IDs remapeados, citações estáveis e import sem ativação/execução; testar FKs e validação dos arquivos. OriginCoverage preserva IDs/digests opacos de origem sem remapear nem materializar host; referências de conteúdo continuam localmente resolvíveis e schema antigo é recusado."
     },
     {
       "id": "T32.redaction",
@@ -954,7 +954,7 @@
       ],
       "class": "component",
       "initial_status": "not_run",
-      "oracle": "Validar limites de bytes, hashes e relações do arquivo de export/import no storage; sem exigir paginação da tool ainda não implementada."
+      "oracle": "Validar limites de bytes, hashes e relações do arquivo de export/import no storage; sem exigir paginação da tool ainda não implementada. Testar capítulos consolidados em epochs diferentes e consistência dos RootRefs opacos para mesma origem/epoch/revisão; ausência de host antigo não impede leitura."
     },
     {
       "id": "T39.projection",

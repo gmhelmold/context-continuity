@@ -1,6 +1,6 @@
 # SPEC-CC-0.1 — especificação de Context Continuity
 
-**Revisão 0.1.1: correções contratuais da REVIEW-002.** Especificação proposta, sem plugin implementado, pacote publicado ou host homologado. Origem: [RFC standalone](../../docs/designs/continuous-self-compaction/RFC-001.md). A [resolução B01–B16](../../docs/reviews/REVIEW-002-RESOLUTION.md) registra mudanças e limites de prova.
+**Revisão 0.1.2: correções C01–C12 da REVIEW-003.** Especificação proposta, sem plugin implementado, pacote publicado ou host homologado. Origem: [RFC standalone](../../docs/designs/continuous-self-compaction/RFC-001.md). A [resolução B01–B16](../../docs/reviews/REVIEW-002-RESOLUTION.md) registra mudanças e limites de prova.
 
 ## Documentos normativos
 
@@ -14,6 +14,7 @@
 | [SPEC-06](06-acceptance.md) | 36 requisitos, 40 famílias e 55 subcasos de aceitação. |
 | [SPEC-07](07-state-operations.md) | Projeção achatada, invalidação transitiva, restore/correção e arquivos portáveis. |
 | [SPEC-08](08-evaluation.md) | Protocolo pré-registrado, métricas, budget e decisão do piloto. |
+| [SPEC-09](09-review003-boundaries.md) | Oráculos exatos, codec, retenção, reset e transporte após REVIEW-003. |
 | [Work packages](WORK-PACKAGES.md) | Oito pacotes com cinco axiomas e DoDs sem dependências retroativas. |
 | [traceability.json](traceability.json) | Fonte única do mapa requisito/casos/donos/dependências. |
 
@@ -43,6 +44,9 @@ Prova do host: OpenCode v1.18.31 / a97622c801f4ca571530ddc51076af659a9c32cd, P01
 python3 scripts/check-spec.py
 python3 scripts/check-reference-model.py
 python3 scripts/test-spec-check.py
+python3 scripts/check-canonical.py
+python3 scripts/check-storage-contracts.py
+node --test tests/conformance/opencode/test-components.mjs
 ```
 
 O primeiro valida links/fragmentos, reciprocidade, grafo e DDL de referência. O segundo executa dez modelos de contrato (incluindo 64 consolidações, bytes UTF-8 e tabela de capacidades). O terceiro exige rejeição de dez mutações documentais controladas. Não são runtime do produto, ensaio de provider ou benchmark.

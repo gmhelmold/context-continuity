@@ -54,3 +54,7 @@ A execução final no macOS fechou com **14/14**; os hashes no relatório foram 
 ## Reprodução
 
 Use o [comando documentado](../../tests/conformance/opencode/README.md) com binário oficial 1.18.31 e diretório de saída novo. O runner cria e encerra seus próprios processos e não reutiliza HOME/XDG pessoais. O workflow recebeu margem para os reinícios adicionais, mantendo limite finito.
+
+## Corrigendum da REVIEW-003
+
+Os resultados históricos acima e seus JSONs foram preservados. A revisão demonstrou que contagens e marcadores não bastavam para afirmar igualdade integral da cauda. Consulte a [resolução C01–C12](../reviews/REVIEW-003-RESOLUTION.md) para os oráculos fortalecidos e suas provas negativas. O novo resultado não reescreve retrospectivamente o significado de 10/10 ou 14/14 anteriores, nem promove as fixtures a produto completo.

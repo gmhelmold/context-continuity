@@ -67,3 +67,7 @@ Completar a cobertura restante do WP-00, começando por consolidações/reiníci
 ## Continuação da prova
 
 [Consolidações, reinício e falha de reset](OPENCODE-WP00-CONTINUITY.md) amplia a suíte para 14 verificações e substitui a limitação de overlay exclusivamente em memória por um checkpoint de fixture. O relatório acima permanece como evidência do incremento inicial, não como descrição da cobertura mais recente.
+
+## Corrigendum da REVIEW-003
+
+Os resultados históricos acima e seus JSONs foram preservados. A revisão demonstrou que contagens e marcadores não bastavam para afirmar igualdade integral da cauda. Consulte a [resolução C01–C12](../reviews/REVIEW-003-RESOLUTION.md) para os oráculos fortalecidos e suas provas negativas. O novo resultado não reescreve retrospectivamente o significado de 10/10 ou 14/14 anteriores, nem promove as fixtures a produto completo.

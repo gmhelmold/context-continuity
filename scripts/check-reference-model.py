@@ -7,14 +7,11 @@ import json
 import unittest
 
 
-def canon(value):
-    if isinstance(value,dict):
-        return {k:canon(value[k]) for k in sorted(value,key=lambda k:k.encode('utf-16-be'))}
-    if isinstance(value,list): return [canon(x) for x in value]
-    return value
+from canonical_json import canonical_bytes
 
 def digest(value):
-    return hashlib.sha256(json.dumps(canon(value),ensure_ascii=False,separators=(',',':')).encode()).hexdigest()
+    return hashlib.sha256(canonical_bytes(value)).hexdigest()
+
 
 def project(roots, replacements):
     positions={x:i for i,x in enumerate(roots)}

@@ -1,6 +1,6 @@
 # SPEC-05 — ferramentas, âncoras e experiência
 
-Normativo, revisão 0.1.1. Nomes e exemplos são interfaces propostas; nenhum comando está instalado/publicado nesta entrega.
+Normativo, revisão 0.1.2. Nomes e exemplos são interfaces propostas; nenhum comando está instalado/publicado nesta entrega.
 
 ## 1. context_search
 
@@ -93,11 +93,11 @@ Propagar a workers somente com associação de tarefa comprovada; sem ela, não 
 
 ## 5. Feedback determinístico
 
-Receipt tem retrieval_id, tool_call_id (idempotente por sessão), WorkContext obtido da integração, EntityRef/digest, returned_range EM BYTES, até 400 code points do texto realmente entregue, reason, declared_by e consumed_by_job|null. Uma repetição da mesma chamada não gera três recibos distintos. Sem bytes retornados não criar feedback de uso. Busca sem leitura não conta como recuperação corretiva.
+Receipt tem retrieval_id, ToolExecutionRef + Scope/incarnation (chave única de SPEC-01 §10), request_digest/response_digest, WorkContext obtido da integração, EntityRef/digest, returned_range EM BYTES, até 400 code points do texto realmente entregue, reason, declared_by e consumed_by_job|null. Uma repetição da mesma execução antes/depois de restart não gera outro recibo. Mesmo execution-ref com argumentos/resultado diferentes retorna E_CONFLICT; revalidar política antes de reaproveitar o recibo. IDs de chamada iguais em mensagens/epochs diferentes continuam execuções distintas. Sem bytes retornados não criar feedback de uso. Busca sem leitura não conta como recuperação corretiva.
 
 Antes de selecionar novo job e SOMENTE sem manutenção ativa:
 1. Ler recibos não consumidos, priorizar correção explícita do usuário, depois omitted_rule/missing_detail, depois repetições, depois lookup recente. Ordenação desempata por created_at/retrieval_id, max32 e 2048 tokens. Persistir IDs do lote no snapshot.
-2. Repetição significa três tool_call_ids distintos entre as últimas 32 leituras da mesma EntityRef/revisão, WorkContext EXATAMENTE igual e conhecido (task_id ou phase_id não null), com interseção COMUM não vazia `[max(start),min(end))`. Leituras em tarefas diferentes nunca contam juntas. WorkContext totalmente desconhecido desabilita promoção por repetição; motivos corretivos explícitos continuam elegíveis como autodeclaração.
+2. Repetição significa três ToolExecutionRefs distintos entre as últimas 32 leituras da mesma EntityRef/revisão, WorkContext EXATAMENTE igual e conhecido (task_id ou phase_id não null), com interseção COMUM não vazia `[max(start),min(end))`. Leituras em tarefas diferentes nunca contam juntas. WorkContext totalmente desconhecido desabilita promoção por repetição; motivos corretivos explícitos continuam elegíveis como autodeclaração.
 3. Produzir nota deterministicamente: recorte entregue do motivo corretivo ou início da interseção comum de repetição, até400 code points, ref/range/digest e authority=agent. Não pedir nota ao modelo nem extrair campo inexistente de ModelProposal. Se fonte não está disponível, não criar nota.
 4. No máximo oito notas/2048 tokens dentro do orçamento geral de blocos. Identidade pela EntityRef+range+WorkContext; não duplicar nota já ativa. Novos usos podem criar versão sob o mesmo limite. A transação publica View/policy antes de tirar snapshot e não cancela o próprio job ainda inexistente.
 

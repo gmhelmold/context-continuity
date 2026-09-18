@@ -5,11 +5,13 @@ Runs an unmodified OpenCode binary using public plugin/provider/server interface
 This probe is deliberately separate from the future product implementation.
 """
 from __future__ import annotations
+import traceback
 import argparse,base64,concurrent.futures,hashlib,json,os,secrets,socket,subprocess,threading,time
 from pathlib import Path
 from http.server import BaseHTTPRequestHandler,ThreadingHTTPServer
 from urllib.request import Request,urlopen
 from urllib.error import HTTPError
+from oracle import exact_retained, native_tools, protocol
 
 HERE=Path(__file__).resolve().parent
 HOST_VERSION="1.18.31"
@@ -67,6 +69,7 @@ class ResponseHandler(BaseHTTPRequestHandler):
    if scenario=='tool':
     reason='tool_calls';calls=[{'id':'aux_forbidden','type':'function','function':{'name':'cc_probe','arguments':'{}'}}];content=None
    elif scenario=='repair' and n==1:content='deliberately invalid fixture JSON'
+   elif scenario=='empty':content=json.dumps({'summary':''})
    else:content=json.dumps({'summary':'CC_SUMMARY::'+run+': completed history; retain protocol v1.'})
   else:
    markers=[t for t in texts if t.startswith('RUN::')]
@@ -98,7 +101,7 @@ class ResponseHandler(BaseHTTPRequestHandler):
 
 class Probe:
  def __init__(self,binary:Path,root:Path):
-  self.binary=binary;self.binary_hash=digest(binary.read_bytes());self.root=root;root.mkdir(parents=True,exist_ok=False)
+  self.only=None;self.binary=binary;self.binary_hash=digest(binary.read_bytes());self.root=root;root.mkdir(parents=True,exist_ok=False)
   self.workspace=root/'workspace';self.workspace.mkdir();self.home=root/'home';self.home.mkdir()
   self.recorder=Recorder();threading.Thread(target=self.recorder.serve_forever,daemon=True).start()
   self.port=free_port();self.gateway=free_port();self.secret=secrets.token_hex(24);self.password=secrets.token_hex(24)
@@ -146,10 +149,12 @@ class Probe:
  def session(self,tag):
   s=self.call('/session',{'title':'CC synthetic '+tag})['id'];self.created_sessions.append(s);self.prompt(s,'SEED::'+tag);return s
  def check(self,name,fn):
+  if self.only and name not in self.only:return
   before=len(self.recorder.records)
   try:
    data=fn() or {};self.results.append({'check':name,'result':'pass','evidence':data,'requests':len(self.recorder.records)-before});print('PASS',name,flush=True)
   except Exception as e:
+   location=traceback.extract_tb(e.__traceback__)[-1];e=AssertionError(f'{type(e).__name__}: {e}; line {location.lineno}: {location.line}')
    self.results.append({'check':name,'result':'fail','error':str(e),'requests':len(self.recorder.records)-before});print('FAIL',name,str(e),flush=True)
  def run(self):
   self.start()
@@ -169,12 +174,15 @@ class Probe:
    recorded_prefix=dict(aux[0]['body']);recorded_prefix['messages']=recorded_prefix['messages'][:-1]
    assert recorded_prefix==records[0]['body'],'independent recorder detected a changed fork prefix'
    final=records[-1]['body'];joined=json.dumps(final)
-   assert 'CC_SUMMARY' in joined and 'SEED::happy' not in joined
-   assert len([m for m in final['messages'] if m['role']=='tool'])==3
+   assert 'CC_SUMMARY' in joined and 'SEED::happy' not in joined, 'E_ORACLE_COVERAGE'
+   assert len([m for m in final['messages'] if m['role']=='tool'])==3, 'E_ORACLE_CARDINALITY'
    ready=self.wait_event('aux-ready',s)
    effects=[e for e in self.events() if e['kind']=='tool-effect' and e['session']==s];assert len(effects)==3
    assert effects[0]['at']<ready['at'],'parent did not progress before clone was ready'
-   transcript=self.call('/session/'+s+'/message');assert 'SEED::happy' in json.dumps(transcript) and 'CC_SUMMARY' not in json.dumps(transcript)
+   transcript=self.call('/session/'+s+'/message');native_tools(transcript,final['messages'])
+   raw=[e['body'] for e in self.events() if e['kind']=='ingress' and e.get('session')==s and e['request_kind']=='primary' and 'RUN::happy::happy' in json.dumps(e['body'])][-1]
+   exact_retained(raw,final,'RUN::happy::happy','CC_SUMMARY::happy1: completed history; retain protocol v1.')
+   assert 'SEED::happy' in json.dumps(transcript) and 'CC_SUMMARY' not in json.dumps(transcript)
    assert all('x-cc-local' not in r['header_names'] and 'x-cc-capture' not in r['header_names'] for r in self.recorder.records)
    return {'session':s,'primary_requests':4,'tool_effects':3,'prefix_equal':True,'native_transcript_preserved':True,'covered_native_ids':event['ids']}
   self.check('native-load-tool-loop-concurrent-pruning-and-prefix',happy)
@@ -258,7 +266,10 @@ class Probe:
     assert prefix==primary[0]['body'],'fork did not inherit the projected view'
     if prior:assert prior in json.dumps(prefix) and 'SEED::chain' not in json.dumps(prefix)
     newest='CC_SUMMARY::'+run+': completed history; retain protocol v1.'
-    final=primary[-1]['body']['messages']
+    final_body=primary[-1]['body'];final=final_body['messages']
+    raw=[e['body'] for e in self.events() if e['kind']=='ingress' and e.get('session')==sid and e['request_kind']=='primary' and marker in json.dumps(e['body'])][-1]
+    exact_retained(raw,final_body,marker,newest)
+    native_tools(self.call('/session/'+sid+'/message'),final)
     user_index=next(i for i,m in enumerate(final) if m.get('content')==marker)
     assert final[user_index-1]=={'role':'assistant','content':newest}
     assert all(m['role'] in ('system','developer') for m in final[:user_index-1])
@@ -301,11 +312,12 @@ class Probe:
    self.recorder.native_fault_sessions.remove(sid)
    begin=len(self.recorder.records);self.prompt(sid,'AFTER_FAILED_NATIVE_RESET')
    self.wait_event('native-ended',sid)
+   assert row()['epoch']==old['epoch'], 'event alone must not advance the unobserved base'
+   self.prompt(sid,'AFTER_SUCCESSFUL_NATIVE_RESET')
    assert row()['epoch']==old['epoch']+1 and row()['view']==[]
    after=[r for r in self.recorder.records[begin:] if not r.get('auxiliary')]
-   assert after and 'AFTER_FAILED_NATIVE_RESET' in json.dumps(after[-1]['body'])
+   assert after and 'AFTER_SUCCESSFUL_NATIVE_RESET' in json.dumps(after[-1]['body'])
    assert len([e for e in self.events() if e['kind']=='native-ended' and e.get('session')==sid])==1
-   self.prompt(sid,'AFTER_SUCCESSFUL_NATIVE_RESET')
    return {'session':sid,'failed_reset_preserves_view':True,'preserved_across_restart':True,'epoch_advances_only_on_success':True,'host_retries_pending_reset':True}
   self.check('failed-native-reset-preserves-published-view',failed_native_reset)
   def crash_auxiliary():
@@ -323,6 +335,30 @@ class Probe:
    assert not [e for e in self.events() if e['kind']=='view-applied' and e.get('session')==sid]
    return {'session':sid,'orphaned_job_recorded':True,'auxiliary_requests':1,'replayed':False,'late_published':False}
   self.check('process-crash-does-not-replay-auxiliary',crash_auxiliary)
+  def published_change():
+   sid=self.session('published-policy');write_json(self.control,{'session':sid,'run':'published1','scenario':'happy','policy':0})
+   self.prompt(sid,'RUN::published-policy::happy');self.wait_event('view-applied',sid)
+   write_json(self.control,{'policy':1})
+   start=len(self.recorder.records);self.prompt(sid,'AFTER_PUBLISHED_POLICY_CHANGE')
+   self.wait_event('published-view-invalidated',sid)
+   body=[x['body'] for x in self.recorder.records[start:] if not x.get('auxiliary')][-1]
+   assert 'CC_POLICY=1' in json.dumps(body) and 'CC_SUMMARY' not in json.dumps(body)
+   assert 'SEED::published-policy' in json.dumps(body)
+   raw=[e['body'] for e in self.events() if e['kind']=='ingress' and e.get('session')==sid and 'AFTER_PUBLISHED_POLICY_CHANGE' in json.dumps(e['body'])][-1]
+   assert body==raw, 'E_ORACLE_RETAINED_PAYLOAD'
+   return {'invalidated_published':True,'raw_preserved':True}
+  self.check('published-policy-change-invalidates-derived-view',published_change)
+  def empty_recovery():
+   sid=self.session('empty');write_json(self.control,{'session':sid,'run':'empty1','scenario':'empty'})
+   with concurrent.futures.ThreadPoolExecutor() as pool:
+    future=pool.submit(self.prompt,sid,'RUN::empty-recovery::happy')
+    failure=self.wait_event('aux-failed',sid);assert failure['code']=='E_NO_GAIN'
+    write_json(self.control,{'session':sid,'run':'empty2','scenario':'happy'})
+    future.result()
+   self.wait_event('view-applied',sid)
+   assert self.recorder.aux_counts['empty1']==1 and self.recorder.aux_counts['empty2']==1
+   return {'empty_terminal':True,'next_job_without_user_input':True}
+  self.check('empty-summary-terminates-and-rearms-without-user',empty_recovery)
   def handoff():
    # Small raw history fits: prove route restoration without writing host internals.
    write_json(self.control,{})
@@ -337,11 +373,11 @@ class Probe:
   final_sessions=self.call('/session')
   assert len(final_sessions)==len(initial_sessions)+len(self.created_sessions),'unexpected auxiliary host session'
   assert digest(self.binary.read_bytes())==self.binary_hash,'host binary changed'
-  return {'schema_version':1,'probe_only':True,'host_version':version,'host_binary_sha256':digest(self.binary.read_bytes()),'platform':os.uname().sysname+'-'+os.uname().machine,'product_base':'020f4caddafd0cbe4a5e2964f784bc7dd5dfea4f','checks':self.results,'gate_status':'in_progress','initial_host_sessions':len(initial_sessions),'final_host_sessions':len(final_sessions),'physical_requests':len(self.recorder.records),'physical_auxiliary_requests':sum(self.recorder.aux_counts.values()),'transport_disconnects':self.recorder.transport_disconnects,'probe_sources':{str(p.relative_to(HERE.parents[2])):digest(p.read_bytes()) for p in (HERE/'gateway-plugin.mjs',HERE/'later-plugin.mjs',HERE/'run.py')},'live_inference':False,'product_complete_enabled':False}
+  return {'schema_version':1,'probe_only':True,'host_version':version,'host_binary_sha256':digest(self.binary.read_bytes()),'platform':os.uname().sysname+'-'+os.uname().machine,'product_base':'8f844ed5798146c9626653627d67916df0737583','checks':self.results,'gate_status':'in_progress','initial_host_sessions':len(initial_sessions),'final_host_sessions':len(final_sessions),'physical_requests':len(self.recorder.records),'physical_auxiliary_requests':sum(self.recorder.aux_counts.values()),'transport_disconnects':self.recorder.transport_disconnects,'probe_sources':{str(p.relative_to(HERE.parents[2])):digest(p.read_bytes()) for p in sorted(HERE.glob('*.mjs'))+sorted(HERE.glob('*.py'))+[HERE.parents[2]/'scripts/canonical-json.mjs']},'live_inference':False,'product_complete_enabled':False}
 
 def main():
- parser=argparse.ArgumentParser();parser.add_argument('--binary',required=True,type=Path);parser.add_argument('--out',required=True,type=Path);args=parser.parse_args()
- root=args.out.resolve();probe=Probe(args.binary.resolve(),root)
+ parser=argparse.ArgumentParser();parser.add_argument('--binary',required=True,type=Path);parser.add_argument('--out',required=True,type=Path);parser.add_argument('--only',help='Comma-separated probe checks, for controlled mutation tests');args=parser.parse_args()
+ root=args.out.resolve();probe=Probe(args.binary.resolve(),root);probe.only=set(args.only.split(',')) if args.only else None
  try:
   try:report=probe.run()
   except Exception as exc:

@@ -1,24 +1,24 @@
-name: OpenCode integration probe
+name: OpenCode oracle mutations
 
 on:
   pull_request:
     branches: [main]
   push:
-    branches: [main, opencode-conformance]
+    branches: [main]
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: oc-probe-${{ github.event.pull_request.head.ref || github.ref_name }}
+  group: oc-mutations-${{ github.event.pull_request.head.ref || github.ref_name }}
   cancel-in-progress: true
 
 jobs:
   probe:
-    name: Stock OpenCode / synthetic provider
+    name: Stock OpenCode / six incorrect implementations
     runs-on: ubuntu-24.04
-    timeout-minutes: 12
+    timeout-minutes: 20
     steps:
       - name: Checkout
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
@@ -45,14 +45,14 @@ jobs:
           test "$(./opencode --version)" = '1.18.31'
       - name: Exercise public integration with synthetic loopback provider
         run: >-
-          python3 tests/conformance/opencode/run.py
+          python3 tests/conformance/opencode/test-oracle-mutations.py
           --binary "$RUNNER_TEMP/cc-host/opencode"
           --out "$RUNNER_TEMP/cc-proof"
       - name: Publish bounded synthetic report
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: opencode-probe-report
+          name: opencode-mutation-report
           path: ${{ runner.temp }}/cc-proof/report.json
           if-no-files-found: warn
           retention-days: 14

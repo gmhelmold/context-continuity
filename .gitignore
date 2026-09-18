@@ -11,3 +11,7 @@ coverage/
 *.db-shm
 *.db-wal
 *.log
+
+# Local validation artifacts
+__pycache__/
+*.pyc

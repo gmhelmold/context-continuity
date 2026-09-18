@@ -35,3 +35,21 @@ A suíte contém 14 checks, incluindo quatro consolidações com cobertura achat
 O runner fornece `CC_CHECKPOINT` em um diretório de teste novo. Esse arquivo é um checkpoint JSON de sonda, não um ledger do produto; não compartilhar entre workspaces nem configurar essa sonda em uma instalação pessoal. A execução mata apenas um filho OpenCode criado por ela no caso de crash. `report.json` inclui hashes dos arquivos de prova; credenciais/capture tokens e headers sensíveis não são exportados.
 
 [Resultados e limites](../../../docs/conformance/OPENCODE-WP00-CONTINUITY.md). A integridade do núcleo e a homologação integral continuam separadas deste teste.
+
+## Regressões REVIEW-003
+
+A sonda usa módulos locais `probe-protocol.mjs`, `probe-captures.mjs` e `probe-transport.mjs`, sem plugin interno do host. O oráculo Python é independente do renderer e confronta o corpo observado com a entrada anterior à poda e resultados públicos de ferramentas. Traces integrais são exclusivamente sintéticos e não devem ser usados para registrar conversas pessoais.
+
+Pré-requisito adicional dos checks: Node.js 22 ou 24; Python 3.11+ em POSIX. O host continua sendo o binário oficial fixado; os testes não o recompilam.
+
+```sh
+node --test tests/conformance/opencode/test-components.mjs
+python3 scripts/check-canonical.py
+python3 scripts/check-storage-contracts.py
+python3 tests/conformance/opencode/run.py --binary /caminho/opencode --out /tmp/cc-run-novo
+python3 tests/conformance/opencode/test-oracle-mutations.py --binary /caminho/opencode --out /tmp/cc-mutations-novo
+```
+
+Os diretórios de saída precisam ser novos. A campanha roda um controle correto e seis cópias incorretas contra o mesmo host. Sucesso é controle aprovado e cada mutação rejeitada pelo oráculo, não simplesmente qualquer erro. `--only` no runner existe para ensaios dirigidos; não equivale a aprovação da suíte integral.
+
+Checkpoints gerados antes de 0.1.2 não são dados de usuário nem formato migrável do produto. Ao retomar uma fixture antiga, config desconhecida invalida conservadoramente overlays. A própria sonda é só ensaio, não um pacote para instalar em trabalho real.
