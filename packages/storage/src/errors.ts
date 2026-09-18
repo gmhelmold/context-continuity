@@ -10,5 +10,10 @@ export class StorageError extends Error {
 }
 export function storageFailure(error: unknown): never {
   if (error instanceof StorageError) throw error;
+  const detail = error as { code?: unknown; errcode?: unknown } | null;
+  if (detail?.code === 'ERR_SQLITE_ERROR' && typeof detail.errcode === 'number' &&
+      Number.isSafeInteger(detail.errcode) && [5, 6].includes(detail.errcode & 0xff)) {
+    throw new StorageError('E_STORAGE', 'database busy');
+  }
   throw new StorageError('E_STORAGE', 'operation failed');
 }

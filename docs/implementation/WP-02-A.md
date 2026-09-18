@@ -45,6 +45,8 @@ O novo workflow executa storage em Node 22.17.1 e 24.0.0 com TypeScript 5.9.3 e 
 
 Uma execução local paralela do núcleo terminou 195/196: o controle positivo da campanha existente de identidades expirou em spawnSync. Não foi contado como sucesso/detecção. A repetição local sequencial passou 196/196, sem alterar timeouts, assertions ou o comando padrão do CI. Componentes da sonda 25/25, testemunha 4/4, typechecks e checks offline também passaram. Resultados finais ficam no PR do head testado.
 
+O primeiro CI do head 0465478 encontrou um teste excessivamente específico: havia um único vencedor, mas o concorrente não retornou E_OWNER. O resultado original não registrava o motivo completo, portanto não foi tratado como diagnóstico conclusivo de SQLite BUSY. A implementação agora classifica exclusivamente os códigos nativos BUSY/LOCKED como E_STORAGE/database busy. O ensaio exige um vencedor exato, somente E_OWNER ou essa contenção tipada para o perdedor e uma nova conexão que confirme E_OWNER após os filhos terminarem. Qualquer outro erro continua reprovando; não houve aumento de timeout nem retry automático. Um teste com transação realmente retida comprova a classificação de BUSY e ausência de escrita parcial.
+
 ## Critérios e limites deste incremento
 
 **Success Criteria:** estado de sessão sobrevive à reabertura, inicialização não expõe metade do par Session/View0 e somente um proprietário vence a disputa testada.

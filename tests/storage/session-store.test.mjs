@@ -143,7 +143,7 @@ test('WP02A close: idempotent and all subsequent operations are refused',()=>fix
 }));
 test('WP02A SQLite: held writer transaction refuses another write without partial changes',()=>fixture(f=>{
   const s=f.create();const d=new DatabaseSync(f.path);d.exec('BEGIN IMMEDIATE');
-  try {reject(()=>s.createSession(binding(),config()),'E_STORAGE');}
+  try {assert.throws(()=>s.createSession(binding(),config()),e=>e.code==='E_STORAGE'&&e.reason==='database busy');}
   finally {d.exec('ROLLBACK');d.close();}
   assert.equal(s.readSession(binding()),null);assert.ok(s.createSession(binding(),config()));
 }));
@@ -161,7 +161,7 @@ test('WP02A restart: fresh process reads exact committed scope/configuration',()
 }));
 test('WP02A concurrent processes: exactly one owner wins under shared SQLite transaction',{timeout:15000},async()=>fixture(async f=>{
   const s=f.create();s.createSession(binding(),config());
-  const script=childScript(f,"const s=SqliteSessionStore.open(p.directory,p.workspace,()=>p.now);process.send('ready');process.once('message',()=>{try{process.send({lease:s.acquireLease(p.b)});}catch(e){process.send({code:e.code});}finally{s.close();process.disconnect();}});");
+  const script=childScript(f,"const s=SqliteSessionStore.open(p.directory,p.workspace,()=>p.now);process.send('ready');process.once('message',()=>{try{process.send({lease:s.acquireLease(p.b)});}catch(e){process.send({code:e.code,reason:e.reason??e.name});}finally{s.close();process.disconnect();}});");
   const children=[];
   try {
     for(let i=0;i<2;i++) {
@@ -169,9 +169,15 @@ test('WP02A concurrent processes: exactly one owner wins under shared SQLite tra
       await new Promise((resolve,reject)=>{child.once('message',m=>m==='ready'?resolve():reject(Error('bad readiness')));child.once('error',reject);child.once('exit',code=>code&&reject(Error('child early exit')));});
     }
     const results=await Promise.all(children.map(c=>new Promise((resolve,reject)=>{c.once('message',resolve);c.once('error',reject);c.send('go');})));
-    assert.equal(results.filter(r=>r.lease).length,1);assert.equal(results.filter(r=>r.code==='E_OWNER').length,1);
+    assert.equal(results.filter(r=>r.lease).length,1,JSON.stringify(results));
+    const loser=results.find(r=>!r.lease);
+    assert.ok(loser&&(loser.code==='E_OWNER'||(loser.code==='E_STORAGE'&&loser.reason==='database busy')),JSON.stringify(results));
+    const winner=results.find(r=>r.lease).lease;
     assert.equal(s.readSession(binding()).owner_fence,1);
+    assert.equal(s.readSession(binding()).owner_id,winner.owner_id);
     await Promise.all(children.map(c=>new Promise(resolve=>c.exitCode!==null?resolve():c.once('exit',resolve))));
+    // After lock contention is gone, a fresh connection must still reject the live owner.
+    reject(()=>f.open().acquireLease(binding()),'E_OWNER');
   } finally {for(const c of children)if(c.exitCode===null)c.kill();}
 }));
 test('WP02A crash: kill before COMMIT leaves neither Session nor View0',{timeout:15000},async()=>fixture(async f=>{
