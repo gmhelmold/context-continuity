@@ -59,3 +59,7 @@ Manifest/proposal/frame seguem SPEC-10. Forma válida não equivale a fonte veri
 ## Perfis terminais após REVIEW-004
 
 SPEC-11 é obrigatório: sealFrame/assertFrameUnchanged recebem perfil explícito; não reconstruir aliases/limites por nome. Cada codec valida seus grupos indivisíveis. Execute também test-witness.py; a campanha stock agora exige controle mais oito mutantes, incluindo pré-ingresso. D02/D03 continuam abertos em #21; não os marcar resolvidos pela integração das correções D01/D04/D05.
+
+## Encerramento D02/D03 da sonda
+
+Ao alterar gateway/captures, executar também `node --test tests/conformance/opencode/test-review004.mjs`. Não remover as barreiras de cancelamento nem usar retry para mascarar falhas de reinício. REVIEW-004-RESOLUTION.md distingue a admissão em bytes da fixture do orçamento/publicação transacional do produto. O estado anterior de D02/D03 acima é histórico; o fechamento remoto está registrado em #21/#23.

@@ -16,10 +16,10 @@ export default async function gatewayPlugin(ctx) {
   const emit=(kind,data={})=>appendFileSync(trace,JSON.stringify({at:Date.now(),...data,kind})+"\n");
   const checkpoint=setting("CC_CHECKPOINT");
   const workspace=hash(realpathSync(ctx.directory));
-  const captures=new Captures(),sessions=new Map(),outbound=new Set(),auxiliaryRuns=new Set();let closing=false;
+  const captures=new Captures(),sessions=new Map(),outbound=new Set(),auxiliaryRuns=new Set(),inbound=new Set();let closing=false,disposal=null;
   const sweeper=setInterval(()=>captures.sweep(),5000);sweeper.unref?.();
   const save=()=>{
-    const rows=[...sessions].map(([id,s])=>({id,epoch:s.epoch,view:s.view,seen:[...s.seen],pending_job:s.job&&!s.job.localStopped?s.job.id:null,reset_pending:s.resetPending,native_summary_id:s.nativeSummaryId??null}));
+    const rows=[...sessions].map(([id,s])=>({id,epoch:s.epoch,view:s.view,seen:[...s.seen],pending_job:s.job&&!s.job.localStopped?s.job.id:null,reset_pending:s.resetPending,native_summary_id:s.nativeSummaryId??null,hold:s.hold??null}));
     const tmp=checkpoint+".tmp";
     writeFileSync(tmp,JSON.stringify({schema_version:1,probe_only:true,workspace,host_version:"1.18.31",sessions:rows}),{mode:0o600});
     renameSync(tmp,checkpoint);
@@ -29,11 +29,11 @@ export default async function gatewayPlugin(ctx) {
     if(saved.schema_version!==1||saved.probe_only!==true||saved.workspace!==workspace||saved.host_version!=="1.18.31"||!Array.isArray(saved.sessions))throw error("E_CHECKPOINT");
     for(const row of saved.sessions) {
       if(typeof row.id!=="string"||!Array.isArray(row.view)||!Array.isArray(row.seen)||!Number.isSafeInteger(row.epoch))throw error("E_CHECKPOINT");
-      sessions.set(row.id,{epoch:row.epoch,view:row.view,seen:new Set(row.seen),job:null,resetPending:Boolean(row.reset_pending),nativeSummaryId:row.native_summary_id??null,resetId:null});
+      sessions.set(row.id,{epoch:row.epoch,view:row.view,seen:new Set(row.seen),job:null,resetPending:Boolean(row.reset_pending),nativeSummaryId:row.native_summary_id??null,resetId:null,hold:row.hold??null});
       emit("checkpoint-restored",{session:row.id,epoch:row.epoch,replacements:row.view.length,orphaned_job:row.pending_job??null});
     }
   }
-  const state=id=>{if(!sessions.has(id))sessions.set(id,{epoch:0,view:[],job:null,seen:new Set(),resetPending:false,nativeSummaryId:null,resetId:null});return sessions.get(id);};
+  const state=id=>{if(!sessions.has(id))sessions.set(id,{epoch:0,view:[],job:null,seen:new Set(),resetPending:false,nativeSummaryId:null,resetId:null,hold:null});return sessions.get(id);};
   function cancel(id,why) {
     const s=state(id),j=s.job;
     if(j&&!j.terminal){j.terminal=true;j.controller.abort();emit("aux-cancelled",{session:id,job:j.id,why,remote_state:"unknown"});}
@@ -84,13 +84,21 @@ export default async function gatewayPlugin(ctx) {
     finally {clearTimeout(timer);job.localStopped=true;save();emit("aux-local-stopped",{session:capture.session,job:id});}
   }
   const server=createServer(async(req,res)=>{
-    let capture,token,transport;
+    let capture,token,transport,settleInbound;
+    const incoming={req,res,done:new Promise(resolve=>{settleInbound=resolve;})};
+    inbound.add(incoming);
+    const assertAdmission=()=>{
+      if(closing||req.aborted||res.destroyed)throw error('E_CANCELLED');
+      captures.assertActive(token,capture);
+    };
     const reply=(status,code)=>{res.writeHead(status,{"content-type":"application/json"});res.end(JSON.stringify({error:{message:code,type:"invalid_request_error"}}));};
     try {
+      if(closing)throw error('E_DISPOSED');
       if(req.method!=="POST"||req.url!=="/v1/chat/completions"||req.headers.origin||!/^127\.0\.0\.1:\d+$/.test(req.headers.host??"")) throw error("E_LOCAL_REQUEST");
       if(!safeEqual(req.headers["x-cc-local"],secret))throw error("E_LOCAL_AUTH");
       token=req.headers["x-cc-capture"];capture=captures.acquire(token);
       let size=0;const chunks=[];for await(const chunk of req){size+=chunk.length;if(size>1024*1024)throw error("E_BODY_LIMIT");chunks.push(chunk);}
+      assertAdmission(); // A user/reset hook may have revoked the acquired ticket while reading.
       const bytes=Buffer.concat(chunks);const body=parseJSON(new TextDecoder("utf-8",{fatal:true}).decode(bytes));
       if(body.model!=="probe"||!Array.isArray(body.messages))throw error("E_PROFILE");
       if(capture.bodyHash&&capture.bodyHash!==hash(body))throw error("E_RETRY_BODY");capture.bodyHash=hash(body);
@@ -100,6 +108,7 @@ export default async function gatewayPlugin(ctx) {
       emit('ingress',{session:capture.session,request_kind:capture.kind,body});
       const config=hash({...body,messages:body.messages.filter(m=>["system","developer"].includes(m.role))});
       let selected=body;
+      assertAdmission();
       if(capture.kind==="primary") {
         const roots=rootsFor(body,capture.messages);
         const nativeId=capture.nativeSummaryId??null;
@@ -110,15 +119,25 @@ export default async function gatewayPlugin(ctx) {
         }
         if(s.resetPending) {
           if([...outbound].some(x=>x.session===capture.session&&x.kind==='compaction'))throw error('E_NATIVE_PENDING');
-          // Restart/stream failure with no new public summary: validate the OLD
-          // root plan before releasing the hold. Never infer success from 200.
-          apply(roots,s.view);s.resetPending=false;save();
-          emit('native-reconciled',{session:capture.session,epoch:s.epoch,outcome:'no-confirmed-new-base'});
         }
         if(s.view.some(v=>v.config!==config)) {
           cancel(capture.session,'published-context-changed');
           const count=s.view.length;s.view=[];save();
           emit('published-view-invalidated',{session:capture.session,count});
+        }
+        // A covered source can change without changing system/config. In this
+        // probe all replacements share the observed context; discard them together.
+        // Unknown codec/protocol errors are not recoverable by dropping a view.
+        try {apply(roots,s.view);} catch(e) {
+          if(e.code!=='E_STALE_VIEW')throw e;
+          apply(roots,[]); // Check the verified current roots before changing state.
+          cancel(capture.session,'published-roots-changed');
+          const count=s.view.length;s.view=[];save();
+          emit('published-roots-invalidated',{session:capture.session,count});
+        }
+        if(s.resetPending) {
+          s.resetPending=false;save();
+          emit('native-reconciled',{session:capture.session,epoch:s.epoch,outcome:'no-confirmed-new-base'});
         }
         if(s.job?.ready!==null&&s.job?.ready!==undefined&&!s.job.terminal){
           const job=s.job;
@@ -126,17 +145,35 @@ export default async function gatewayPlugin(ctx) {
           else {
             const r={id:job.id,ids:job.ids,sourceHash:job.sourceHash,summary:job.ready,config:job.config};
             const next=[...s.view.filter(v=>!v.ids.some(id=>r.ids.includes(id))),r];
-            apply(roots,next);s.view=next;job.terminal=true;save();
-            emit("view-applied",{session:capture.session,job:job.id,ids:r.ids});
+            try {
+              apply(roots,next);assertAdmission();s.view=next;job.terminal=true;save();
+              emit("view-applied",{session:capture.session,job:job.id,ids:r.ids});
+            } catch(e) {
+              if(e.code!=='E_STALE_VIEW')throw e;
+              job.terminal=true;save();
+              emit('proposal-stale',{session:capture.session,job:job.id,code:e.code});
+            }
           }
         }
         selected={...body,messages:apply(roots,s.view)};
+        // Synthetic byte admission only: NOT a live-model tokenizer or a quota increase.
+        const limit=control.maximum_primary_bytes??1024*1024;
+        if(!Number.isSafeInteger(limit)||limit<1||limit>1024*1024)throw error('E_FIXTURE_BUDGET');
+        const inputBytes=Buffer.byteLength(JSON.stringify(selected));
+        if(inputBytes>limit) {
+          cancel(capture.session,'input-budget');
+          s.hold={code:'E_INPUT_BUDGET',action:'native-rebase-required',input_bytes:inputBytes,limit_bytes:limit};save();
+          emit('input-held',{session:capture.session,...s.hold});throw error('E_INPUT_BUDGET');
+        }
+        if(s.hold!==null){s.hold=null;save();emit('input-hold-cleared',{session:capture.session});}
+        assertAdmission();
         emit("sealed",{session:capture.session,request_kind:capture.kind,rawHash:hash(body),effectiveHash:hash(selected),rootIds:roots.map(x=>x.id)});
         if(control.session===capture.session&&control.run&&!s.seen.has(control.run)&&(!s.job||(s.job.terminal&&s.job.localStopped))) {
           const run=auxiliary(s,capture,selected,roots,config,control).catch(e=>emit('aux-setup-failed',{code:e.code??e.name})).finally(()=>auxiliaryRuns.delete(run));
           auxiliaryRuns.add(run);
         }
       } else emit("other-request",{session:capture.session,request_kind:capture.kind});
+      assertAdmission(); // Last synchronous check before starting the outbound request.
       const controller=new AbortController(),stats={};
       let settle;const done=new Promise(resolve=>{settle=resolve;});
       transport={session:capture.session,kind:capture.kind,controller,stats,done,settle};outbound.add(transport);
@@ -151,9 +188,11 @@ export default async function gatewayPlugin(ctx) {
       emit('request-rejected',{session:capture?.session??null,code:e.code??e.message??e.name});
       if(!res.headersSent&&!res.destroyed)reply(400,e.code??'E_REQUEST');else res.destroy();
     } finally {
-      if(transport){outbound.delete(transport);emit('transport-stopped',{session:transport.session,...transport.stats});transport.settle();}
-      if(token)captures.release(token);
-      emit('capture-retention',captures.stats());
+      try {
+        if(transport){outbound.delete(transport);emit('transport-stopped',{session:transport.session,...transport.stats});transport.settle();}
+        if(capture)captures.release(token);
+        emit('capture-retention',captures.stats());
+      } finally {inbound.delete(incoming);settleInbound();}
     }
   });
   function nativeFailed(capture,code,status) {
@@ -167,23 +206,28 @@ export default async function gatewayPlugin(ctx) {
   emit("loaded",{profile:"OC-V1-HTTP-LOCAL",probe:true});
   return {
     "experimental.chat.messages.transform":async(_input,output)=>{
+      if(closing)throw error('E_DISPOSED');
       const ids=[...new Set(output.messages.map(x=>x.info.sessionID))];if(ids.length!==1)throw error("E_SCOPE");
       const capture={session:ids[0],messages:structuredClone(output.messages),kind:"primary"};capture.nativeSummaryId=output.messages.findLast(x=>x.info.summary&&!x.info.error&&x.info.finish==='stop')?.info.id??null;
       captures.put(ids[0],capture);emit("capture",{session:ids[0],messageIds:output.messages.map(x=>x.info.id)});
     },
     "chat.headers":async(input,output)=>{
+      if(closing)throw error('E_DISPOSED');
       const kind=['compaction','title','summary'].includes(input.agent)?input.agent:'primary';
       const token=captures.register(input.sessionID,kind,{resetId:state(input.sessionID).resetId});
       output.headers["x-cc-capture"]=token;output.headers["x-cc-local"]=secret;
       emit("correlated",{session:input.sessionID,request_kind:kind});
     },
-    "chat.message":async input=>{cancel(input.sessionID,"user-input");captures.clearSession(input.sessionID);},
+    "chat.message":async input=>{if(closing)throw error('E_DISPOSED');cancel(input.sessionID,"user-input");captures.clearSession(input.sessionID);},
     "experimental.session.compacting":async (input,output)=>{
+      if(closing)throw error('E_DISPOSED');
+      captures.clearSession(input.sessionID);
       cancel(input.sessionID,"native-compaction");state(input.sessionID).resetPending=true;state(input.sessionID).resetId=randomUUID();save();
       output.context.push(`CC_NATIVE_RESET::${input.sessionID}`);
       emit("native-start",{session:input.sessionID});
     },
     event:async({event})=>{
+      if(closing)return;
       if(event.type==="session.compacted") {
         const id=event.properties?.sessionID,s=state(id);
         if(s.resetPending)emit('native-ended',{session:id,epoch:s.epoch+1,awaiting_public_base:true});
@@ -191,19 +235,24 @@ export default async function gatewayPlugin(ctx) {
     },
     tool:{cc_probe:{description:"Synthetic counter for an isolated conformance fixture.",args:{},execute:async(_args,context)=>{const output=`CC_TOOL_RESULT::${context.sessionID}::${context.messageID}:local-test-only`;
       emit('tool-effect',{session:context.sessionID,messageID:context.messageID});await new Promise(r=>setTimeout(r,250));return output;}}},
-    dispose:async()=>{
+    dispose:()=>{
+      if(disposal)return disposal;
       closing=true;clearInterval(sweeper);
+      disposal=(async()=>{
       for(const id of sessions.keys())cancel(id,'dispose');
       for(const item of outbound)item.controller.abort(error('E_DISPOSED'));
-      captures.dispose();server.closeAllConnections();
+      captures.dispose();
+      for(const {req,res} of inbound){req.destroy();res.destroy();}
+      server.closeAllConnections();
       let timer;
       try {
         await Promise.race([
-          Promise.all([...auxiliaryRuns,...[...outbound].map(x=>x.done),new Promise(resolve=>server.close(resolve))]),
+          Promise.all([...auxiliaryRuns,...[...outbound].map(x=>x.done),...[...inbound].map(x=>x.done),new Promise(resolve=>server.close(resolve))]),
           new Promise((_,reject)=>{timer=setTimeout(()=>reject(error('E_DISPOSE_TIMEOUT')),2000);})
         ]);
       } finally {clearTimeout(timer);}
-      emit('disposed',{outbound:outbound.size,auxiliary:auxiliaryRuns.size});
+      emit('disposed',{inbound:inbound.size,outbound:outbound.size,auxiliary:auxiliaryRuns.size});
+      })();return disposal;
     }
   };
 }

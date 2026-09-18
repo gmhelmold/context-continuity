@@ -70,3 +70,5 @@ A sonda atual tem 16 checks de host e 12 testes de componentes, incluindo regra 
 ## REVIEW-004: correções em partes
 
 [Resolução parcial D01/D04/D05](docs/reviews/REVIEW-004-PARTIAL-RESOLUTION.md): ingresso testemunhado fora do gateway e perfil terminal versionado de modelo/protocolo. D02/D03 e o vínculo completo de job/Snapshot continuam rastreados, sem declaração de correção ou homologação integral.
+
+**Continuação D02/D03:** [resolução da REVIEW-004](docs/reviews/REVIEW-004-RESOLUTION.md) e 13 regressões de cancelamento/recuperação em `test-review004.mjs`. Estas provas de sonda não concluem o plugin, o ledger ou o vínculo de job/Snapshot do WP-01.
