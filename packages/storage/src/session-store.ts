@@ -10,6 +10,11 @@ import { choice, closedRecord, ContractError, integer } from '../../core/src/val
 import { connectSQLite } from './sqlite-database.ts';
 import type { WorkspaceIdentity } from './sqlite-database.ts';
 import { StorageError, storageFailure } from './errors.ts';
+import { loadRootCatalog, loadRoot, prepareRootBatch, retainRootBatch } from './root-records.ts';
+import { loadSource } from './source-records.ts';
+import type { RetainedSource } from './source-records.ts';
+import { parseSourceRef, parseRootRef } from '../../core/src/roots.ts';
+import type { RootCatalog, RootUnit } from '../../core/src/roots.ts';
 export const OWNER_LEASE_MS = 30_000;
 const MAX_TIME = 8_640_000_000_000_000 - OWNER_LEASE_MS;
 export type SessionRecord = Readonly<{
@@ -185,6 +190,30 @@ export class SqliteSessionStore {
       const changed = this.#db.prepare(`UPDATE sessions SET owner_id=NULL,lease_until_ms=NULL WHERE session_key=? AND owner_id=? AND owner_fence=? AND lease_until_ms=?`)
         .run(lease.binding.session_key, this.owner_id, lease.owner_fence, lease.lease_until_ms);
       if (changed.changes !== 1) throw new StorageError('E_OWNER', 'release compare-and-swap failed');
+    });
+  }
+  /** Retention uses the initialized scope and immutable references, never callback-created sessions. */
+  readRootCatalog(input: unknown): RootCatalog {
+    const b = this.#scope(input);
+    return this.#transaction(false, () => { this.#require(b); return loadRootCatalog(this.#db, b); });
+  }
+  readRoot(input: unknown, reference: unknown): RootUnit | null {
+    const b = this.#scope(input), ref = parseRootRef(reference);
+    return this.#transaction(false, () => { this.#require(b); return loadRoot(this.#db, b, ref); });
+  }
+  readSource(input: unknown, reference: unknown): RetainedSource {
+    const b = this.#scope(input), ref = parseSourceRef(reference);
+    return this.#transaction(false, () => { this.#require(b); return loadSource(this.#db, b, ref); });
+  }
+  retainRoots(leaseInput: unknown, batchInput: unknown): RootCatalog {
+    const lease = leaseValue(leaseInput), b = this.#scope(lease.binding);
+    const batch = prepareRootBatch(b, batchInput);
+    return this.#transaction(true, () => {
+      this.#owned(lease, this.#now());
+      const row = this.#require(b);
+      const result = retainRootBatch(this.#db, b, batch, row.policy_revision, new Date(this.#now()).toISOString());
+      this.#owned(lease, this.#now()); // A long synchronous batch cannot outlive its admitted lease.
+      return result;
     });
   }
   /** Closing a connection does not assert that an unknown execution stopped remotely. */

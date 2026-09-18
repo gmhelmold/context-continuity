@@ -3,3 +3,8 @@ export type { SessionRecord, OwnerLease } from './session-store.ts';
 export type { WorkspaceIdentity } from './sqlite-database.ts';
 export { StorageError } from './errors.ts';
 export type { StorageCode } from './errors.ts';
+
+export { MAX_INLINE_SOURCE_BYTES, WORKSPACE_CONTENT_QUOTA_BYTES } from './source-records.ts';
+export type { InlineSource, RetainedSource } from './source-records.ts';
+export { MAX_RETENTION_BATCH_BYTES } from './root-records.ts';
+export type { RootRetentionBatch } from './root-records.ts';
