@@ -9,9 +9,9 @@
     "sqlite": "3.50.0"
   },
   "local_storage": {
-    "pass": 29,
+    "pass": 30,
     "fail": 0,
-    "behavior_tests": 28,
+    "behavior_tests": 29,
     "mutation_campaigns": 1,
     "negative_implementations": 4,
     "positive_control": true
@@ -21,15 +21,15 @@
     "packages/storage/src/errors.ts": "a5056581b90de22bd22c9bce4d10fd8d5330a05dcb5faf2d6309a97c41a2310e",
     "packages/storage/src/index.ts": "6b85311449a320908501fc9428c2b6566dab842ba9ec9c43adccc942d58b8bbc",
     "packages/storage/src/schema-v1.sql": "50c52563f91f4f2c6ad3aadcda5e503c58adb0e11b637430bc127ff2c55340b6",
-    "packages/storage/src/session-store.ts": "d5e10f3d459ab2a8cff85a13017b0e2787425a1adfb959d84c4f06c5e52b247c",
+    "packages/storage/src/session-store.ts": "6df0f8e53c2ffe2ec5f21009d20a78788bb8e12c8e1864a1fbb6d135de951b40",
     "packages/storage/src/sqlite-database.ts": "cb8bc7c1e22fc8a2b3aa0db8a88aa9ad567b4c466f19ece04858a1bfcb3102c1",
-    "specs/v0.1/13-storage-foundation.md": "fd0348d9aeb02262fba5ebefff97bf11873eb47c272a9e675390dfbcd595ec9f",
-    "tests/storage/session-store.test.mjs": "b3a8716dc61902484152e6e35b5835fbb9820c8116f9f2bca48ae83132c90ed7",
-    "tests/storage/storage-mutations.test.mjs": "f7dd6cfbadb81e5d7a5b2f08db61e49c984634bedbe41bb873ecc530ade1d00a",
+    "specs/v0.1/13-storage-foundation.md": "4b40d5b80141eb5b1412c1aa456a780912d72c54cb023805c7c9228d921af67e",
+    "tests/storage/session-store.test.mjs": "f3b806132f7489a8cf08911060977dc4265e41301a4576b66c800396c8c22376",
+    "tests/storage/storage-mutations.test.mjs": "9b16b2938be78e07aeccaeb766f29935624460c17f45041466af8722cee1f0d0",
     "tests/storage/types.test.ts": "ef265e70f49dd3843aa55ee3b1ad0057d83c87711583bf1f9398dbc2bf1d2c46",
     "tsconfig.storage.json": "1a18eee771a18a88ed2f2e5fa956cf0e8e6bb62b7b63598a225da32a640229c0"
   },
-  "storage_log_sha256": "5d969c2e429511f4f7e04cfcbc42ad5af0efa4b1a9b5b0de27b5098e97b9895b",
+  "storage_log_sha256": "fdd818f8445342753bf5eb61308bc829e149dcb9b454859342719d7790b5a309",
   "limits": [
     "Concurrent ownership and rollback use real SQLite and isolated child processes.",
     "Interruption test is before COMMIT; it is not a power-loss/hardware certification.",
@@ -43,5 +43,45 @@
     "reason": "positive control of existing identity mutation campaign reached spawnSync timeout during overlapping local campaigns; not counted as success",
     "log_sha256": "bb83c5017af1ea1dc3a7662b7acd95a231028c470b6dfc5c0d86e8d922c3ee5f"
   },
-  "final_regression_authority": "Final-head CI and reviewed logs in the pull request; no inherited baseline PASS."
+  "final_regression_authority": "Final-head CI and reviewed logs in the pull request; no inherited baseline PASS.",
+  "local_regressions": {
+    "core": {
+      "pass": 196,
+      "fail": 0,
+      "execution": "test-concurrency=1; standard CI command unchanged"
+    },
+    "probe_components": {
+      "pass": 25,
+      "fail": 0
+    },
+    "witness": {
+      "pass": 4,
+      "fail": 0
+    },
+    "typecheck_core": "pass",
+    "typecheck_storage": "pass",
+    "offline_checks": "pass"
+  },
+  "local_log_sha256": {
+    "core-serial.tap": "4211d7d3c954c150dc977d532eb64b9120eae94c59eeaf2c1694dd7f868e10ae",
+    "components.tap": "7ce1a1af4056f4b38d07865b0e1c5a5ba1ba47c333254d42ab420de91d222560",
+    "witness.log": "28fede81dd89e243a63de32a856ce0a5552dbf101195b04ced93edc1f88a8cc7",
+    "core-types.log": "e3806c19fac205c687938315713a76dd23432520806fb09445e7c3857ba48d3c",
+    "storage-types.log": "c751b0b339ee212453e71398dabd9d25b8421f75b50f92729d86c11f9e0c6581",
+    "spec.log": "02119bed4c25390017e62fcacae72f7c17b114a917c5b4a74dbe896542beb556",
+    "models.log": "9edf59e7c72b9e908148d55df673a91f8765f096bc91609e1f88ad68e4042b98",
+    "doc-mutations.log": "849ef1c84d05854093ab5ae795caa205f162f12d3631613d5f75b20f6314ec14",
+    "canonical.log": "a568bbcf6aae56e3cee6c2935d467169bd8349edf9558827591d1c85f6b099d8",
+    "storage-contracts.log": "7d3bf092820b8aaaef10664cf96fc43a40c7bd7291fa42f224abe3bdd9620ce7"
+  },
+  "review_regression": {
+    "description": "incomplete resolved configuration could regain defaults; targeted test failed before fix and passes in final suite",
+    "before_runtime_commit": "e5c69bf69641215ddb55d602d93f87d25d607d3d",
+    "before": {
+      "pass": 0,
+      "fail": 1,
+      "failure": "ERR_ASSERTION: Missing expected exception"
+    },
+    "before_log_sha256": "674901e5a8a1ddba3b77726f75e76326c5d76f1bbeabf557f58373d0bec19a82"
+  }
 }

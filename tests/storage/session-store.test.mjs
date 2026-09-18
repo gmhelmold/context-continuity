@@ -217,3 +217,14 @@ test('WP02A lease: malformed control is rejected before transaction timestamp ch
   reject(()=>s.releaseLease({...lease,unexpected:true}),'E_SCHEMA');
   assert.equal(rows(f.path,"SELECT value FROM meta WHERE key='clock_high_water_ms'")[0].value,String(f.time()-1000));
 }));
+
+test('WP02A config: persisted or supplied resolved configuration cannot regain omitted defaults',()=>fixture(f=>{
+  const s=f.create(),cfg=resolveConfig({enabled:true},config().limits);
+  s.createSession(binding(),cfg);
+  const partial=JSON.parse(JSON.stringify(cfg));delete partial.settings.enabled;
+  reject(()=>s.createSession(binding('B'),partial),'E_SCHEMA');
+  const db=new DatabaseSync(f.path);
+  try {db.prepare('UPDATE sessions SET config_json=? WHERE session_key=?').run(JSON.stringify(partial),binding().session_key);}
+  finally {db.close();}
+  reject(()=>s.readSession(binding()),'E_STORAGE');
+}));

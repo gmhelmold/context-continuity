@@ -18,11 +18,13 @@ Conferidos: separação create/open, PRAGMAs lidos de volta, referências de esc
 
 Os testes exercitam o driver real, não um mapa que imita SQLite. Há trigger de falha na fixture para comprovar rollback dos dois registros; disputa entre dois processos; processo novo lendo a sessão; interrupção do processo de teste antes do commit, seguida de recuperação sem linhas parciais. Não são simulações de queda elétrica nem certificação de hardware.
 
-Campanha negativa separada cria cópias descartáveis: controle correto e quatro variantes incorretas (incarnation ignorada, outro proprietário aceito, rollback que confirma alterações e identidade pública mutável). Precisa concluir todos os 28 testes selecionados e reprovar no teste nomeado; falha de setup/timeout não conta como detecção. Execuções-filhas não multiplicam a contagem de aceitação.
+Campanha negativa separada cria cópias descartáveis: controle correto e quatro variantes incorretas (incarnation ignorada, outro proprietário aceito, rollback que confirma alterações e identidade pública mutável). Precisa concluir todos os 29 testes selecionados e reprovar no teste nomeado; falha de setup/timeout não conta como detecção. Execuções-filhas não multiplicam a contagem de aceitação.
+
+Um teste adicional falhou na revisão antes do fix: a API aceitava configuração resolvida incompleta, e a leitura poderia repor defaults em um registro danificado. Agora a representação validada precisa coincidir integralmente com o registro fornecido; ausência de campo não é um pedido para restaurar defaults. O mesmo teste exige E_SCHEMA na entrada e E_STORAGE no dado persistido inválido.
 
 ## Evidência e comandos
 
-O primeiro controle local aprovou 23 testes. Após revisão, diagnóstico de conexão e casos adicionais, a suíte é de 29 testes: 28 de comportamento e uma campanha de mutações. Resultados definitivos, versões e hashes são registrados em `evidence/WP-02-A.json` e no PR; só PASS efetivamente observado pode ser publicado. Nenhum teste agregado de WP-02 foi promovido pelo número de testes deste incremento.
+O primeiro controle local aprovou 23 testes. Após revisão, diagnóstico de conexão e casos adicionais, a suíte é de 30 testes: 29 de comportamento e uma campanha de mutações. Resultados definitivos, versões e hashes são registrados em `evidence/WP-02-A.json` e no PR; só PASS efetivamente observado pode ser publicado. Nenhum teste agregado de WP-02 foi promovido pelo número de testes deste incremento.
 
 ```sh
 npm ci --ignore-scripts --no-audit --no-fund
@@ -41,7 +43,7 @@ python3 scripts/check-storage-contracts.py
 
 O novo workflow executa storage em Node 22.17.1 e 24.0.0 com TypeScript 5.9.3 e tipos fixados. Os cinco workflows anteriores permanecem obrigatórios. Antes de integrar: conferir os seis workflows/oito jobs, logs do head exato, árvore de merge e working tree. Não usar resultado histórico do host para substituir a regressão remota deste PR.
 
-Uma execução local paralela do núcleo terminou 195/196: o controle positivo da campanha existente de identidades expirou em spawnSync. Não foi contado como sucesso/detecção. A repetição local é sequencial, sem alterar timeouts, assertions ou o comando padrão do CI. Resultados finais ficam no PR do head testado.
+Uma execução local paralela do núcleo terminou 195/196: o controle positivo da campanha existente de identidades expirou em spawnSync. Não foi contado como sucesso/detecção. A repetição local sequencial passou 196/196, sem alterar timeouts, assertions ou o comando padrão do CI. Componentes da sonda 25/25, testemunha 4/4, typechecks e checks offline também passaram. Resultados finais ficam no PR do head testado.
 
 ## Critérios e limites deste incremento
 

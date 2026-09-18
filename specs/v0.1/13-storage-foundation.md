@@ -20,7 +20,7 @@ Se uma inicialização exclusiva falhar, pode restar um arquivo incompleto. Ele 
 
 ## 3. Sessão e leitura
 
-`createSession(binding, resolvedConfig)` só aceita epoch inicial zero e cria Session + View0 + configuração numa transação BEGIN IMMEDIATE. Modo inicial sempre unsupported, independentemente do requested_mode. IDs/incarnation vêm de inicialização autorizada. Uma repetição idêntica retorna a sessão existente sem zerar proprietário/revisões; configuração ou binding conflitante é recusado. Leitura verifica escopo, incarnation, epoch, configuração e existência da View indicada.
+`createSession(binding, resolvedConfig)` só aceita epoch inicial zero e cria Session + View0 + configuração numa transação BEGIN IMMEDIATE. Modo inicial sempre unsupported, independentemente do requested_mode. IDs/incarnation vêm de inicialização autorizada. Uma repetição idêntica retorna a sessão existente sem zerar proprietário/revisões; configuração ou binding conflitante é recusado. Leitura verifica escopo, incarnation, epoch, configuração e existência da View indicada. Configuração resolvida deve estar completa: validar não pode repor defaults em um registro persistido danificado; a representação canônica deve coincidir com a resolução validada.
 
 `readSession` não cria estado ausente; retorna null. Presença de tombstone para o scope_hash é recusada conservadoramente, inclusive para inicialização; a operação de reativação explícita é parte futura do lifecycle, não um bypass nesta API. Configuração/record retornados são profundamente imutáveis. SQL recebe parâmetros vinculados; erros de driver não expõem conteúdo, SQL ou paths.
 

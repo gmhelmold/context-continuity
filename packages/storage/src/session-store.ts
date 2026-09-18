@@ -6,7 +6,7 @@ import { parseSessionBinding, createSessionBinding, entityId, newEntityId } from
 import type { SessionBinding } from '../../core/src/identity.ts';
 import { resolveConfig } from '../../core/src/config.ts';
 import type { ResolvedConfiguration } from '../../core/src/config.ts';
-import { choice, closedRecord, integer } from '../../core/src/validation.ts';
+import { choice, closedRecord, ContractError, integer } from '../../core/src/validation.ts';
 import { connectSQLite } from './sqlite-database.ts';
 import type { WorkspaceIdentity } from './sqlite-database.ts';
 import { StorageError, storageFailure } from './errors.ts';
@@ -20,7 +20,9 @@ export type SessionRecord = Readonly<{
 export type OwnerLease = Readonly<{ binding: SessionBinding; owner_id: string; owner_fence: number; lease_until_ms: number }>;
 function configuration(input: unknown): ResolvedConfiguration {
   const v = closedRecord(input, ['settings', 'limits'], ['settings', 'limits'], 'configuration');
-  return resolveConfig(v.settings, v.limits);
+  const result = resolveConfig(v.settings, v.limits);
+  if (canonical(v) !== canonical(result)) throw new ContractError('configuration', 'expected complete resolved configuration');
+  return result;
 }
 function counter(input: unknown): number { return integer(input, 0, Number.MAX_SAFE_INTEGER, 'stored.counter'); }
 function timeValue(input: unknown): number { return integer(input, 0, MAX_TIME, 'clock'); }
