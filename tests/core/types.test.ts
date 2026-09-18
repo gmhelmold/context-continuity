@@ -57,3 +57,20 @@ declare const profile: JSONFrameProfile;
 profile.spec.limits.context_window = 1;
 // @ts-expect-error aliases are immutable
 profile.spec.model_aliases.push('implicit');
+
+import type { JobContext, JobContextRecord, JobProposal, SnapshotRecord } from '../../packages/core/src/index.ts';
+declare const jobContext: JobContext;
+declare const jobRecord: JobContextRecord;
+declare const jobProposal: JobProposal;
+declare const snapshot: SnapshotRecord;
+// @ts-expect-error serialized data is not an issued handle
+const badJobContext: JobContext = { ref: jobContext.ref, record: jobRecord };
+void badJobContext;
+// @ts-expect-error immutable generation identity
+jobContext.ref.job_id = 'other';
+// @ts-expect-error nested snapshot feedback is immutable
+snapshot.feedback_ids.push('other');
+// @ts-expect-error immutable generation association
+jobProposal.ref.snapshot_digest = 'other';
+// @ts-expect-error snapshot cannot be rewritten through exported record
+jobRecord.snapshot.work.task_id = 'other';

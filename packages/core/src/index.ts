@@ -20,3 +20,10 @@ export type { Capture, SealedFrame, JSONFrameLayout, NativeGroupIdentity } from 
 
 export { createJSONFrameProfile } from './frame-profile.ts';
 export type { JSONFrameProfile, JSONFrameProfileSpec, ProtocolCheck, ProtocolGroup } from './frame-profile.ts';
+
+export { parseSnapshotRecord, MAX_JOB_RECORD_BYTES } from './snapshot.ts';
+export type { SnapshotRecord, SnapshotFields } from './snapshot.ts';
+export { createJobContext, assertJobContext, exportJobContext, restoreJobContext,
+  parseJobContextRecord, parseJobContextRef, decodeJobProposal, assertJobProposal,
+  JobContextError, MAX_MISSION_BYTES } from './job-context.ts';
+export type { JobContext, JobContextRef, JobContextRecord, JobProposal } from './job-context.ts';

@@ -57,7 +57,7 @@ Próximo gate: revisar estes contratos e executar a prova pública WP-00; implem
 
 A sonda atual tem 16 checks de host e 12 testes de componentes, incluindo regra já publicada, resumo vazio, retenção limitada de captures, streams nativos interrompidos e transporte com cancelamento/backpressure. Essas quantidades não são os 55 subcasos do produto; core completo, ledger distribuível, inferência live e gate completo continuam pendentes. Comandos em [tests/conformance/opencode](tests/conformance/opencode/README.md).
 
-## Núcleo em implementação
+## Núcleo: contratos implementados por incremento
 
 [WP-01/A — configuração e capacidades](docs/implementation/WP-01-A.md): módulos TypeScript puros em `packages/core/src`, validação estrita e decisão de modo sem fallback silencioso. `npm ci --ignore-scripts` prepara o tooling; `npm run check:core` e `npm run test:core` verificam a implementação. Dois subcasos do WP-01 estão cobertos; o pacote completo e a homologação do host permanecem abertos.
 
@@ -72,3 +72,7 @@ A sonda atual tem 16 checks de host e 12 testes de componentes, incluindo regra 
 [Resolução parcial D01/D04/D05](docs/reviews/REVIEW-004-PARTIAL-RESOLUTION.md): ingresso testemunhado fora do gateway e perfil terminal versionado de modelo/protocolo. D02/D03 e o vínculo completo de job/Snapshot continuam rastreados, sem declaração de correção ou homologação integral.
 
 **Continuação D02/D03:** [resolução da REVIEW-004](docs/reviews/REVIEW-004-RESOLUTION.md) e 13 regressões de cancelamento/recuperação em `test-review004.mjs`. Estas provas de sonda não concluem o plugin, o ledger ou o vínculo de job/Snapshot do WP-01.
+
+## WP-01/D — vínculo de geração
+
+[Snapshot e JobContext](docs/implementation/WP-01-D.md) fecham a associação contratual entre geração, frame identificado, manifesto, missão e feedback. Dois jobs não podem compartilhar uma resposta só porque usam o mesmo manifesto. Registros são exportáveis; reabrir exige revalidação e não dispara inferência. O encerramento do WP-01 é de contratos/componentes; renderer, ledger transacional, scheduler e adaptadores mantêm seus gates próprios.
