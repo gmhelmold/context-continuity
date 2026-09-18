@@ -1,0 +1,9 @@
+{
+  "extends": "./tsconfig.core.json",
+  "include": [
+    "packages/core/src/**/*.ts",
+    "packages/core/src/**/*.mjs",
+    "packages/storage/src/**/*.ts",
+    "tests/storage/types.test.ts"
+  ]
+}

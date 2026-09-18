@@ -8,7 +8,9 @@
   },
   "scripts": {
     "check:core": "tsc --project tsconfig.core.json",
-    "test:core": "node --experimental-strip-types --test tests/core/*.test.mjs"
+    "test:core": "node --experimental-strip-types --test tests/core/*.test.mjs",
+    "check:storage": "tsc --project tsconfig.storage.json",
+    "test:storage": "node --experimental-strip-types --test tests/storage/*.test.mjs"
   },
   "devDependencies": {
     "@types/node": "22.17.1",

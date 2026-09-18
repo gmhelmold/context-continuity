@@ -1,0 +1,95 @@
+{
+  "increment": "WP-02/A",
+  "base_commit": "018eafb0ab4a9e4dab9b35329dae7f1068a09b6f",
+  "kind": "executed local component tests; not product certification",
+  "environment": {
+    "node": "v22.17.1",
+    "typescript": "Version 5.9.3",
+    "platform": "Darwin-x86_64",
+    "sqlite": "3.50.0"
+  },
+  "local_storage": {
+    "pass": 30,
+    "fail": 0,
+    "behavior_tests": 29,
+    "mutation_campaigns": 1,
+    "negative_implementations": 4,
+    "positive_control": true
+  },
+  "source_sha256": {
+    ".github/workflows/storage-check.yml": "8278d662c81cb0f4ffc712f79f962b73644465be8491d1717da2d6e23ece6c30",
+    "packages/storage/src/errors.ts": "8d1f25a7274ca86dae546bd36e267329db236845b457f114b4d9dd1f7814d465",
+    "packages/storage/src/index.ts": "6b85311449a320908501fc9428c2b6566dab842ba9ec9c43adccc942d58b8bbc",
+    "packages/storage/src/schema-v1.sql": "50c52563f91f4f2c6ad3aadcda5e503c58adb0e11b637430bc127ff2c55340b6",
+    "packages/storage/src/session-store.ts": "6df0f8e53c2ffe2ec5f21009d20a78788bb8e12c8e1864a1fbb6d135de951b40",
+    "packages/storage/src/sqlite-database.ts": "cb8bc7c1e22fc8a2b3aa0db8a88aa9ad567b4c466f19ece04858a1bfcb3102c1",
+    "specs/v0.1/13-storage-foundation.md": "cf79dd37af0decb7e3a6283323ab72ef0b4ddcd444187825803ef0b67a1c8edd",
+    "tests/storage/session-store.test.mjs": "77ae71971b45694998bc7f7f1411320795c0b788daf9dfc9b1d7d03d4a6eb374",
+    "tests/storage/storage-mutations.test.mjs": "9b16b2938be78e07aeccaeb766f29935624460c17f45041466af8722cee1f0d0",
+    "tests/storage/types.test.ts": "ef265e70f49dd3843aa55ee3b1ad0057d83c87711583bf1f9398dbc2bf1d2c46",
+    "tsconfig.storage.json": "1a18eee771a18a88ed2f2e5fa956cf0e8e6bb62b7b63598a225da32a640229c0"
+  },
+  "storage_log_sha256": "ca2703f1c5e2707d5687206933e233374f724a3817497fa7c2ef52b341669c28",
+  "limits": [
+    "Concurrent ownership and rollback use real SQLite and isolated child processes.",
+    "Interruption test is before COMMIT; it is not a power-loss/hardware certification.",
+    "Aggregate WP-02 cases remain open; no blob/GC/job/publication/import implementation.",
+    "Host/core regression runs are recorded in the PR final-head CI, not inferred from storage tests.",
+    "No live inference, provider credentials or personal configuration used."
+  ],
+  "prior_local_core_run": {
+    "pass": 195,
+    "fail": 1,
+    "reason": "positive control of existing identity mutation campaign reached spawnSync timeout during overlapping local campaigns; not counted as success",
+    "log_sha256": "bb83c5017af1ea1dc3a7662b7acd95a231028c470b6dfc5c0d86e8d922c3ee5f"
+  },
+  "final_regression_authority": "Final-head CI and reviewed logs in the pull request; no inherited baseline PASS.",
+  "local_regressions": {
+    "core": {
+      "pass": 196,
+      "fail": 0,
+      "execution": "test-concurrency=1; standard CI command unchanged"
+    },
+    "probe_components": {
+      "pass": 25,
+      "fail": 0
+    },
+    "witness": {
+      "pass": 4,
+      "fail": 0
+    },
+    "typecheck_core": "pass",
+    "typecheck_storage": "pass",
+    "offline_checks": "pass"
+  },
+  "local_log_sha256": {
+    "core-serial.tap": "4211d7d3c954c150dc977d532eb64b9120eae94c59eeaf2c1694dd7f868e10ae",
+    "components.tap": "7ce1a1af4056f4b38d07865b0e1c5a5ba1ba47c333254d42ab420de91d222560",
+    "witness.log": "28fede81dd89e243a63de32a856ce0a5552dbf101195b04ced93edc1f88a8cc7",
+    "core-types.log": "e3806c19fac205c687938315713a76dd23432520806fb09445e7c3857ba48d3c",
+    "storage-types.log": "c751b0b339ee212453e71398dabd9d25b8421f75b50f92729d86c11f9e0c6581",
+    "spec.log": "02119bed4c25390017e62fcacae72f7c17b114a917c5b4a74dbe896542beb556",
+    "models.log": "9edf59e7c72b9e908148d55df673a91f8765f096bc91609e1f88ad68e4042b98",
+    "doc-mutations.log": "849ef1c84d05854093ab5ae795caa205f162f12d3631613d5f75b20f6314ec14",
+    "canonical.log": "a568bbcf6aae56e3cee6c2935d467169bd8349edf9558827591d1c85f6b099d8",
+    "storage-contracts.log": "7d3bf092820b8aaaef10664cf96fc43a40c7bd7291fa42f224abe3bdd9620ce7"
+  },
+  "review_regression": {
+    "description": "incomplete resolved configuration could regain defaults; targeted test failed before fix and passes in final suite",
+    "before_runtime_commit": "e5c69bf69641215ddb55d602d93f87d25d607d3d",
+    "before": {
+      "pass": 0,
+      "fail": 1,
+      "failure": "ERR_ASSERTION: Missing expected exception"
+    },
+    "before_log_sha256": "674901e5a8a1ddba3b77726f75e76326c5d76f1bbeabf557f58373d0bec19a82"
+  },
+  "prior_ci_concurrency_failure": {
+    "head": "0465478e6728f5db2bf0ebba9e04935ba19f8c20",
+    "run": 35401120051,
+    "runtime": "Node22.17.1",
+    "observation": "One lease winner observed; loser did not return E_OWNER; original test omitted native reason. Exact native cause not claimed.",
+    "correction": "SQLite BUSY/LOCKED has fixed E_STORAGE/database busy reason. Exactly one winner and only explicit owner/busy denial admitted; a new connection must reject the committed owner after contention. No automatic retry or timeout increase.",
+    "log_sha256": "45f8835f6cb75a4ab55be64da5f0457f3df0457d6bdc98d12d8272b6eea33530"
+  }
+}

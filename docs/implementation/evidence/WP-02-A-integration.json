@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "increment": "WP-02/A integration review",
+  "base_commit": "d3dd2db6e3f45bfad6de5adb186236331e6b6603",
+  "node": "v22.17.1",
+  "typescript": "Version 5.9.3",
+  "platform": "Darwin-x86_64",
+  "storage": {
+    "pass": 39,
+    "fail": 0
+  },
+  "added_cases": 9,
+  "before": {
+    "pass": 5,
+    "fail": 4
+  },
+  "after": {
+    "pass": 9,
+    "fail": 0
+  },
+  "storage_typecheck": "pass",
+  "ci": "must be verified on final PR head; not represented by local results",
+  "source_sha256": {
+    "packages/storage/src/sqlite-database.ts": "27cc08277334c985e5a2b15629e6dc09e28fc8840c695ea615eaf9197073be22",
+    "tests/storage/bootstrap-review.test.mjs": "5fed39ce608b85d6bc9a44190cfd7430e7cff79f0f8f953ec18deb824ef0f059"
+  },
+  "local_log_sha256": {
+    "review-before.tap": "779a26b747379c610a801979c3182bb3e680dce065e7e314666cf2a00f95e4e4",
+    "review-after.tap": "a2a9ccdca0bece60cc8e615a7019f17262e4cd066d8fd67b6d4fcfd5ba9fdc4d",
+    "storage.tap": "577199728d0758bb9a86af8b0affba6a6a26a643b9313b998e600157f4f2cce6",
+    "check-storage.log": "c751b0b339ee212453e71398dabd9d25b8421f75b50f92729d86c11f9e0c6581"
+  },
+  "historical_archive_sha256": "bacd23a5bc9b3e7d1bc9e55a9babb65e0fb75a63ec6d3887b11b7dc7e66ab222",
+  "historical_archive_disposition": "superseded alternative, do not apply or sum test counts",
+  "live_inference": false,
+  "product_complete_enabled": false,
+  "limits": [
+    "SQLite/FS fixtures and own child processes, not power-loss certification",
+    "No new ledger CRUD, migration, host or provider certification"
+  ]
+}
