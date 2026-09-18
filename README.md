@@ -44,3 +44,7 @@ CI verifica links inclusive fragmentos, rastreabilidade recíproca, dependência
 [RFC standalone](docs/designs/continuous-self-compaction/RFC-001.md), [migração](docs/MIGRATION.md), [RFC original intacto](docs/history/RFC-CSC-001-v0.1.md), [regras de trabalho](AGENTS.md).
 
 Próximo gate: revisar estes contratos e executar a prova pública WP-00; implementar núcleo por pacotes sem anunciar suporte antes da demonstração integrada. Publicação de documentos não é publicação do produto.
+
+## Prova de integração em andamento
+
+[WP-00: sonda executável com OpenCode stock](docs/conformance/OPENCODE-WP00.md). Dez checks locais aprovados com provider sintético e fonte/hash do binário registrados. É uma prova parcial das interfaces, não release, core implementado ou autorização de modo completo. A issue #3 permanece aberta.

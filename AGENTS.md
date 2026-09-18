@@ -35,3 +35,7 @@ Chamadas live de inferência e publicação de pacotes exigem orçamento/autoriz
 ## Revisão 0.1.1
 
 REVIEW-002-RESOLUTION.md registra fechamento contratual B01–B16, não PASS de runtime. SPEC-07 é a autoridade de projeção/controle e SPEC-08 do piloto. ADR-001 distingue o perfil v1 somente-hooks do perfil HTTP local opt-in; não inserir essa rota ou reutilizar assinaturas sem configuração autorizada. Preserve os reviews históricos e o RFC v0.1.
+
+## Sondas de integração
+
+`tests/conformance/opencode` contém somente o ensaio isolado WP-00, não runtime distribuível. Execute pelo comando documentado com binário stock e diretório novo. Não use dados, HOME, configuração ou credenciais pessoais. Provas parciais ficam em docs/conformance; não marcar o gate ou subcasos agregados como PASS sem cobertura completa.
