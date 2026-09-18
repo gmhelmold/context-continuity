@@ -27,3 +27,11 @@ O teste de prefixo compara no recorder a entrada auxiliar sem sua última mensag
 Os defaults de retry, tamanho e timeout desta sonda não substituem SPEC-02. Para todo código de teste que simula parte do produto, o [relatório de cobertura](../../../docs/conformance/OPENCODE-WP00.md) delimita o que ainda não foi demonstrado.
 
 O CI usa Ubuntu 24.04 e o artefato `opencode-linux-x64-baseline.tar.gz` com SHA-256 fixado. O ensaio local usa macOS Intel. Ambos devem passar separadamente; um não homologa o outro por inferência.
+
+## Continuidade após o primeiro incremento
+
+A suíte contém 14 checks, incluindo quatro consolidações com cobertura achatada, reinício do plano, falha seguida de retry de compactação nativa e queda do processo durante um clone. HTTP 503 também entra no limite físico de tentativas.
+
+O runner fornece `CC_CHECKPOINT` em um diretório de teste novo. Esse arquivo é um checkpoint JSON de sonda, não um ledger do produto; não compartilhar entre workspaces nem configurar essa sonda em uma instalação pessoal. A execução mata apenas um filho OpenCode criado por ela no caso de crash. `report.json` inclui hashes dos arquivos de prova; credenciais/capture tokens e headers sensíveis não são exportados.
+
+[Resultados e limites](../../../docs/conformance/OPENCODE-WP00-CONTINUITY.md). A integridade do núcleo e a homologação integral continuam separadas deste teste.

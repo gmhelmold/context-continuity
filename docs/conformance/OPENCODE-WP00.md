@@ -63,3 +63,7 @@ O listener recusa destinos fora do loopback: não serve como gateway para uso pe
 ## Próximo incremento
 
 Completar a cobertura restante do WP-00, começando por consolidações/reinício e falha de reset, com os mesmos oráculos de request final. O core pode avançar no WP-01; liberação de modo completo continua condicionada a todos os passos e à conjunção de capacidades.
+
+## Continuação da prova
+
+[Consolidações, reinício e falha de reset](OPENCODE-WP00-CONTINUITY.md) amplia a suíte para 14 verificações e substitui a limitação de overlay exclusivamente em memória por um checkpoint de fixture. O relatório acima permanece como evidência do incremento inicial, não como descrição da cobertura mais recente.
