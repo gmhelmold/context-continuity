@@ -1,0 +1,31 @@
+name: Specification checks
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main, atomic-specification]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: spec-${{ github.event.pull_request.head.ref || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  specification:
+    name: Document integrity and reference models
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Validate documentation only
+        run: |
+          python3 scripts/check-spec.py
+          python3 scripts/check-reference-model.py
+          python3 scripts/test-spec-check.py

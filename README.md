@@ -2,47 +2,45 @@
 
 **Continuous Self-Compaction & Context Management para sessões longas de agentes.**
 
-Produto standalone, com núcleo independente e integrações nativas por harness. OpenCode upstream é a integração de referência; o produto não exige HuGR-Orchestra, Atlas, Maestro ou um fork do host.
+Produto standalone: núcleo comum, ledger local e integrações nativas por harness. Não depende de HuGR-Orchestra, Atlas ou Maestro.
 
-> **Estado: desenho formal, em revisão.** Este repositório ainda não contém implementação, pacote instalável ou integração homologada. Os recursos abaixo descrevem o produto proposto, não funcionalidades disponíveis.
+> **Estado: especificação 0.1.1 proposta, com correções de revisão.** Sem plugin implementado, pacote instalável, integração homologada ou benchmark. A verificação documental e os modelos de referência NÃO executam o produto.
 
-## A ideia
+## Método
 
-Manter a memória de trabalho útil durante sessões longas de orquestração. Ao atingir aproximadamente **50% da janela configurada**, com antecipação por orçamento, um fork auxiliar prepara uma compactação conservadora. A sessão principal continua; o resultado entra entre chamadas e preserva o que chegou durante a manutenção.
+Compactação preventiva perto de 50% da janela configurada, com reservas. Um fork lógico do contexto efetivo prepara a síntese sem interromper o trabalho normal; adoção ocorre entre chamadas. Fontes tornam-se capítulos recuperáveis, âncoras persistem fora dos resumos e recuperações informam a manutenção seguinte.
 
-O material retirado vira um capítulo consultável, com referências aos registros originais. Âncoras preservam compromissos importantes; blocos curados fornecem contexto por escopo; recuperações do ledger informam a próxima poda.
+A meta é continuidade por mais tempo, não memória perfeita ou economia automática.
 
-O objetivo é prolongar a continuidade e reduzir intervenção corretiva. Não prometer memória perfeita, eliminação de alucinações ou economia antes de medir.
+## Compatibilidade planejada
 
-## Arquitetura proposta
+| Perfil | Posição atual |
+|---|---|
+| OpenCode v1.18.31 somente hooks | Não oferece complete pelo contrato escolhido; assisted a verificar. |
+| OpenCode v1.18.31 + HTTP local opt-in | Primeiro perfil completo de ensaio, não implementado/homologado. |
+| Gemini CLI | Segundo adaptador para provar portabilidade, ainda não homologado. |
+| Claude Code, Codex, Antigravity | Alvos a verificar, sem suporte anunciado. |
 
-**Núcleo comum + adaptadores nativos + ledger local portável.**
+A rota HTTP local é específica do primeiro perfil v1, configurada por baseURL público e conexão explicitamente autorizada. Não é gateway obrigatório para o núcleo/todos os hosts e não reaproveita assinatura OAuth por extração de credenciais. Justificativa: [ADR-001](docs/decisions/ADR-001-terminal-boundary.md).
 
-O núcleo administra política, capítulos, âncoras e feedback. Cada adaptador liga isso à captura do contexto, à execução auxiliar autorizada e à publicação segura no host. MCP pode oferecer consulta, mas não substitui uma interface de edição do contexto ativo.
+## Entrada para implementação
 
-Integrações devem declarar o que realmente suportam: compactação completa, continuidade assistida ou indisponibilidade. Instalar um pacote não comprova que o host permite remover mensagens ou reproduzir um fork compatível com cache.
+[Especificação 0.1.1](specs/v0.1/README.md), [aceitação](specs/v0.1/06-acceptance.md) e [work packages](specs/v0.1/WORK-PACKAGES.md). São 36 requisitos, 40 famílias, 55 subcasos e oito pacotes. Cada pacote tem seus cinco axiomas e apenas provas compatíveis com suas dependências.
 
-| Alvo | Papel planejado | Estado |
-|---|---|---|
-| OpenCode upstream | Primeira integração completa, via plugin público | Não implementado / não homologado |
-| Gemini CLI | Segundo adaptador para provar portabilidade | Não implementado / não homologado |
-| Claude Code | Integração nativa a investigar | Alvo, sem suporte anunciado |
-| Codex | Integração nativa a investigar | Alvo, sem suporte anunciado |
-| Antigravity | Integração nativa a investigar | Alvo, sem suporte anunciado |
+A [REVIEW-002](docs/reviews/REVIEW-002.md) preserva os 16 achados no commit auditado. A [resolução](docs/reviews/REVIEW-002-RESOLUTION.md) mapeia cada correção, sem converter decisão de desenho em suporte comprovado.
 
-Compatibilidade com modelos e com harnesses são eixos diferentes. Não há pacote universal ou comando de instalação publicado nesta fase.
+## Validação de documentos e modelos de contrato
 
-## Documentação canônica
+```sh
+python3 scripts/check-spec.py
+python3 scripts/check-reference-model.py
+python3 scripts/test-spec-check.py
+```
 
-- [RFC-CSC-001 v0.2 — desenho standalone](docs/designs/continuous-self-compaction/RFC-001.md)
-- [Migração e proveniência](docs/MIGRATION.md)
-- [RFC v0.1 original — histórico, não normativa](docs/history/RFC-CSC-001-v0.1.md)
-- [Regras de trabalho no repositório](AGENTS.md)
+CI verifica links inclusive fragmentos, rastreabilidade recíproca, dependências, DDL de referência e modelos abstratos; rejeita mutações documentais dirigidas. Não prova comportamento de modelo, cache ou instalação do plugin. Todos os testes de runtime permanecem not_run até execução específica.
 
-## Próxima etapa
+## Histórico
 
-**[Revisão adversarial do desenho standalone — issue #1](https://github.com/gmhelmold/context-continuity/issues/1) → especificação executável → work packages → implementação → demonstração integrada.**
+[RFC standalone](docs/designs/continuous-self-compaction/RFC-001.md), [migração](docs/MIGRATION.md), [RFC original intacto](docs/history/RFC-CSC-001-v0.1.md), [regras de trabalho](AGENTS.md).
 
-O primeiro incremento precisa provar um ciclo completo no OpenCode upstream, sem patch: fork isolado, poda, mensagens concorrentes preservadas, âncora intacta e recuperação do original. Um segundo adaptador deverá demonstrar que o núcleo não ficou acoplado ao primeiro host.
-
-A origem do trabalho é o [PR #54 do HuGR-Orchestra](https://github.com/gmhelmold/HuGR-Orchestra/pull/54). Este repositório é a nova origem canônica do produto, não um fork do monorepo. Publicar documentação em `main` não significa aprovar o desenho.
+Próximo gate: revisar estes contratos e executar a prova pública WP-00; implementar núcleo por pacotes sem anunciar suporte antes da demonstração integrada. Publicação de documentos não é publicação do produto.
