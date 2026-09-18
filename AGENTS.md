@@ -51,3 +51,7 @@ SPEC-09 e as alterações C09–C12 nos contratos são vinculantes. Rodar també
 ## Núcleo WP-01/B
 
 Identity/roots e o serializador compartilhado estão em packages/core/src; scripts/canonical-json.mjs é fachada, não outra implementação. O catálogo exportável não é storage durável: WP-02 deve persistir mapas/revisões antes de snapshot publicável. Ao alterar, executar também as mutações do núcleo e preservar os hashes de dependências compartilhadas no relatório da sonda. Estado em docs/implementation/WP-01-B.md; não concluir WP-01 pelos subcasos parciais.
+
+## Núcleo WP-01/C
+
+Manifest/proposal/frame seguem SPEC-10. Forma válida não equivale a fonte verificada ou autorização de dispatch. Preservar testes de associação de sessão/manifesto e a campanha com controle positivo e cinco mutantes. Fonte/captura deserializada precisa de nova verificação; não restaurar WeakSet/WeakMap como prova de homologação. Registro em docs/implementation/WP-01-C.md.

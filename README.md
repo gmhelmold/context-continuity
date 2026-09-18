@@ -62,3 +62,5 @@ A sonda atual tem 16 checks de host e 12 testes de componentes, incluindo regra 
 [WP-01/A — configuração e capacidades](docs/implementation/WP-01-A.md): módulos TypeScript puros em `packages/core/src`, validação estrita e decisão de modo sem fallback silencioso. `npm ci --ignore-scripts` prepara o tooling; `npm run check:core` e `npm run test:core` verificam a implementação. Dois subcasos do WP-01 estão cobertos; o pacote completo e a homologação do host permanecem abertos.
 
 [WP-01/B — identidades e catálogo de raízes](docs/implementation/WP-01-B.md): Scope/encarnação/epoch, hashes de fonte e payload, revisão monotônica e mapa imutável exportável. T07.contract acrescentado ao núcleo; restante de WP-01 segue rastreado, sem afirmar que o ledger ou o plugin estão prontos.
+
+**WP-01/C:** [manifestos, propostas e captura final](docs/implementation/WP-01-C.md) acrescenta verificação de fontes/ranges, propostas vinculadas ao manifesto e selagem do corpo JSON final com dois formatos sintéticos. Não habilita um provider real nem conclui o WP-01 inteiro.
