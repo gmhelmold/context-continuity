@@ -3,10 +3,15 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "engines": { "node": ">=22.17.1" },
+  "engines": {
+    "node": ">=22.17.1"
+  },
   "scripts": {
     "check:core": "tsc --project tsconfig.core.json",
     "test:core": "node --experimental-strip-types --test tests/core/*.test.mjs"
   },
-  "devDependencies": { "typescript": "5.9.3" }
+  "devDependencies": {
+    "@types/node": "22.17.1",
+    "typescript": "5.9.3"
+  }
 }

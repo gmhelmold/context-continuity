@@ -12,8 +12,18 @@
     "verbatimModuleSyntax": true,
     "allowImportingTsExtensions": true,
     "noEmit": true,
-    "types": [],
-    "lib": ["ES2023"]
+    "types": [
+      "node"
+    ],
+    "lib": [
+      "ES2024"
+    ],
+    "allowJs": true,
+    "checkJs": true
   },
-  "include": ["packages/core/src/**/*.ts", "tests/core/types.test.ts"]
+  "include": [
+    "packages/core/src/**/*.ts",
+    "tests/core/types.test.ts",
+    "packages/core/src/**/*.mjs"
+  ]
 }

@@ -47,3 +47,7 @@ SPEC-09 e as alterações C09–C12 nos contratos são vinculantes. Rodar també
 ## Núcleo WP-01/A
 
 `packages/core/src` contém os contratos puros iniciais de configuração/capacidades. Rodar `npm ci --ignore-scripts`, `npm run check:core` e `npm run test:core` ao alterá-los. Registro em docs/implementation/WP-01-A.md. A entrada do predicado não é prova de homologação; não concluir WP-01 inteiro pelos dois subcasos atuais. Sem dependências de host ou cópia do algoritmo em testes.
+
+## Núcleo WP-01/B
+
+Identity/roots e o serializador compartilhado estão em packages/core/src; scripts/canonical-json.mjs é fachada, não outra implementação. O catálogo exportável não é storage durável: WP-02 deve persistir mapas/revisões antes de snapshot publicável. Ao alterar, executar também as mutações do núcleo e preservar os hashes de dependências compartilhadas no relatório da sonda. Estado em docs/implementation/WP-01-B.md; não concluir WP-01 pelos subcasos parciais.
