@@ -1,0 +1,91 @@
+{
+  "schema_version": 1,
+  "review": "REVIEW-003",
+  "audited_commit": "8f844ed5798146c9626653627d67916df0737583",
+  "tracked_files_at_baseline": 34,
+  "evidence_kind": "curated summary of observed executions and source inspection; not a production conformance certificate",
+  "host": {
+    "version": "1.18.31",
+    "release_commit": "a97622c801f4ca571530ddc51076af659a9c32cd",
+    "binary_sha256": "9cd3d83bc230830846ef4b20088e5521364540cd681fdeeda1bab4119f9c37a8",
+    "platform": "Darwin-x86_64",
+    "patched": false,
+    "provider": "synthetic loopback fixture",
+    "live_inference": false
+  },
+  "baseline": {
+    "check_spec_exit": 0,
+    "reference_model_exit": 0,
+    "reference_model_cases": 10,
+    "document_mutation_exit": 0,
+    "document_mutations_rejected": 10,
+    "host_suite_exit": 0,
+    "host_checks_passed": 14,
+    "host_checks_failed": 0,
+    "main_workflows_observed": [
+      {"id": 35293248344, "name": "Specification checks", "conclusion": "success"},
+      {"id": 35293248339, "name": "OpenCode integration probe", "conclusion": "success"}
+    ]
+  },
+  "experiments": [
+    {
+      "id": "E-C01",
+      "kind": "controlled mutation in a disposable copy; real stock host",
+      "original_checkout_modified": false,
+      "changed_file": "tests/conformance/opencode/gateway-plugin.mjs",
+      "original_statement": "selected={...body,messages:apply(roots,s.view)};",
+      "mutated_statement": "selected={...body,messages:apply(roots,s.view).map(m=>m.role===\"tool\"?{...m,content:\"CC_REVIEW_CORRUPTED_TAIL\"}:m)};",
+      "checks_passed": 14,
+      "checks_failed": 0,
+      "suite_exit": 0,
+      "corrupted_tool_result_occurrences_in_primary_requests_at_recorder": 90,
+      "interpretation": "Mutation survived. The unchanged suite does not prove equality of retained tool-result content. Occurrences include repeated replay of the same result across requests, not 90 distinct tool executions."
+    },
+    {
+      "id": "E-C02",
+      "kind": "isolated execution of the actual rootsFor/project functions, exported from a temporary copy",
+      "fixture": "one native user message with text and an image attachment, corresponding wire text+image_url, followed by assistant text",
+      "source_accepted": true,
+      "protected_flags": [false, false],
+      "image_present_before": true,
+      "image_present_after_replacement": false,
+      "interpretation": "Unknown/non-text content can be included in a removable root rather than protected or rejected. This experiment did not send an image to a live model."
+    },
+    {
+      "id": "E-C03",
+      "kind": "additional stock-host scenario with the unchanged gateway and fixture's later system plugin",
+      "changed_system_seen_in_next_request": true,
+      "old_published_summary_still_sent": true,
+      "interpretation": "The ready-proposal invalidation test does not cover already-published summaries. This establishes absence of revalidation in the probe, not that every system change makes every summary semantically false."
+    },
+    {
+      "id": "E-C04",
+      "kind": "additional stock-host scenario; only synthetic provider output varied",
+      "provider_response_summary": "",
+      "ready_events": 1,
+      "published_events": 0,
+      "failed_events": 0,
+      "cancelled_events": 0,
+      "auxiliary_requests": 1,
+      "interpretation": "Empty string is accepted as ready but is falsy in publication checks. The job lacks an automatic terminal outcome until an external cancellation/restart. No claim of permanent failure across a new user input."
+    },
+    {
+      "id": "E-C12",
+      "kind": "cross-language execution of numeric serialization used by the reference helper and JavaScript JSON.stringify",
+      "cases": [
+        {"python": "{\"n\":1.0}", "javascript": "{\"n\":1}", "equal": false},
+        {"python": "{\"n\":-0.0}", "javascript": "{\"n\":0}", "equal": false},
+        {"python": "{\"n\":1e-07}", "javascript": "{\"n\":1e-7}", "equal": false}
+      ],
+      "interpretation": "Reference hashing is not a cross-language canonicalization oracle for all allowed finite numbers. No implemented archive importer was tested."
+    }
+  ],
+  "not_executed": [
+    "An additional combined transport experiment was blocked by the tool; C06-C08 remain static observations, not reproduced host failures.",
+    "A later supplemental batch source-location scan was blocked; it supplied no evidence.",
+    "No production core, SQLite transaction implementation, live model, cache benchmark, paid inference, full multi-harness conformance or release was tested."
+  ],
+  "production_cases_promoted_to_pass": [],
+  "product_complete_enabled": false,
+  "runtime_fixes_in_this_review": false
+}
