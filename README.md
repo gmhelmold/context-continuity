@@ -64,3 +64,5 @@ A sonda atual tem 16 checks de host e 12 testes de componentes, incluindo regra 
 [WP-01/B — identidades e catálogo de raízes](docs/implementation/WP-01-B.md): Scope/encarnação/epoch, hashes de fonte e payload, revisão monotônica e mapa imutável exportável. T07.contract acrescentado ao núcleo; restante de WP-01 segue rastreado, sem afirmar que o ledger ou o plugin estão prontos.
 
 **WP-01/C:** [manifestos, propostas e captura final](docs/implementation/WP-01-C.md) acrescenta verificação de fontes/ranges, propostas vinculadas ao manifesto e selagem do corpo JSON final com dois formatos sintéticos. Não habilita um provider real nem conclui o WP-01 inteiro.
+
+[Consistência de snapshots do WP-01/C](docs/implementation/WP-01-C-SNAPSHOT.md): referências repetidas usam um único material por versão durante a verificação; regressões adicionais não substituem a homologação do produto.

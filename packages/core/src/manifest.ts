@@ -25,6 +25,7 @@ const verified = new WeakSet<object>();
 export const MAX_MANIFEST_ENTRIES = 1024;
 export const MAX_MANIFEST_BYTES = 256 * 1024;
 const MAX_SOURCE_BYTES = 16 * 1024 * 1024;
+const MAX_VERIFICATION_BYTES = 64 * 1024 * 1024;
 export class ManifestError extends Error {
   readonly code = 'E_SOURCE' as const;
   constructor() { super('manifest: source, authority or retained byte range does not match'); this.name = 'ManifestError'; }
@@ -64,6 +65,16 @@ export function parseManifest(input: unknown): Manifest {
   const entries = dataList(v.entries, MAX_MANIFEST_ENTRIES, 'manifest.entries').map(entry);
   if (entries.some((e, i) => e.index !== i + 1)) throw new ContractError('manifest.entries', 'indices must be contiguous and ordered');
   distinct(entries, e => e.locator, 'manifest.locators');
+  // A version identifies one content/authority definition throughout the snapshot.
+  const versions = new Map<string, string>();
+  for (const e of entries) {
+    const ref = e.entity;
+    const coordinate = ref.kind === 'source' ? `source:${ref.ref.source_id}:${ref.ref.revision}`
+      : ref.kind === 'block' ? `block:${ref.ref.block_id}:${ref.ref.version}` : `chapter:${ref.ref.chapter_id}`;
+    const definition = `${ref.ref.digest}:${e.authority}`;
+    if (versions.has(coordinate) && versions.get(coordinate) !== definition) throw new ContractError('manifest.entity', 'contradictory version definition');
+    versions.set(coordinate, definition);
+  }
   const result = Object.freeze({ schema_version: 1 as const, manifest_id: entityId(v.manifest_id), entries: Object.freeze(entries) });
   if (Buffer.byteLength(JSON.stringify(result), 'utf8') > MAX_MANIFEST_BYTES) throw new ContractError('manifest', 'byte limit exceeded');
   return result;
@@ -73,27 +84,44 @@ export function parseManifest(input: unknown): Manifest {
 export function verifyManifest(input: unknown, binding: unknown, resolve: CitationResolver): VerifiedManifest {
   const manifest = parseManifest(input), scope = parseSessionBinding(binding);
   if (typeof resolve !== 'function') throw new ContractError('resolver', 'expected an authorized resolver');
+  type Resolved = { authority: Authority; bytes: Buffer | null; digest: string | null; textual: boolean };
+  const resolved = new Map<string, Resolved>();
+  const decoder = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true });
+  let totalBytes = 0;
   for (const e of manifest.entries) {
-    let material: CitationMaterial | null;
-    try { material = resolve(e.entity); } catch { throw new ManifestError(); }
-    if (material === null) throw new ManifestError();
-    const m = closedRecord(material, ['binding', 'entity', 'authority', 'bytes'], ['binding', 'entity', 'authority', 'bytes'], 'material');
-    assertSessionBinding(scope, m.binding);
-    if (hashPayload(parseEntityRef(m.entity)) !== hashPayload(e.entity) || m.authority !== e.authority) throw new ManifestError();
-    if (m.bytes !== null && (!(m.bytes instanceof Uint8Array) || m.bytes.byteLength > MAX_SOURCE_BYTES)) throw new ManifestError();
+    const key = hashPayload(e.entity);
+    let retained = resolved.get(key);
+    if (!retained) {
+      let material: CitationMaterial | null;
+      try { material = resolve(e.entity); } catch { throw new ManifestError(); }
+      if (material === null || material === undefined) throw new ManifestError();
+      const m = closedRecord(material, ['binding', 'entity', 'authority', 'bytes'], ['binding', 'entity', 'authority', 'bytes'], 'material');
+      assertSessionBinding(scope, m.binding);
+      if (hashPayload(parseEntityRef(m.entity)) !== key || m.authority !== e.authority) throw new ManifestError();
+      let bytes: Buffer | null = null, digest: string | null = null, textual = false;
+      if (m.bytes !== null) {
+        if (!(m.bytes instanceof Uint8Array) || !(m.bytes.buffer instanceof ArrayBuffer) || m.bytes.byteLength > MAX_SOURCE_BYTES) throw new ManifestError();
+        if (totalBytes + m.bytes.byteLength > MAX_VERIFICATION_BYTES) throw new ContractError('manifest.material', 'aggregate verification byte limit exceeded');
+        bytes = Buffer.from(m.bytes); totalBytes += bytes.byteLength;
+        digest = hashSource(bytes);
+        if (e.entity.kind === 'source' && digest !== e.entity.ref.digest) throw new ManifestError();
+        try { decoder.decode(bytes); textual = true; } catch { /* Binary can only be reference-only. */ }
+      }
+      retained = { authority: e.authority, bytes, digest, textual };
+      resolved.set(key, retained);
+    }
+    if (retained.authority !== e.authority) throw new ManifestError();
     if (e.presented_as === 'reference_only') continue;
-    if (!(m.bytes instanceof Uint8Array)) throw new ManifestError();
-    const bytes = Buffer.from(m.bytes); // Do not keep mutable aliases to a caller's buffer.
-    if (e.entity.kind === 'source' && hashSource(bytes) !== e.entity.ref.digest) throw new ManifestError();
+    const { bytes, textual } = retained;
+    if (bytes === null || !textual) throw new ManifestError();
     const { start_byte: start, end_byte: end } = e.range;
     if (end > bytes.length || (e.presented_as === 'full' && (start !== 0 || end !== bytes.length))) throw new ManifestError();
-    try {
-      const decoder = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true });
-      decoder.decode(bytes);
-      decoder.decode(bytes.subarray(0, start));
-      decoder.decode(bytes.subarray(start, end));
-    } catch { throw new ManifestError(); }
-    if (hashSource(bytes.subarray(start, end)) !== e.excerpt_digest) throw new ManifestError();
+    // With the complete UTF-8 representation already checked once, a cut may
+    // point to EOF or a leading byte, never into a continuation byte.
+    const boundary = (at: number): boolean => at === bytes.length || ((bytes[at] ?? 0) & 0xc0) !== 0x80;
+    if (!boundary(start) || !boundary(end)) throw new ManifestError();
+    const excerptDigest = start === 0 && end === bytes.length ? retained.digest : hashSource(bytes.subarray(start, end));
+    if (excerptDigest !== e.excerpt_digest) throw new ManifestError();
   }
   const result = Object.freeze({ binding: scope, manifest, digest: hashPayload(manifest) }) as VerifiedManifest;
   verified.add(result);

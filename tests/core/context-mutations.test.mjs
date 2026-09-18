@@ -9,7 +9,7 @@ import { spawnSync } from 'node:child_process';
 const root=fileURLToPath(new URL('../../',import.meta.url));
 const cases=[
   ['control',null,null,null,null],
-  ['source-unchecked','manifest.ts','if (hashSource(bytes.subarray(start, end)) !== e.excerpt_digest) throw new ManifestError();','void end;','T06.contract Manifest: excerpt ranges are exact UTF-8 bytes, including CRLF/BOM'],
+  ['source-unchecked','manifest.ts','if (excerptDigest !== e.excerpt_digest) throw new ManifestError();','void end;','T06.contract Manifest: excerpt ranges are exact UTF-8 bytes, including CRLF/BOM'],
   ['navigation-as-evidence','proposal.ts',"if (manifest.manifest.entries[index - 1]?.presented_as === 'reference_only')",'if (false)', 'T37.contract Proposal: citations require actual presented entries and nonempty unique indices'],
   ['finish-ignored','proposal.ts',"if (terminal !== 'complete') throw new ProposalError('E_PROTOCOL');",'void terminal;', 'T06.contract Proposal: transport finisher overrides valid-looking JSON'],
   ['payload-unchecked','frame.ts',"if (unit.payload_digest !== hashPayload(history.slice(at, at + count))) throw new FrameError('E_STALE');",'void count;', 'T06.contract Frame: changed final payload is rejected without mutating root registry'],

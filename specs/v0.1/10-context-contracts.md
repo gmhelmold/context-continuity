@@ -45,3 +45,14 @@ Tickets/frames emitidos são reconhecidos por referências fracas locais; não m
 T06.contract e T30.contract têm implementação de manifesto/proposta e Capture/SealedFrame/fingerprint com dois formatos sintéticos. T02.contract recebe associação adicional de escopo; execução/identidade completa de jobs e Snapshot ainda não é implementada aqui. T37.contract recebe fuzz de propostas, recortes e frames, mas não uma declaração de fuzz de todos os schemas futuros. Os subcasos transversais só encerram quando o restante estiver implementado e revisado.
 
 Nenhuma View, capítulo persistido, Snapshot completo, scheduler, chamada de inferência ou adaptador instalado é criado por esses contratos. Em particular, a emissão de VerifiedManifest/SealedFrame nunca altera o predicado complete nem autoriza rede.
+
+
+## 5. Consistência do snapshot de citações repetidas
+
+Uma combinação `(kind,id,revision/version)` identifica uma única definição de digest e autoridade dentro do manifesto (capítulos usam chapter_id/digest, sem revisão numérica). Locators diferentes permitem múltiplos recortes, não duas definições contraditórias da mesma versão. `parseManifest` recusa essa contradição antes de consultar materiais.
+
+`verifyManifest` resolve cada EntityRef completa uma única vez por chamada e copia o material autorizado. Todas as entradas seguintes usam esse snapshot privado: resolver novamente uma versão durante a mesma verificação poderia combinar dois conteúdos distintos de capítulo/bloco sob a mesma referência. O mapa existe somente enquanto a verificação executa; buffers não são retidos pelo VerifiedManifest. Uma nova verificação volta a consultar o resolver e revalida o estado então disponível.
+
+O perfil recebe Uint8Array com ArrayBuffer ordinário; SharedArrayBuffer e outros backings concorrentes não são admitidos. UTF-8 e digest integral são calculados uma vez por material; cada recorte conserva verificação de limites, fronteiras e hash. Full vazio capturado continua válido e distinto de material ausente. Retorno null/undefined do resolver é E_SOURCE; erros de shape continuam E_SCHEMA. Uma entrada reference_only não exige bytes, mas bytes fornecidos explicitamente de uma SourceRef devem coincidir com seu digest.
+
+Limite agregado adicional: até 64 MiB de cópias de materiais distintos em uma chamada de verificação, além dos tetos anteriores por fonte/manifesto. Ultrapassar recusa a operação sem descarte parcial ou transformação em reference_only. Não é estimativa de RSS, nem substitui o orçamento de contexto/mission_reserve. Testes de [consistência de snapshot](../../docs/implementation/WP-01-C-SNAPSHOT.md) exercitam implementação real, sem provider ou storage.
