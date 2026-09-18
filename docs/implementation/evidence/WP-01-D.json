@@ -1,0 +1,63 @@
+{
+  "schema_version": 1,
+  "increment": "WP-01/D",
+  "base_commit": "92c537247b4f5e4e492b826fa04f9c443b177852",
+  "kind": "local component results, not product certification",
+  "environment": {
+    "node": "22.17.1",
+    "typescript": "5.9.3",
+    "platform": "Darwin-x86_64"
+  },
+  "checks": {
+    "typecheck": "pass",
+    "core": {
+      "pass": 196,
+      "fail": 0
+    },
+    "probe_components": {
+      "pass": 25,
+      "fail": 0
+    },
+    "ingress_witness": {
+      "pass": 4,
+      "fail": 0
+    },
+    "documentation_and_models": "pass"
+  },
+  "mutation_campaign": {
+    "positive_control": "pass",
+    "incorrect_implementations_rejected": 6,
+    "cases_per_child": 34,
+    "counted_as_tests": 1
+  },
+  "fresh_process_identity_revalidation": "pass",
+  "source_sha256": {
+    "packages/core/src/snapshot.ts": "ae12ba94f75a36f05ecfd0be9049c2df04c4b9a8b44887dbc0475b118fa89594",
+    "packages/core/src/job-context.ts": "d3523cf25f5c0e7177e30140096157cec91bf5f0011e6110e20ecd6223af8c93",
+    "packages/core/src/manifest.ts": "53bb83671d87c6d75368f88300d8b7961579026cb36448671a286208a2782c6b",
+    "packages/core/src/proposal.ts": "58f268c7bb8482bc8bc8e3011184dcb97c56b6e8f76013d50160cfb83d59dfee",
+    "packages/core/src/frame.ts": "9375399a89e3ad6f71aca8aec94d78d0747d458e2209dd9278413e6fb8db0ee2",
+    "packages/core/src/frame-profile.ts": "319f7f8f6ab54c2b13ff4faebb021f5ff51d64cb8eff8ba95ce4c5e50db95d7d",
+    "packages/core/src/identity.ts": "a5733d04dcdc47059feee72ff9ecd659ff32353ea7d096647d7de6e18a492e1d",
+    "packages/core/src/roots.ts": "8835ff66ff5a97e873a27bc251a798f0d57728dbb79ff9ce7d4b803cb5ff9a02",
+    "packages/core/src/canonical.mjs": "db24fcb881d0de0dfac14df08ed28fcda5e514a64f4f3ce21372dab2298f95c2",
+    "tests/core/job-context.test.mjs": "60d44dd47c7759b554201ad3b3f2799f4e6cafd1130c9e0c8e44f7e096bec848",
+    "tests/core/job-context-mutations.test.mjs": "9b11382c55e6d7c60682e5e4d0906c41a60c5464ec2e3808c2cf9d8c9fcf2a65"
+  },
+  "log_sha256": {
+    "p01-before.json": "78663603613dbc77694a9c0cac4a831992264e02e1399848096284422e82a06a",
+    "typecheck.log": "e3806c19fac205c687938315713a76dd23432520806fb09445e7c3857ba48d3c",
+    "core.tap": "1d766f2616ffcc5f0e5e6ce2106066e025d50ff1c2e41fa63056dd8c3558c346",
+    "components.tap": "cde70a5667afd5788a426d71aee2af5ef97d79c8943fccded93fcc7e45171cfd",
+    "witness.log": "5fd80b8481c2ace3d03ff757a69d12461dfb8909204a08d793c04ccb4fbae23d"
+  },
+  "not_claimed": [
+    "durable storage",
+    "renderer/projection fidelity",
+    "scheduler/attempt admission",
+    "live-model quality/cache",
+    "new host suite run locally"
+  ],
+  "live_inference": false,
+  "release": false
+}

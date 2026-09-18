@@ -63,3 +63,7 @@ SPEC-11 é obrigatório: sealFrame/assertFrameUnchanged recebem perfil explícit
 ## Encerramento D02/D03 da sonda
 
 Ao alterar gateway/captures, executar também `node --test tests/conformance/opencode/test-review004.mjs`. Não remover as barreiras de cancelamento nem usar retry para mascarar falhas de reinício. REVIEW-004-RESOLUTION.md distingue a admissão em bytes da fixture do orçamento/publicação transacional do produto. O estado anterior de D02/D03 acima é histórico; o fechamento remoto está registrado em #21/#23.
+
+## Núcleo WP-01/D
+
+SPEC-12 define SnapshotRecord/JobContext/JobProposal. Parsers e handles não são autorização de dispatch, prova de contiguidade ou durabilidade. O executor captura JobContextRef antes da chamada e usa o lote de feedback congelado; nunca deriva a expectativa da resposta do modelo. Restore exige revalidação, não reenvio automático. Rodar testes job-context e campanha negativa junto de todo npm run test:core. Registro/limites em docs/implementation/WP-01-D.md.
