@@ -17,3 +17,6 @@ export { decodeProposal, assertProposalContext, ProposalError, MAX_PROPOSAL_BYTE
 export type { Claim, ModelProposal, ReplacementProposal, ValidatedProposal } from './proposal.ts';
 export { createCapture, sealFrame, assertSealedFrame, assertFrameUnchanged, FrameError } from './frame.ts';
 export type { Capture, SealedFrame, JSONFrameLayout, NativeGroupIdentity } from './frame.ts';
+
+export { createJSONFrameProfile } from './frame-profile.ts';
+export type { JSONFrameProfile, JSONFrameProfileSpec, ProtocolCheck, ProtocolGroup } from './frame-profile.ts';

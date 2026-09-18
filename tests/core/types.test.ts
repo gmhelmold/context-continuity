@@ -50,3 +50,10 @@ sealedFrame.envelope = null;
 // @ts-expect-error proposal/manifest association is immutable
 decodedProposal.manifest_digest = 'other';
 void notVerified; void notSealed;
+
+import type { JSONFrameProfile } from '../../packages/core/src/index.ts';
+declare const profile: JSONFrameProfile;
+// @ts-expect-error profile limits are immutable
+profile.spec.limits.context_window = 1;
+// @ts-expect-error aliases are immutable
+profile.spec.model_aliases.push('implicit');
