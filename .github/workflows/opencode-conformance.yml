@@ -1,0 +1,55 @@
+name: OpenCode integration probe
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main, opencode-conformance]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: oc-probe-${{ github.event.pull_request.head.ref || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  probe:
+    name: Stock OpenCode / synthetic provider
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Verify specification
+        run: |
+          python3 scripts/check-spec.py
+          python3 scripts/check-reference-model.py
+          python3 scripts/test-spec-check.py
+      - name: Download exact official host artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir "$RUNNER_TEMP/cc-host"
+          cd "$RUNNER_TEMP/cc-host"
+          curl --fail --location --retry 2 --max-time 120 --output host.tar.gz \
+            https://github.com/anomalyco/opencode/releases/download/v1.18.31/opencode-linux-x64-baseline.tar.gz
+          echo 'b283e8dbe9e6fc224bb4b79992ce3bd2174b8b7b0c3e7d1b4e6024a1d11edc84  host.tar.gz' | sha256sum --check --strict
+          tar -xzf host.tar.gz
+          test "$(./opencode --version)" = '1.18.31'
+      - name: Exercise public integration with synthetic loopback provider
+        run: >-
+          python3 tests/conformance/opencode/run.py
+          --binary "$RUNNER_TEMP/cc-host/opencode"
+          --out "$RUNNER_TEMP/cc-proof"
+      - name: Publish bounded synthetic report
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: opencode-probe-report
+          path: ${{ runner.temp }}/cc-proof/report.json
+          if-no-files-found: warn
+          retention-days: 14

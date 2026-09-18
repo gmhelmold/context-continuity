@@ -1,0 +1,131 @@
+{
+  "schema_version": 1,
+  "probe_only": true,
+  "host_version": "1.18.31",
+  "host_binary_sha256": "9cd3d83bc230830846ef4b20088e5521364540cd681fdeeda1bab4119f9c37a8",
+  "platform": "Darwin-x86_64",
+  "product_base": "81d790abbba236a75b29648487602eade93336ea",
+  "checks": [
+    {
+      "check": "native-load-tool-loop-concurrent-pruning-and-prefix",
+      "result": "pass",
+      "evidence": {
+        "session": "ses_f4e203e94ffelLOv7R1VBzO9SQ",
+        "primary_requests": 4,
+        "tool_effects": 3,
+        "prefix_equal": true,
+        "native_transcript_preserved": true,
+        "covered_native_ids": [
+          "msg_0b1dfc193001lcWXwyXRcvKu60",
+          "msg_0b1dfc3d2001XvSrPXskWYwOQi"
+        ]
+      },
+      "requests": 6
+    },
+    {
+      "check": "auxiliary-tool",
+      "result": "pass",
+      "evidence": {
+        "session": "ses_f4e203352ffegb1j0ODFwR7KmS",
+        "physical_auxiliary_requests": 1,
+        "result": "E_TOOL"
+      },
+      "requests": 6
+    },
+    {
+      "check": "auxiliary-rate",
+      "result": "pass",
+      "evidence": {
+        "session": "ses_f4e202f39ffeVh3QBorUBTDLW6",
+        "physical_auxiliary_requests": 2,
+        "result": "E_RATE"
+      },
+      "requests": 7
+    },
+    {
+      "check": "auxiliary-repair",
+      "result": "pass",
+      "evidence": {
+        "session": "ses_f4e202b41ffeKjhxKZw0p60r0i",
+        "physical_auxiliary_requests": 2,
+        "result": "ready"
+      },
+      "requests": 7
+    },
+    {
+      "check": "same-turn-later-plugin-invalidates-ready",
+      "result": "pass",
+      "evidence": {
+        "session": "ses_f4e20271dffeM4loNevDYOKvKN",
+        "stale_proposal_sent": false,
+        "later_plugin_change_observed": true
+      },
+      "requests": 6
+    },
+    {
+      "check": "two-real-sessions-isolated",
+      "result": "pass",
+      "evidence": {
+        "sessions": [
+          "ses_f4e2022e1ffe0Q93IbD9HVlnnz",
+          "ses_f4e2022dfffeMkFU1LZBaEU8Ky"
+        ],
+        "crossed": false
+      },
+      "requests": 2
+    },
+    {
+      "check": "unregistered-local-request-refused",
+      "result": "pass",
+      "evidence": {
+        "forwarded": false
+      },
+      "requests": 0
+    },
+    {
+      "check": "native-compaction-public-route",
+      "result": "pass",
+      "evidence": {
+        "session": "ses_f4e20225bffeZlfdIk7hdUt2qg",
+        "native_reset_seen": true
+      },
+      "requests": 5
+    },
+    {
+      "check": "real-auxiliary-cancellation-no-late-publication",
+      "result": "pass",
+      "evidence": {
+        "session": "ses_f4e20215effe8a8kqw4ZxUhv4v",
+        "local_stop_observed": true,
+        "remote_state": "unknown",
+        "late_publish": false
+      },
+      "requests": 4
+    },
+    {
+      "check": "route-restoration-and-plugin-removal",
+      "result": "pass",
+      "evidence": {
+        "new_session": "ses_f4e201b57ffe5ZRxwkZAX8sYbL",
+        "direct_route_works": true,
+        "no_host_database_edits": true
+      },
+      "requests": 2
+    }
+  ],
+  "gate_status": "in_progress",
+  "initial_host_sessions": 0,
+  "final_host_sessions": 10,
+  "physical_requests": 45,
+  "physical_auxiliary_requests": 9,
+  "live_inference": false,
+  "product_complete_enabled": false,
+  "host_release_commit": "a97622c801f4ca571530ddc51076af659a9c32cd",
+  "official_asset_sha256": "ef4dcd35aa2dda0068680140922cb502c4d160bf305b54d7c620153a71f244bb",
+  "probe_sources": {
+    "tests/conformance/opencode/gateway-plugin.mjs": "c3afdb4ff0499d4fbff94e14ed21117f5b9b15c8c1c27a37d6507461d53ebce7",
+    "tests/conformance/opencode/later-plugin.mjs": "c6cd792187e1c88e39d36fa5a0b515b8fc3048707d2268521f622c0777cad185",
+    "tests/conformance/opencode/run.py": "864535da8c067e4eba9eafbd687698e786479b0cae0056f787c6d18bd8bbbcac"
+  },
+  "complete_mode_authorized": false
+}

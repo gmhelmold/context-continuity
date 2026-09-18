@@ -1,0 +1,29 @@
+# Sonda WP-00 — OpenCode real, provider sintético
+
+Este diretório não é um plugin de produto. É uma sonda de integração para verificar as interfaces públicas e a fronteira HTTP no OpenCode 1.18.31 sem patches.
+
+## Executar
+
+Obtenha o binário oficial da release fixada e confira o SHA-256 divulgado. Passe seu caminho explicitamente; a sonda não usa nem modifica a instalação pessoal.
+
+```sh
+python3 tests/conformance/opencode/run.py \
+  --binary /caminho/isolado/opencode \
+  --out /diretorio/novo/para-o-ensaio
+```
+
+O diretório de saída deve ser novo. A sonda cria HOME/XDG/workspace privados, usa somente o provider sintético, inicia o servidor stock e encerra os processos que iniciou em finally. Não herda variáveis de credenciais. Preparação do host pode baixar dependências públicas; nenhuma inferência é enviada a serviços de modelo.
+
+`run.py` retorna não zero se qualquer asserção falhar. `report.json` resume checks, plataforma e hash do binário. `wire-records.json` contém exclusivamente a conversação sintética e nomes de headers, sem seus valores de autorização. `host.log` e os demais arquivos de trabalho são locais; não publicar a árvore inteira como artifact.
+
+## Arquivos
+
+- `gateway-plugin.mjs`: captura pública, loopback final, codec restrito, overlay em memória e executor auxiliar sem despacho de tools. Exporta uma função no formato público de plugin.
+- `later-plugin.mjs`: muda system depois da captura para testar revalidação no turno corrente.
+- `run.py`: provider SSE controlado, cliente da API pública do host e oráculos independentes.
+
+O teste de prefixo compara no recorder a entrada auxiliar sem sua última mensagem com a entrada primary que saiu de verdade. Não mede KV cache. A compactação de teste é deliberadamente acionada pela fixture, não pelo gatilho do produto.
+
+Os defaults de retry, tamanho e timeout desta sonda não substituem SPEC-02. Para todo código de teste que simula parte do produto, o [relatório de cobertura](../../../docs/conformance/OPENCODE-WP00.md) delimita o que ainda não foi demonstrado.
+
+O CI usa Ubuntu 24.04 e o artefato `opencode-linux-x64-baseline.tar.gz` com SHA-256 fixado. O ensaio local usa macOS Intel. Ambos devem passar separadamente; um não homologa o outro por inferência.
