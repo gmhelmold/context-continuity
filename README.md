@@ -66,3 +66,7 @@ A sonda atual tem 16 checks de host e 12 testes de componentes, incluindo regra 
 **WP-01/C:** [manifestos, propostas e captura final](docs/implementation/WP-01-C.md) acrescenta verificação de fontes/ranges, propostas vinculadas ao manifesto e selagem do corpo JSON final com dois formatos sintéticos. Não habilita um provider real nem conclui o WP-01 inteiro.
 
 [Consistência de snapshots do WP-01/C](docs/implementation/WP-01-C-SNAPSHOT.md): referências repetidas usam um único material por versão durante a verificação; regressões adicionais não substituem a homologação do produto.
+
+## REVIEW-004: correções em partes
+
+[Resolução parcial D01/D04/D05](docs/reviews/REVIEW-004-PARTIAL-RESOLUTION.md): ingresso testemunhado fora do gateway e perfil terminal versionado de modelo/protocolo. D02/D03 e o vínculo completo de job/Snapshot continuam rastreados, sem declaração de correção ou homologação integral.

@@ -53,3 +53,7 @@ python3 tests/conformance/opencode/test-oracle-mutations.py --binary /caminho/op
 Os diretórios de saída precisam ser novos. A campanha roda um controle correto e seis cópias incorretas contra o mesmo host. Sucesso é controle aprovado e cada mutação rejeitada pelo oráculo, não simplesmente qualquer erro. `--only` no runner existe para ensaios dirigidos; não equivale a aprovação da suíte integral.
 
 Checkpoints gerados antes de 0.1.2 não são dados de usuário nem formato migrável do produto. Ao retomar uma fixture antiga, config desconhecida invalida conservadoramente overlays. A própria sonda é só ensaio, não um pacote para instalar em trabalho real.
+
+## Ingresso independente (REVIEW-004 D01)
+
+O caminho da fixture é OpenCode stock → testemunha Python → gateway sob teste → recorder sintético. Os bytes são registrados antes do gateway e encaminhados intactos. O oráculo compara todos os requests primários dos cenários principal/consolidações; não utiliza emit(ingress) como referência independente. A campanha mantém os seis mutantes antigos e acrescenta sistema/metadata pré-ingresso (oito no total). Rode `python3 tests/conformance/opencode/test-witness.py` para a prova de componente. O servidor de testemunha é exclusivo do teste, sem instalação ou gateway adicional de produto.

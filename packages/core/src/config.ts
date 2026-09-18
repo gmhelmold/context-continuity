@@ -34,15 +34,22 @@ export const DEFAULT_SETTINGS: Readonly<Omit<Settings, 'max_input_per_session'>>
 const MAX = Number.MAX_SAFE_INTEGER;
 const KEYS = Object.freeze([...Object.keys(DEFAULT_SETTINGS), 'max_input_per_session']);
 
-/** Profile limits must come from the authorized integration, never a guessed model name. */
-export function resolveConfig(overrides: unknown, profile: unknown): ResolvedConfiguration {
-  const input = closedRecord(overrides, KEYS, [], 'config');
+/** Model limits are supplied by the configured profile, never inferred from a name. */
+export function parseModelLimits(profile: unknown): ModelLimits {
   const raw = closedRecord(profile, ['context_window', 'output_reserve', 'input_limit'], ['context_window', 'output_reserve'], 'limits');
   const context = integer(raw.context_window, 1, MAX, 'limits.context_window');
   // Explicit zero is distinct from omission. Missing output reserve is rejected above.
   const output = integer(raw.output_reserve, 0, MAX, 'limits.output_reserve');
   if (output >= context) throw new ContractError('limits.output_reserve', 'no input capacity remains');
   const inputLimit = !Object.hasOwn(raw, 'input_limit') || raw.input_limit === null ? null : integer(raw.input_limit, 1, MAX, 'limits.input_limit');
+  return Object.freeze({ context_window: context, output_reserve: output, input_limit: inputLimit });
+}
+
+/** Profile limits must come from the authorized integration, never a guessed model name. */
+export function resolveConfig(overrides: unknown, profile: unknown): ResolvedConfiguration {
+  const input = closedRecord(overrides, KEYS, [], 'config');
+  const limits = parseModelLimits(profile);
+  const context = limits.context_window;
   const value = (key: keyof typeof DEFAULT_SETTINGS): unknown => Object.hasOwn(input, key) ? input[key] : DEFAULT_SETTINGS[key];
   const quota = Object.hasOwn(input, 'max_input_per_session') ? input.max_input_per_session : context * 8;
   const trigger = fraction(value('trigger_ratio'), 0, 1, true, true, 'config.trigger_ratio');
@@ -67,5 +74,5 @@ export function resolveConfig(overrides: unknown, profile: unknown): ResolvedCon
     max_input_per_session: integer(quota, 1, MAX, 'config.max_input_per_session'),
     task_trigger: boolean(value('task_trigger'), 'config.task_trigger'),
   });
-  return Object.freeze({ settings, limits: Object.freeze({ context_window: context, output_reserve: output, input_limit: inputLimit }) });
+  return Object.freeze({ settings, limits });
 }

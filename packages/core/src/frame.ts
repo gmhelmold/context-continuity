@@ -8,6 +8,9 @@ import { MAX_CATALOG_ROOTS, RootIdentityRegistry } from './roots.ts';
 import type { RootUnit } from './roots.ts';
 import { dataList, distinct, ownJSON } from './contract-data.ts';
 import type { JsonValue } from './contract-data.ts';
+import { assertJSONFrameProfile, profileMatches, profileAcceptsGroups } from './frame-profile.ts';
+import type { JSONFrameProfile, ProtocolGroup } from './frame-profile.ts';
+import type { ModelLimits } from './config.ts';
 export type NativeGroupIdentity = Readonly<{ native_identity: string; native_refs: readonly string[] }>;
 declare const captureBrand: unique symbol;
 declare const sealedBrand: unique symbol;
@@ -18,7 +21,7 @@ export type JSONFrameLayout = Readonly<{ route_id: string; model_id: string; var
   groups: readonly Readonly<{ native_identity: string; count: number }>[]; input_estimate: number }>;
 export type SealedFrame = Readonly<{ capture: Capture; frame_id: string; roots: readonly RootUnit[];
   system_digest: string; tools_digest: string; config_digest: string; input_digest: string; envelope_digest: string;
-  route_id: string; model_id: string; variant: string | null; input_estimate: number; envelope: JsonValue; [sealedBrand]: true }>;
+  route_id: string; model_id: string; variant: string | null; input_estimate: number; envelope: JsonValue; profile_digest: string; limits: ModelLimits; [sealedBrand]: true }>;
 const captures = new WeakMap<object, SessionBinding>();
 const frames = new WeakMap<object, SessionBinding>();
 export class FrameError extends Error {
@@ -57,8 +60,9 @@ function ticket(binding: unknown, input: unknown): Capture {
 /** Layout partitions exactly one top-level history array. Prefix and all other
  * top-level fields participate in config_digest. Nested/opaque routes are unsupported
  * by this JSON profile, not silently flattened. No registry mutation occurs on seal. */
-export function sealFrame(binding: unknown, captureInput: unknown, registry: RootIdentityRegistry, finalRequest: unknown, layoutInput: unknown): SealedFrame {
+export function sealFrame(binding: unknown, captureInput: unknown, registry: RootIdentityRegistry, finalRequest: unknown, layoutInput: unknown, profileInput: JSONFrameProfile): SealedFrame {
   const capture = ticket(binding, captureInput);
+  const profile = assertJSONFrameProfile(profileInput);
   if (!(registry instanceof RootIdentityRegistry)) throw new ContractError('registry', 'expected a root registry');
   assertSessionBinding(binding, registry.binding);
   const fields = ['route_id', 'model_id', 'variant', 'history_key', 'prefix_length', 'system_keys', 'tool_keys', 'groups', 'input_estimate'];
@@ -69,6 +73,7 @@ export function sealFrame(binding: unknown, captureInput: unknown, registry: Roo
   const envelope = ownJSON(finalRequest, 'envelope');
   if (envelope === null || typeof envelope !== 'object' || Array.isArray(envelope)) throw new FrameError('E_PROTOCOL');
   const body = envelope as Readonly<Record<string, JsonValue>>;
+  if (!profileMatches(profile,body,{route_id:route,model_id:model,variant,history_key:historyKey})) throw new FrameError('E_PROTOCOL');
   if (!Object.hasOwn(body, historyKey)) throw new FrameError('E_PROTOCOL');
   const history = dataList(body[historyKey], MAX_CATALOG_ROOTS, 'history') as JsonValue[];
   const prefixLength = integer(v.prefix_length, 0, history.length, 'prefix_length');
@@ -78,6 +83,7 @@ export function sealFrame(binding: unknown, captureInput: unknown, registry: Roo
   const groups = dataList(v.groups, MAX_CATALOG_ROOTS, 'groups');
   if (groups.length !== capture.native_identity_map.length) throw new FrameError('E_PROTOCOL');
   const roots: RootUnit[] = [];
+  const protocolGroups: ProtocolGroup[] = [];
   let at = prefixLength;
   for (let index = 0; index < groups.length; index++) {
     const g = closedRecord(groups[index], ['native_identity', 'count'], ['native_identity', 'count'], 'group');
@@ -87,21 +93,23 @@ export function sealFrame(binding: unknown, captureInput: unknown, registry: Roo
     const unit = registry.lookup(binding, id);
     if (!unit || hashPayload(unit.native_refs) !== hashPayload(captured.native_refs)) throw new FrameError('E_STALE');
     if (unit.payload_digest !== hashPayload(history.slice(at, at + count))) throw new FrameError('E_STALE');
+    protocolGroups.push(Object.freeze({unit,items:Object.freeze(history.slice(at,at+count))}));
     roots.push(unit); at += count;
   }
   if (at !== history.length) throw new FrameError('E_PROTOCOL');
   distinct(roots, r => r.unit_id, 'roots');
+  if (!profileAcceptsGroups(profile,Object.freeze(protocolGroups))) throw new FrameError('E_PROTOCOL');
   const prefix = history.slice(0, prefixLength);
   const nonhistory = Object.fromEntries(Object.entries(body).filter(([key]) => key !== historyKey));
   const select = (keys: readonly string[]) => Object.fromEntries(keys.map(key => [key, body[key]]));
-  const config = hashPayload({ route_id: route, model_id: model, variant, history_key: historyKey, system_keys: systemKeys, tool_keys: toolKeys,
+  const config = hashPayload({ profile_digest: profile.digest, route_id: route, model_id: model, variant, history_key: historyKey, system_keys: systemKeys, tool_keys: toolKeys,
     fields: nonhistory, history_prefix: prefix });
   const envelopeDigest = hashPayload(envelope);
   const result = Object.freeze({ capture, frame_id: newEntityId(), roots: Object.freeze(roots),
     system_digest: hashPayload({ prefix, fields: select(systemKeys) }), tools_digest: hashPayload(select(toolKeys)), config_digest: config,
     input_digest: hashPayload({ config_digest: config, envelope_digest: envelopeDigest, roots: roots.map(r => r.root_coverage[0]) }),
     envelope_digest: envelopeDigest, route_id: route, model_id: model, variant,
-    input_estimate: integer(v.input_estimate, 0, Number.MAX_SAFE_INTEGER, 'input_estimate'), envelope }) as SealedFrame;
+    input_estimate: integer(v.input_estimate, 0, Number.MAX_SAFE_INTEGER, 'input_estimate'), envelope, profile_digest: profile.digest, limits: profile.spec.limits }) as SealedFrame;
   frames.set(result, parseSessionBinding(binding));
   return result;
 }
@@ -112,7 +120,7 @@ export function assertSealedFrame(binding: unknown, input: unknown): SealedFrame
   return input as SealedFrame;
 }
 /** Last-moment equality check; actual invocation at the transport boundary is WP-06. */
-export function assertFrameUnchanged(binding: unknown, frameInput: unknown, currentRequest: unknown): void {
+export function assertFrameUnchanged(binding: unknown, frameInput: unknown, currentRequest: unknown, profileInput: JSONFrameProfile): void {
   const frame = assertSealedFrame(binding, frameInput);
-  if (hashPayload(currentRequest) !== frame.envelope_digest) throw new FrameError('E_STALE');
+  if (assertJSONFrameProfile(profileInput).digest !== frame.profile_digest || hashPayload(currentRequest) !== frame.envelope_digest) throw new FrameError('E_STALE');
 }
