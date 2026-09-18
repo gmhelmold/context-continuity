@@ -1,0 +1,209 @@
+{
+  "schema_version": 1,
+  "review": "REVIEW-004",
+  "audited_commit": "47f5de8230a4e8e7bc5db3087321bdb175b94412",
+  "tracked_files": 84,
+  "kind": "observed review evidence, not product certification",
+  "environment": {
+    "platform": "Darwin-x86_64",
+    "node": "22.17.1",
+    "typescript": "5.9.3",
+    "host_version": "1.18.31",
+    "host_binary_sha256": "9cd3d83bc230830846ef4b20088e5521364540cd681fdeeda1bab4119f9c37a8",
+    "patched_host": false,
+    "live_inference": false
+  },
+  "baseline": {
+    "typecheck": "pass",
+    "core": {
+      "pass": 149,
+      "fail": 0
+    },
+    "components": {
+      "pass": 12,
+      "fail": 0
+    },
+    "stock_host": {
+      "pass": 16,
+      "fail": 0
+    },
+    "document_models": "pass",
+    "runtime_cases_promoted": []
+  },
+  "observed_main_ci": [
+    {
+      "id": 35371716738,
+      "name": "Specification checks",
+      "conclusion": "success"
+    },
+    {
+      "id": 35371716718,
+      "name": "Core contract checks",
+      "conclusion": "success"
+    },
+    {
+      "id": 35371716719,
+      "name": "OpenCode oracle mutations",
+      "conclusion": "success"
+    },
+    {
+      "id": 35371716734,
+      "name": "OpenCode integration probe",
+      "conclusion": "success"
+    }
+  ],
+  "D01": {
+    "kind": "controlled mutation in disposable copy; actual stock host",
+    "target": "tests/conformance/opencode/gateway-plugin.mjs",
+    "before_ingress": true,
+    "anchor": "if(body.model!==\"probe\"||!Array.isArray(body.messages))throw error(\"E_PROFILE\");",
+    "insert": "body.messages=body.messages.map(m=>m.role===\"system\"?{...m,content:m.content+\" REVIEW004_CHANGED_SYSTEM\"}:m);",
+    "selected_check": "native-load-tool-loop-concurrent-pruning-and-prefix",
+    "selected_checks": 1,
+    "pass": 1,
+    "fail": 0,
+    "mutation_survived": true,
+    "altered_system_occurrences_at_endpoint": 12,
+    "occurrences_include_replays_and_auxiliary": true,
+    "full_mutant_suite_executed": false,
+    "mutated_file_sha256": "9ea824c8e5f713b3a2315f84c08e14910a0cbeb3d0a65735c339d7846e3acc1d"
+  },
+  "observations": {
+    "proposal_reuse": {
+      "old_feedback": [
+        "00000000-0000-4000-8000-00000000005a"
+      ],
+      "current_expected_feedback": [
+        "00000000-0000-4000-8000-00000000005b"
+      ],
+      "accepted_by_context_assertion": true,
+      "binds_job_id": false,
+      "binds_feedback_batch": false
+    },
+    "function_group": {
+      "roots": [
+        {
+          "completed": true,
+          "protected": false,
+          "group": "group-0",
+          "parts": [
+            [
+              "text"
+            ]
+          ]
+        },
+        {
+          "completed": true,
+          "protected": false,
+          "group": "group-1",
+          "parts": [
+            [
+              "functionCall"
+            ]
+          ]
+        },
+        {
+          "completed": true,
+          "protected": false,
+          "group": "group-2",
+          "parts": [
+            [
+              "functionResponse"
+            ]
+          ]
+        }
+      ],
+      "call_and_result_share_group": false
+    },
+    "model_identity": {
+      "declared_model": "test-model",
+      "body_model": "actual-new-model",
+      "issued": true
+    },
+    "stale_root": {
+      "initial_views": 1,
+      "first_status": 400,
+      "first_body": "{\"error\":{\"message\":\"E_STALE_VIEW\",\"type\":\"invalid_request_error\"}}",
+      "second_status": 400,
+      "retained_views": 1
+    },
+    "cancel_before_dispatch": {
+      "acquired_before_cancel": true,
+      "requests_before_cancel": 0,
+      "response_status": 200,
+      "primary_forwarded": true,
+      "auxiliary_started_after_cancel": true
+    }
+  },
+  "source_sha256": {
+    "packages/core/src/canonical.mjs": "db24fcb881d0de0dfac14df08ed28fcda5e514a64f4f3ce21372dab2298f95c2",
+    "packages/core/src/config.ts": "30c67cb12e51e1036a01b1edd22814ac24173a56fea42e228145fc587ccf0519",
+    "packages/core/src/capabilities.ts": "3414c186df1815cd4f879155825c8c1252cd98fd64e5d7f4cf88c9cc8214b3ee",
+    "packages/core/src/validation.ts": "caae7d3d0399ed9ed33f457f7d5aca8bf397cc3b43ead0e57594354675692967",
+    "packages/core/src/identity.ts": "a5733d04dcdc47059feee72ff9ecd659ff32353ea7d096647d7de6e18a492e1d",
+    "packages/core/src/roots.ts": "8835ff66ff5a97e873a27bc251a798f0d57728dbb79ff9ce7d4b803cb5ff9a02",
+    "packages/core/src/contract-data.ts": "093e2e4607f8b48e2c36059e40de3a6d58e85eff5a388e374caa3753193ceb97",
+    "packages/core/src/manifest.ts": "53bb83671d87c6d75368f88300d8b7961579026cb36448671a286208a2782c6b",
+    "packages/core/src/proposal.ts": "58f268c7bb8482bc8bc8e3011184dcb97c56b6e8f76013d50160cfb83d59dfee",
+    "packages/core/src/frame.ts": "c5f33207ff9059d7064987b928631ca6fd6207faac81e72de1ef6d2b5fd9383b",
+    "tests/conformance/opencode/gateway-plugin.mjs": "635d5d534b7444eb6586051e33dbe4acd14dc47b58e6102099c7328c8ce9ad5a",
+    "tests/conformance/opencode/probe-protocol.mjs": "173ca4e33a0a44f9af4026bfc3af786af0c485782a6c6eb2155d3bd1189c1b86",
+    "tests/conformance/opencode/probe-captures.mjs": "f5b1beea7f000aeaecb3a6da9c4e5dc174927e7c82719cdec0e30aaa11c71e42",
+    "tests/conformance/opencode/probe-transport.mjs": "226e3219bf88d4a6b2279436f7d18b3405522d101d163808a2f53865e2f353b8",
+    "tests/conformance/opencode/oracle.py": "aabc6393da8dad127fc8a5350a6021053920acdcccc42bc1fb8dc2d1ed959842",
+    "tests/conformance/opencode/run.py": "14cac17fed863bcfa302ae77e1eabdb893c982224004625354733fb995e6bfc3",
+    "tests/conformance/opencode/test-oracle-mutations.py": "ba749ead9f6f51f203ca0ab50f9d33938dfbd6904f15b9b0348500e47096eeab",
+    "tests/conformance/opencode/test-components.mjs": "0004c2ab85579e5fd19aa83de40bf93e3066d922befff9864afce74e64b1d4e0",
+    "tests/core/context-fixtures.mjs": "544812e97bd33948252bc57e1862d51ab2d8704750d7bf627600aff0466eebdc",
+    "tests/core/frame.test.mjs": "6e03b434ffdfeeb5b0283237b06a370e13aa4b1e850a2d3e58be0c23af82a371",
+    "specs/v0.1/01-contracts.md": "65fd4d6d528ef328b99e81c88dadcdd9faa10fe8f2f367ebf42eda17311c42bb",
+    "specs/v0.1/02-lifecycle.md": "ee6dd77034b1c9b090dc05eccd0e975a88af28fbd760026be68e902f6172a9b6",
+    "specs/v0.1/05-tools-ux.md": "e41d790b811363dd683594a5d30c53e18c8f90eec023f4ccd59a82b1856c3e11",
+    "specs/v0.1/07-state-operations.md": "eea79cbd12536276ef5203eb0ef8ff8a6bf213dfca7acddc6f97f42259b9de9d",
+    "specs/v0.1/10-context-contracts.md": "f575fbb8120798609c1e33893ca56eaeb44ed23fbb2b308d53c17a6829aa6275"
+  },
+  "local_run_artifact_sha256": {
+    "core.tap": "e2fcd6e26a467dc3db040f5689922cceaeeb1b26720995ab90e3f4903e805730",
+    "components.tap": "0f87e0fa9b6c9868efd634d2c415d85e8e60cf45103a636664e17d5a65cf7eca",
+    "typecheck.log": "e3806c19fac205c687938315713a76dd23432520806fb09445e7c3857ba48d3c",
+    "check-spec.log": "b7682d990d64f12569824c54bb968393a0b4f053d0c8288427b241aabd6956b4",
+    "check-reference-model.log": "88906fe883e6e92a7c17cb5158fdcdf1be453e9db1f8cd1572500abaeba44743",
+    "test-spec-check.log": "849ef1c84d05854093ab5ae795caa205f162f12d3631613d5f75b20f6314ec14",
+    "check-canonical.log": "a568bbcf6aae56e3cee6c2935d467169bd8349edf9558827591d1c85f6b099d8",
+    "check-storage-contracts.log": "4debd8e078821d011bc1e7d09fef090c112d28a40f2e118b4baa44edb80b3e80",
+    "stock-baseline/report.json": "b56c9ff4d8f4d68ec00b6f5bd9c29c9f4efacd60b3459284dee2f1641277ba89",
+    "stock-mutant/report.json": "bbdbb1b42bc3d04419f95ce48218910eb09eda7094ee8d066cd4b6cef06779e6",
+    "stock-mutant/wire-records.json": "56700404afe587ebaa6ae0c7f9c8f5c874cef418f89ae34ef638403246c4ccf7",
+    "probes.json": "c7d04fca7a717af69582c28bf29ef0dbbb2f7b682033a77ee5c5304da4621251"
+  },
+  "local_alternatives": [
+    {
+      "name": "context-continuity-wp01-c.patch",
+      "base": "485034956c98c6a02e09659aea0b86ba6dcaba3f",
+      "sha256": "3ad9eff3bc60191b68b76a7252e7b8018bc3797c48da5133ed466da3c8077cc6",
+      "bytes": 55744,
+      "tests_reported_historically": 44,
+      "reexecuted_this_review": false,
+      "disposition": "superseded alternative; do not apply"
+    },
+    {
+      "name": "context-continuity-wp01c.patch",
+      "base": "485034956c98c6a02e09659aea0b86ba6dcaba3f",
+      "sha256": "0c3d086cfae5e28ae461f83eda6dc9ee2300c7a4d4d367f4ba5d15f29ddea0f6",
+      "bytes": 62998,
+      "tests_reported_historically": 76,
+      "reexecuted_this_review": false,
+      "disposition": "superseded alternative; do not apply"
+    }
+  ],
+  "limits": [
+    "D02/D03 are actual gateway components with controlled hooks, not new full stock-host scenarios.",
+    "D04/D05 use actual core plus existing synthetic fixtures, not certified providers.",
+    "P01 is a known future job/Snapshot requirement, not execution of a completed scheduler.",
+    "Only D01 principal case was run on mutated code; the baseline entire stock suite passed.",
+    "No semantic LLM, cache, price, production storage or Windows conformance measured.",
+    "A setup-only syntax error in the first reproduction script was fixed before collecting observations; not counted as a product failure."
+  ],
+  "runtime_fixes": false,
+  "product_complete_enabled": false
+}
