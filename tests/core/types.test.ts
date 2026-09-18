@@ -30,3 +30,23 @@ binding.scope.workspace_id = 'other';
 catalog.entries[0]!.native_identity = 'other';
 // @ts-expect-error registry cannot be rebound
 registry.binding = binding;
+
+import type { Manifest, VerifiedManifest, Capture, SealedFrame, ValidatedProposal } from '../../packages/core/src/index.ts';
+declare const manifest: Manifest;
+declare const verifiedManifest: VerifiedManifest;
+declare const partialCapture: Capture;
+declare const sealedFrame: SealedFrame;
+declare const decodedProposal: ValidatedProposal;
+// @ts-expect-error structural validation is not source verification
+const notVerified: VerifiedManifest = manifest;
+// @ts-expect-error a capture is not a final frame
+const notSealed: SealedFrame = partialCapture;
+// @ts-expect-error manifest entries are readonly
+verifiedManifest.manifest.entries.push(manifest.entries[0]);
+// @ts-expect-error provenance cannot be changed in place
+verifiedManifest.binding.incarnation = 'other';
+// @ts-expect-error the copied envelope pointer is immutable
+sealedFrame.envelope = null;
+// @ts-expect-error proposal/manifest association is immutable
+decodedProposal.manifest_digest = 'other';
+void notVerified; void notSealed;

@@ -15,6 +15,7 @@
 | [SPEC-07](07-state-operations.md) | Projeção achatada, invalidação transitiva, restore/correção e arquivos portáveis. |
 | [SPEC-08](08-evaluation.md) | Protocolo pré-registrado, métricas, budget e decisão do piloto. |
 | [SPEC-09](09-review003-boundaries.md) | Oráculos exatos, codec, retenção, reset e transporte após REVIEW-003. |
+| [SPEC-10](10-context-contracts.md) | Refinamentos dos contratos puros de manifesto/proposta e captura JSON (WP-01/C). |
 | [Work packages](WORK-PACKAGES.md) | Oito pacotes com cinco axiomas e DoDs sem dependências retroativas. |
 | [traceability.json](traceability.json) | Fonte única do mapa requisito/casos/donos/dependências. |
 
