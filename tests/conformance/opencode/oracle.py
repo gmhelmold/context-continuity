@@ -74,6 +74,7 @@ def witnessed_sequence(ingress, observed, replacements):
     for original, output in zip(ingress, observed):
         raw=original['body']; candidates=[deepcopy(raw)]
         for marker,summary in replacements:
+            assert isinstance(marker,str) and marker and isinstance(summary,str), 'E_ORACLE_WITNESS_PLAN'
             matches=[i for i,m in enumerate(raw['messages']) if m['role']=='user' and content_text(m.get('content'))==marker]
             if not matches:continue
             assert len(matches)==1, 'E_ORACLE_WITNESS_AMBIGUOUS_MARKER'

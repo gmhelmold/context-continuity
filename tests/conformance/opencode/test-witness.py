@@ -34,4 +34,15 @@ class WitnessTests(unittest.TestCase):
   self.assertFalse(same_json({'nested':[0]}, {'nested':[False]}))
   self.assertTrue(same_json({'number':1}, {'number':1.0}))
   self.assertFalse(same_json({'x':None}, {'x':'null'}))
+ def test_prior_and_new_summary_have_explicit_distinct_cuts(self):
+  raw={'model':'probe','messages':[{'role':'system','content':'rule'},{'role':'user','content':'seed'},{'role':'user','content':'OLD'},{'role':'assistant','content':'done'},{'role':'user','content':'NEW'}]}
+  prior={'model':'probe','messages':[{'role':'system','content':'rule'},{'role':'assistant','content':'old summary'},*raw['messages'][2:]]}
+  newest={'model':'probe','messages':[{'role':'system','content':'rule'},{'role':'assistant','content':'new summary'},*raw['messages'][4:]]}
+  plan=[('NEW','new summary'),('OLD','old summary')]
+  witnessed_sequence([{'body':raw},{'body':raw}],[{'body':prior},{'body':newest}],plan)
+  with self.assertRaisesRegex(AssertionError,'E_ORACLE_WITNESS_PLAN'):
+   witnessed_sequence([{'body':raw}],[{'body':prior}],[('NEW','new summary'),(None,'old summary')])
+  prior['messages'][0]['content']='changed rule'
+  with self.assertRaisesRegex(AssertionError,'E_ORACLE_WITNESS_PAYLOAD'):
+   witnessed_sequence([{'body':raw}],[{'body':prior}],plan)
 if __name__=='__main__':unittest.main(verbosity=2)

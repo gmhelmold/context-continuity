@@ -22,7 +22,7 @@ Antes da correção, os dois testes D04/D05 reprovaram por assertions. Depois pa
 
 A campanha do núcleo foi ampliada de cinco para sete mutantes, preservando o controle positivo e exigindo 45 testes selecionados em cada filho. Os dois adicionais ignoram protocolo e identidade do modelo; precisam falhar nos casos específicos. A campanha stock passa de seis para oito alterações incorretas, das quais duas ficam antes do log do próprio gateway. Seu resultado não é antecipado neste registro.
 
-Três testes Python exercitam a testemunha de entrada com HTTP real e demonstram que a referência é independente da telemetria de saída. Headers secretos não aparecem no registro. A igualdade JSON do novo oráculo também distingue booleanos de números (True não equivale a 1). Source hashes da sonda incluem o módulo da testemunha pelo glob de arquivos Python existente.
+Quatro testes Python exercitam a testemunha de entrada com HTTP real e demonstram que a referência é independente da telemetria de saída. Headers secretos não aparecem no registro. A igualdade JSON do novo oráculo também distingue booleanos de números (True não equivale a 1). Source hashes da sonda incluem o módulo da testemunha pelo glob de arquivos Python existente.
 
 ## Reprodução
 
@@ -44,3 +44,7 @@ Suíte stock e campanha de mutações: comandos em [tests/conformance/opencode](
 ## Fechamento
 
 Este incremento não fecha #21, WP-00 ou WP-01. D02/D03 terão regressões separadas em PR rascunho, explicitamente reprovadas na base, sem incluir um teste vermelho escondido num incremento declarado verde. Não reaplicar os patches locais antigos e não somar suas contagens às desta implementação.
+
+## Correção durante o gate de integração
+
+O primeiro CI do PR #22 terminou 15/16: o novo oráculo de cadeia não atualizava prior_marker depois da primeira consolidação. Ingressos e egressos sintéticos da reprodução local mostraram corpos corretos; recalcular a expectativa com os dois cortes explícitos aprovou os quatro requests da segunda rodada. Corrigido o estado do runner, sem remover a comparação exata ou aceitar corpos modificados. Um teste adicional exige plano explícito, aceita a transição de síntese anterior para nova e continua rejeitando alteração de regra protegida. O resultado inicial 15/16 não é tratado como aprovação.

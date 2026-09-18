@@ -290,7 +290,7 @@ class Probe:
     plan=next(x for x in json.loads(self.checkpoint.read_text())['sessions'] if x['id']==sid)
     assert len(plan['view'])==1 and plan['view'][0]['ids']==expected_ids
     assert all(not ident.startswith('summary:') for ident in expected_ids)
-    covered_count=len(expected_ids);prior=newest;rounds.append({'round':index+1,'covered_native_roots':covered_count,'prefix_equal':True})
+    covered_count=len(expected_ids);prior=newest;prior_marker=marker;rounds.append({'round':index+1,'covered_native_roots':covered_count,'prefix_equal':True})
    transcript=self.call('/session/'+sid+'/message')
    assert 'SEED::chain' in json.dumps(transcript) and 'CC_SUMMARY' not in json.dumps(transcript)
    return {'session':sid,'rounds':rounds,'restart_after_round':3,'native_history_preserved':True,'active_replacements':1}
