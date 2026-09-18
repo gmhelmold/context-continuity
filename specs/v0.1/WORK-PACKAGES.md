@@ -1,6 +1,6 @@
 # Work packages — Context Continuity 0.1.2
 
-Pacotes especificados, não executados. Fonte de rastreabilidade: [traceability.json](traceability.json). Contratos em [índice](README.md).
+Execução incremental: [WP-01/A](../../docs/implementation/WP-01-A.md) cobre configuração/capacidades. Os oito pacotes ainda não estão integralmente concluídos. Fonte de rastreabilidade: [traceability.json](traceability.json). Contratos em [índice](README.md).
 
 ## Ordem
 

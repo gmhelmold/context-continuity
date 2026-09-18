@@ -43,3 +43,7 @@ REVIEW-002-RESOLUTION.md registra fechamento contratual B01–B16, não PASS de 
 ## Revisão 0.1.2
 
 SPEC-09 e as alterações C09–C12 nos contratos são vinculantes. Rodar também check-canonical.py, check-storage-contracts.py e os testes Node dos componentes. O CI de mutações precisa detectar código incorreto; uma campanha sem controle positivo não é evidência. Preserve reviews e resultados históricos, acrescentando corrigendum.
+
+## Núcleo WP-01/A
+
+`packages/core/src` contém os contratos puros iniciais de configuração/capacidades. Rodar `npm ci --ignore-scripts`, `npm run check:core` e `npm run test:core` ao alterá-los. Registro em docs/implementation/WP-01-A.md. A entrada do predicado não é prova de homologação; não concluir WP-01 inteiro pelos dois subcasos atuais. Sem dependências de host ou cópia do algoritmo em testes.
