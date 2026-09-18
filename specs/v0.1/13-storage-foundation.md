@@ -14,6 +14,8 @@ O módulo SQLite é experimental nas versões fixadas. O driver fica isolado par
 
 O asset `schema-v1.sql` coincide byte a byte com o bloco DDL da SPEC-03. O bootstrap configura WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=250, trusted_schema=OFF e solicita fullfsync. As propriedades fundamentais são lidas de volta. SQLite sincroniza suas páginas/WAL; a criação também sincroniza o arquivo e diretório. Isso não prova resistência a hardware que mente sobre fsync.
 
+Cada inspeção de versão/esquema/metadados/integridade ocorre dentro de uma única transação de leitura; COMMIT no sucesso, ROLLBACK na recusa. Configuração de journal e bootstrap permanecem fora dela. Isso não substitui a validação por transação das operações posteriores.
+
 DDL, meta de workspace, digest do schema, application_id e user_version são publicados na mesma transação. Abrir exige schema/identidade/integridade compatíveis e inspeção prévia em conexão read-only antes de negociar escrita. Versões desconhecidas, banco estrangeiro e schema adulterado não são migrados automaticamente. Só existe schema v1 nesta fase; migrações de usuário/backup exigem incremento próprio antes de qualquer mudança de versão.
 
 Se uma inicialização exclusiva falhar, pode restar um arquivo incompleto. Ele não é interpretado como ledger válido nem apagado por tentativa posterior. A chamada retorna erro; diagnóstico/recuperação explícita da instalação deve resolver esse artefato antes de habilitar o produto. Nenhum callback tenta criá-lo ou repará-lo. A prova de atomicidade cobre estado SQLite, não uma transação distribuída entre DDL e diretórios.
