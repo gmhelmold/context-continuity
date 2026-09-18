@@ -18,6 +18,7 @@
 | [SPEC-10](10-context-contracts.md) | Refinamentos dos contratos puros de manifesto/proposta e captura JSON (WP-01/C). |
 | [SPEC-11](11-terminal-profiles.md) | Perfil terminal explícito, grupos indivisíveis e testemunha externa (D01/D04/D05). |
 | [SPEC-12](12-generation-context.md) | Identidade imutável de job/Snapshot/manifesto/feedback, registros e respostas vinculadas. |
+| [SPEC-13](13-storage-foundation.md) | Fundação SQLite de sessão/proprietário: escopo, inicialização e garantias verificadas. |
 | [Work packages](WORK-PACKAGES.md) | Oito pacotes com cinco axiomas e DoDs sem dependências retroativas. |
 | [traceability.json](traceability.json) | Fonte única do mapa requisito/casos/donos/dependências. |
 

@@ -76,3 +76,7 @@ A sonda atual tem 16 checks de host e 12 testes de componentes, incluindo regra 
 ## WP-01/D — vínculo de geração
 
 [Snapshot e JobContext](docs/implementation/WP-01-D.md) fecham a associação contratual entre geração, frame identificado, manifesto, missão e feedback. Dois jobs não podem compartilhar uma resposta só porque usam o mesmo manifesto. Registros são exportáveis; reabrir exige revalidação e não dispara inferência. O encerramento do WP-01 é de contratos/componentes; renderer, ledger transacional, scheduler e adaptadores mantêm seus gates próprios.
+
+## Ledger em implementação
+
+[WP-02/A — SQLite e sessões](docs/implementation/WP-02-A.md): inicialização exclusiva, Session/View0 atômicos, reabertura e leases com fencing. `npm run check:storage` / `npm run test:storage` usam SQLite e FS reais. É a fundação transacional; blobs, jobs, publicação, migrações/backups e arquivo portátil continuam no WP-02. Não habilita modo complete ou instalação do produto.

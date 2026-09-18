@@ -67,3 +67,7 @@ Ao alterar gateway/captures, executar também `node --test tests/conformance/ope
 ## Núcleo WP-01/D
 
 SPEC-12 define SnapshotRecord/JobContext/JobProposal. Parsers e handles não são autorização de dispatch, prova de contiguidade ou durabilidade. O executor captura JobContextRef antes da chamada e usa o lote de feedback congelado; nunca deriva a expectativa da resposta do modelo. Restore exige revalidação, não reenvio automático. Rodar testes job-context e campanha negativa junto de todo npm run test:core. Registro/limites em docs/implementation/WP-01-D.md.
+
+## Fundação WP-02/A
+
+Storage é separado do core e segue SPEC-13. Rodar check:storage/test:storage com os pins existentes, além dos gates anteriores. DDL executável deve coincidir com SPEC-03; alterações futuras exigem migração explícita. Usar exclusivamente diretórios sintéticos privados nos testes. Lease SQLite não substitui o lock de workspace de blobs/GC. Não encerrar WP-02 por esta fundação.

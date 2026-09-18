@@ -1,0 +1,35 @@
+name: SQLite storage foundation
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: storage-${{ github.event.pull_request.head.ref || github.ref_name }}
+  cancel-in-progress: true
+jobs:
+  storage:
+    name: SQLite sessions / Node ${{ matrix.node }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ['22.17.1', '24.0.0']
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
+        with:
+          node-version: ${{ matrix.node }}
+      - name: Install locked development tooling
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Typecheck and exercise real SQLite and filesystem
+        run: |
+          node --version
+          npm run check:storage
+          npm run test:storage
