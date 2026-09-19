@@ -24,7 +24,7 @@ const cases=[
  ['reservation-binding','session-store.ts','bindAttemptOwner(this.#db, leaseValue(leaseInput), expected, result, ownerHold);','void result;',
   'Supervisor: reservation ownership is observable before dispatch admission'],
  ['ownership-digest','attempt-owner.ts',' || envelope.digest !== hashPayload(value)','',
-  'Supervisor: ownership checksum and field shape are rechecked on diagnostic reads'],
+  'Supervisor: ownership digest is verified before a completion receipt exists'],
  ['invalid-is-legacy','attempt-owner.ts','} catch { return invalid(); }','} catch { return null; }',
   'Supervisor: an invalid ownership envelope is refused rather than treated as legacy'],
  ['cancel-order','local-attempt-supervisor.ts',cancellation,'task?.controller.abort(); '+cancellation,
@@ -39,7 +39,7 @@ for(const [name,file,from,to,expected] of cases){
    const directory=mkdtempSync(join(tmpdir(),'cc-supervisor-mut-'));
    try{
     for(const path of ['packages/core/src','packages/storage/src','packages/storage/native/build'])cpSync(join(root,path),join(directory,path),{recursive:true});
-    for(const path of ['tests/storage/job-fixtures.mjs','tests/coordination/attempt-supervisor.test.mjs']){
+    for(const path of ['tests/storage/job-fixtures.mjs','tests/coordination/attempt-supervisor.test.mjs','tests/coordination/ownership-digest.test.mjs']){
      mkdirSync(join(directory,path,'..'),{recursive:true});cpSync(join(root,path),join(directory,path));
     }
     writeFileSync(join(directory,'package.json'),'{"type":"module"}');
@@ -47,7 +47,8 @@ for(const [name,file,from,to,expected] of cases){
     assert.equal(source.split(from).length-1,1,name+': exactly one mutation site');
     if(mutant)writeFileSync(path,source.replace(from,to));
     const env={...process.env};delete env.NODE_TEST_CONTEXT;
-    const run=spawnSync(process.execPath,['--experimental-strip-types','--test','--test-reporter=tap','--test-name-pattern=^'+expected+'$','tests/coordination/attempt-supervisor.test.mjs'],{cwd:directory,env,encoding:'utf8',timeout:30000,maxBuffer:2*1024*1024});
+    const testPath = name === 'ownership-digest' ? 'tests/coordination/ownership-digest.test.mjs' : 'tests/coordination/attempt-supervisor.test.mjs';
+    const run=spawnSync(process.execPath,['--experimental-strip-types','--test','--test-reporter=tap','--test-name-pattern=^'+expected+'$',testPath],{cwd:directory,env,encoding:'utf8',timeout:30000,maxBuffer:2*1024*1024});
     assert.equal(run.error,undefined,'setup or timeout is not detection');assert.equal(run.signal,null);assert.match(run.stdout,/^# tests 1$/m);
     if(!mutant)assert.equal(run.status,0,run.stdout+run.stderr);
     else{
