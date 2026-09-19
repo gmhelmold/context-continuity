@@ -27,7 +27,7 @@ const pause = "Atomics.wait(new Int32Array(new SharedArrayBuffer(4)),0,0);";
 const params = f => JSON.stringify({ directory:f.directory, workspace, binding:f.b, request:f.request });
 
 test('Pin recovery process: a live original blocks recovery and its own exit permits explicit cleanup', {timeout:30000}, () => pinFixture(async f => {
-  const program=`import {WorkspaceCoordinator} from ${JSON.stringify(moduleURL)};import {writeSync} from 'node:fs';const p=${params(f)},c=WorkspaceCoordinator.open(p.directory,p.workspace);c.pinSource(p.binding,p.request);writeSync(1,JSON.stringify({owner:c.owner_id})+'\n');${pause}`;
+  const program=String.raw`import {WorkspaceCoordinator} from ${JSON.stringify(moduleURL)};import {writeSync} from 'node:fs';const p=${params(f)},c=WorkspaceCoordinator.open(p.directory,p.workspace);c.pinSource(p.binding,p.request);writeSync(1,JSON.stringify({owner:c.owner_id})+'\n');${pause}`;
   await atBarrier(program,async(m,child,exit)=>{
     assert.equal(pythonTry(join(f.directory,'owners',m.owner+'.lock')),'busy');
     assert.equal(f.coordinator.recoverSourcePin(f.b,f.request.reservation_id).state,'held');
@@ -42,7 +42,7 @@ test('Pin recovery process: a live original blocks recovery and its own exit per
 }));
 
 test('Pin recovery process: a revoked storage owner can be reconciled while its process remains alive', {timeout:30000}, () => pinFixture(async f => {
-  const program=`import {WorkspaceCoordinator} from ${JSON.stringify(moduleURL)};import {writeSync} from 'node:fs';const p=${params(f)},c=WorkspaceCoordinator.open(p.directory,p.workspace);c.pinSource(p.binding,p.request);let closed=false;try{c.close();}catch(e){if(e.code!=='E_CAPABILITY')throw e;closed=true;}writeSync(1,JSON.stringify({owner:c.owner_id,closed})+'\n');process.stdin.on('data',()=>writeSync(1,'PONG\n'));`;
+  const program=String.raw`import {WorkspaceCoordinator} from ${JSON.stringify(moduleURL)};import {writeSync} from 'node:fs';const p=${params(f)},c=WorkspaceCoordinator.open(p.directory,p.workspace);c.pinSource(p.binding,p.request);let closed=false;try{c.close();}catch(e){if(e.code!=='E_CAPABILITY')throw e;closed=true;}writeSync(1,JSON.stringify({owner:c.owner_id,closed})+'\n');process.stdin.on('data',()=>writeSync(1,'PONG\n'));`;
   await atBarrier(program,async(m,child)=>{
     assert.equal(m.closed,true);assert.equal(pythonTry(join(f.directory,'owners',m.owner+'.lock')),'acquired');
     assert.equal(f.coordinator.recoverSourcePin(f.b,f.request.reservation_id).state,'released');

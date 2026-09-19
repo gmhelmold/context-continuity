@@ -29,3 +29,9 @@ As provas cobrem proprietário vivo/próprio, fechamento com pin retido, read/ex
 ## Limites
 
 É recuperação por ID no perfil local inline, não um coletor geral nem varredura de corrupção de todo o banco. Não implementa staging/blobs/GC/exportador nem comprova morte de um executor. O participante deve obedecer o protocolo de lock/identidade; não é sandbox para código do mesmo usuário que altera diretamente arquivos/SQL. Revisão do autor, não auditoria independente.
+
+## Primeira execução e correção das fixtures
+
+Head inicial `b40c52cdcba47c8929a022dc73490c7eb02d3d69`, workflow de coordenação `35467137824`, job Node22 `105961444799`: 298 casos, 296 aprovados e duas falhas de preparação dos programas filhos (newline interpretado dentro da template). O erro foi SyntaxError antes da barreira; não foi contado como defeito do produto ou detecção por mutação. Os 24 comportamentos, seis pares de mutação e dois ensaios de COMMIT completaram; os outros dois ensaios não foram validados nessa rodada.
+
+A correção usa String.raw nas duas templates, como nos ensaios de COMMIT já existentes. Não altera assertions, timeouts, código de produção, matriz ou critérios de recuperação. O head corrigido deve passar por nova execução completa no Actions. Os logs originais ficam preservados no workflow e no diretório de evidências fora do checkout; resultados finais serão vinculados ao SHA exato no PR.
