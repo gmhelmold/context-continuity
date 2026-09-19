@@ -99,3 +99,7 @@ SPEC-17 rege lock-resources.ts, ainda separado de SQLite e jobs. Rodar coordinat
 ## Coordenador WP-02/D3
 
 SPEC-18 rege workspace-coordinator.ts. Rodar coordination/coordinator-processes/coordinator-mutations com a matriz anterior. Anchor deve impedir nova instância de adotar inode substituído; só publicar owner com lock detido; holds expiram em finally. Rollback falho inutiliza a conexão. Não usar retirement como prova de término de job nem remover reservas por disponibilidade de lock.
+
+## Supervisor local WP-02/D4 — rascunho
+
+SPEC-19 distingue propriedade da tentativa de liveness comprovada do transporte. Preservar os testes de S01/S02 sem relaxamento; não integrar este incremento enquanto houver falha. Promise do adaptador inclui todo cleanup; abort não é stopped. Rodar coordenação e todos os testes de storage, pois a reserva/transições têm hold adicional. Recuperação cross-owner permanece separada; nenhuma identidade persistida autoriza liberar quarantine.

@@ -1,0 +1,291 @@
+{
+  "schema_version": 1,
+  "base_commit": "d81e2ace6f9f0edc34139074cdeec1c73cf0b951",
+  "local_gate": "failed",
+  "ready_for_merge": false,
+  "corrective_edit_executed": false,
+  "findings": {
+    "S01": "open",
+    "S02": "open"
+  },
+  "tracking_issue": 35,
+  "node": "v22.17.1",
+  "typescript": "Version 5.9.3",
+  "local_runs": {
+    "check-core": {
+      "command": [
+        "npm",
+        "run",
+        "check:core"
+      ],
+      "exit_code": 0,
+      "counts": {},
+      "sha256": "e3806c19fac205c687938315713a76dd23432520806fb09445e7c3857ba48d3c"
+    },
+    "check-storage": {
+      "command": [
+        "npm",
+        "run",
+        "check:storage"
+      ],
+      "exit_code": 0,
+      "counts": {},
+      "sha256": "c751b0b339ee212453e71398dabd9d25b8421f75b50f92729d86c11f9e0c6581"
+    },
+    "build": {
+      "command": [
+        "npm",
+        "run",
+        "build:locks"
+      ],
+      "exit_code": 0,
+      "counts": {},
+      "sha256": "668bbaa42960b93d2f1159a01325dca700c10fd4d5dcba01e50be1c3dbb1cc94"
+    },
+    "coordination": {
+      "command": [
+        "node",
+        "--experimental-strip-types",
+        "--test",
+        "--test-concurrency=1",
+        "--test-reporter=tap",
+        "tests/coordination/attempt-supervisor.test.mjs",
+        "tests/coordination/coordinator-mutations.test.mjs",
+        "tests/coordination/coordinator-processes.test.mjs",
+        "tests/coordination/lock-resources.test.mjs",
+        "tests/coordination/native-locks.test.mjs",
+        "tests/coordination/native-mutations.test.mjs",
+        "tests/coordination/owner-boundaries.test.mjs",
+        "tests/coordination/resource-mutations.test.mjs",
+        "tests/coordination/workspace-coordinator.test.mjs"
+      ],
+      "exit_code": 1,
+      "counts": {
+        "tests": 123,
+        "pass": 121,
+        "fail": 2,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0
+      },
+      "sha256": "31d49ef0fa0156dc05e1625cf9dbc52c67649781d6eb190fedd570af13f6f615"
+    },
+    "storage": {
+      "command": [
+        "node",
+        "--experimental-strip-types",
+        "--test",
+        "--test-concurrency=1",
+        "--test-reporter=tap",
+        "tests/storage/bootstrap-review.test.mjs",
+        "tests/storage/inspection-snapshot.test.mjs",
+        "tests/storage/job-mutations.test.mjs",
+        "tests/storage/job-processes.test.mjs",
+        "tests/storage/jobs.test.mjs",
+        "tests/storage/retention-budget-mutations.test.mjs",
+        "tests/storage/retention-budget.test.mjs",
+        "tests/storage/root-retention-mutations.test.mjs",
+        "tests/storage/root-retention.test.mjs",
+        "tests/storage/session-store.test.mjs",
+        "tests/storage/storage-mutations.test.mjs"
+      ],
+      "exit_code": 0,
+      "counts": {
+        "tests": 155,
+        "pass": 155,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0
+      },
+      "sha256": "04fc896ab783ef9d392a989a2e5d52f17a658b4fb9139a7ff007a29d3dd62a84"
+    },
+    "core": {
+      "command": [
+        "node",
+        "--experimental-strip-types",
+        "--test",
+        "--test-concurrency=1",
+        "--test-reporter=tap",
+        "tests/core/capabilities.test.mjs",
+        "tests/core/config.test.mjs",
+        "tests/core/context-mutations.test.mjs",
+        "tests/core/frame.test.mjs",
+        "tests/core/identity-mutations.test.mjs",
+        "tests/core/identity.test.mjs",
+        "tests/core/job-context-mutations.test.mjs",
+        "tests/core/job-context.test.mjs",
+        "tests/core/manifest-snapshot.test.mjs",
+        "tests/core/manifest.test.mjs",
+        "tests/core/proposal-data.test.mjs",
+        "tests/core/proposal.test.mjs",
+        "tests/core/roots.test.mjs",
+        "tests/core/terminal-profile.test.mjs"
+      ],
+      "exit_code": 0,
+      "counts": {
+        "tests": 198,
+        "pass": 198,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0
+      },
+      "sha256": "a6dbdb2d087f92496c9a93fc3e8a68a7ea6fa97cada80c6d3c5d16e4effc8067"
+    },
+    "components": {
+      "command": [
+        "node",
+        "--test",
+        "tests/conformance/opencode/test-components.mjs",
+        "tests/conformance/opencode/test-review004.mjs"
+      ],
+      "exit_code": 0,
+      "counts": {
+        "tests": 25,
+        "pass": 25,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0
+      },
+      "sha256": "98a0ab297d3bc774ca8beff1111a77a131811c2857c434c16299199ea8ba714a"
+    },
+    "witness": {
+      "command": [
+        "python3",
+        "tests/conformance/opencode/test-witness.py"
+      ],
+      "exit_code": 0,
+      "counts": {},
+      "sha256": "822ac7d087221fc1b947406e26db9c55f8a002203755bd7e5a2cc62d74cf66b3"
+    },
+    "check-spec": {
+      "command": [
+        "python3",
+        "scripts/check-spec.py"
+      ],
+      "exit_code": 0,
+      "counts": {},
+      "sha256": "c15f2c08d1030c2555df25623da0388d209518599f85dca873803438898ae1de"
+    },
+    "check-reference-model": {
+      "command": [
+        "python3",
+        "scripts/check-reference-model.py"
+      ],
+      "exit_code": 0,
+      "counts": {},
+      "sha256": "b184547d6619a3096b04384cf62348456bdc828423c2164f567398e151924914"
+    },
+    "test-spec-check": {
+      "command": [
+        "python3",
+        "scripts/test-spec-check.py"
+      ],
+      "exit_code": 0,
+      "counts": {},
+      "sha256": "849ef1c84d05854093ab5ae795caa205f162f12d3631613d5f75b20f6314ec14"
+    },
+    "check-canonical": {
+      "command": [
+        "python3",
+        "scripts/check-canonical.py"
+      ],
+      "exit_code": 0,
+      "counts": {},
+      "sha256": "a568bbcf6aae56e3cee6c2935d467169bd8349edf9558827591d1c85f6b099d8"
+    },
+    "check-storage-contracts": {
+      "command": [
+        "python3",
+        "scripts/check-storage-contracts.py"
+      ],
+      "exit_code": 0,
+      "counts": {},
+      "sha256": "cb23341b14dc6552880b7b96e0fa04bd5cfe9d54dfabb48a9e0cacb498001db9"
+    }
+  },
+  "later_storage_typecheck": {
+    "exit_code": 0,
+    "sha256": "c751b0b339ee212453e71398dabd9d25b8421f75b50f92729d86c11f9e0c6581"
+  },
+  "historical_runs": {
+    "supervisor-first.tap": {
+      "sha256": "d5cf313a63723a8904ad9b7d8e995f7ca15be4ef16595930b22d33bd44105e2a",
+      "counts": {
+        "tests": 18,
+        "pass": 18,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0
+      }
+    },
+    "supervisor-review-before.tap": {
+      "sha256": "cda81a2318aa93c33dcf64dad528fe11d33d9a1bb939b9fe32f33393afa8beb1",
+      "counts": {
+        "tests": 2,
+        "pass": 0,
+        "fail": 2,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0
+      }
+    }
+  },
+  "exact_failures": [
+    "not ok 19 - Supervisor review: a non-Promise adapter cannot publish a successful result",
+    "not ok 20 - Supervisor review: failed dispatch reconciles the unused reservation without invoking adapter"
+  ],
+  "source_sha256": {
+    "AGENTS.md": "6bb51d757600e94bb63555b43545f9c573e4e800a64d5e67acb69ef0e9b9debd",
+    "README.md": "2e3f231e3da9244bbe451549b8f6652e8354b3373c32624c4087761ada53b223",
+    "docs/implementation/WP-02-D-ATTEMPT-SUPERVISOR.md": "6696627cc1f7cb92f7a0a62a32efd1f6714a76d3f84763c91191c34ac2ea6de6",
+    "packages/storage/src/attempt-owner.ts": "04b933921ed209a2d965986c62702c4a0cfcc48411a67af733d2b5d00af80348",
+    "packages/storage/src/index.ts": "dffc675f248c1efb9046dfd39451f880696650563cc96137427f219c7bb86b24",
+    "packages/storage/src/local-attempt-supervisor.ts": "861a0562556406fbf4e86a94927a92d2ad5e5d1f40955531143b3b05d5170e5c",
+    "packages/storage/src/session-store.ts": "e5cd6857e528f37721b795e921e32fb12723fad924a0f29ae78193403d730c48",
+    "packages/storage/src/workspace-coordinator.ts": "9aa02a7458306ad2b484bf1585763ce73fcab5eaaf047fec8cac0ac923b48626",
+    "specs/v0.1/19-local-attempt-supervisor.md": "fa3f6e424a563155fd0fdc913ecbada5f8274784874bd880b7c561181c9d7e1f",
+    "specs/v0.1/README.md": "d265cbea36bb140b48d2e8e4486105a2f97ec6d60de87efc1a343d4672de4d3c",
+    "tests/coordination/attempt-supervisor.test.mjs": "efcfc70a753e558b7f096fa6841ca090cfa6d0e92bd8f33367ecfb8ad20df7fd",
+    "tests/storage/types.test.ts": "62bc7e9716550a58b5b70c3ff477dc9a04e63e816a4e65167bce7fc3a2a5d966"
+  },
+  "previous_control_campaigns": {
+    "COORDINATOR": [
+      "construction-origin",
+      "bound-async",
+      "rollback-poison",
+      "cleanup-error",
+      "anchor",
+      "owner-lock",
+      "hold-expiry",
+      "busy-owner",
+      "reservation",
+      "owner-identity"
+    ],
+    "RESOURCE": [
+      "identity",
+      "busy",
+      "children",
+      "init-data",
+      "owner-data",
+      "final-path",
+      "close-error",
+      "cleanup-error"
+    ],
+    "LOCK": [
+      "fake-lock",
+      "busy-is-success",
+      "private-mode",
+      "fake-unlock",
+      "hardlink-accepted"
+    ]
+  },
+  "new_supervisor_mutation_campaign": "not_run",
+  "new_supervisor_process_and_transport_tests": "not_run",
+  "live_inference": false,
+  "cross_process_stop_reconciliation": false,
+  "remote_ci": "not_run_in_this_local_record"
+}

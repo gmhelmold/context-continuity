@@ -15,3 +15,7 @@ export type { StoredJob, StoredAttempt, AttemptRef, AttemptBudget, AttemptResult
 
 export { WorkspaceCoordinator, assertWorkspaceHold } from './workspace-coordinator.ts';
 export type { StorageOwner, WorkspaceHold, OwnerInspection } from './workspace-coordinator.ts';
+
+export { LocalAttemptSupervisor } from './local-attempt-supervisor.ts';
+export type { LocalAttemptOperation, LocalAttemptOutcome } from './local-attempt-supervisor.ts';
+export type { AttemptOwnership } from './attempt-owner.ts';
