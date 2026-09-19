@@ -1,4 +1,4 @@
-/** SPEC-21: durable inline-source pins, not a reader, byte verification or GC. */
+/** SPEC-21: durable inline-source pins and bounded verified reads, not GC. */
 import type { DatabaseSync } from 'node:sqlite';
 import { Buffer } from 'node:buffer';
 import { canonical, parseJSON } from '../../core/src/canonical.mjs';
@@ -7,7 +7,8 @@ import type { SessionBinding } from '../../core/src/identity.ts';
 import { parseSourceRef } from '../../core/src/roots.ts';
 import type { SourceRef } from '../../core/src/roots.ts';
 import { choice, closedRecord, integer } from '../../core/src/validation.ts';
-import { sourceMetadata } from './source-records.ts';
+import { sourceMetadata, loadSource } from './source-records.ts';
+import type { RetainedSource } from './source-records.ts';
 import type { WorkspaceIdentity } from './sqlite-database.ts';
 import { StorageError } from './errors.ts';
 
@@ -127,4 +128,13 @@ export function releaseSourcePin(db: DatabaseSync, binding: SessionBinding, id: 
     .run(envelope(Object.freeze({ ...pin, state: 'released' })), key(id), envelope(pin));
   if (deleted.changes !== 1 || updated.changes !== 1) throw new StorageError('E_CONFLICT', 'source pin release changed');
   return true;
+}
+/** One bounded owned copy under the caller's read snapshot and live workspace lock.
+ * Metadata pinning never skips byte verification, nor implies authorization after return. */
+export function readPinnedInlineSource(db: DatabaseSync, binding: SessionBinding, id: string, owner: PinOwner): RetainedSource {
+  const pinned = loadSourcePin(db, binding, id);
+  if (!pinned || pinned.state !== 'active') throw new StorageError('E_CONFLICT', 'active source pin required for reading');
+  owns(pinned, owner);
+  if (pinned.policy_revision !== currentPolicy(db, binding)) throw new StorageError('E_CONFLICT', 'pinned read policy changed');
+  return loadSource(db, binding, pinned.source_ref);
 }

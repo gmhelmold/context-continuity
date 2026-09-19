@@ -10,8 +10,9 @@ import type { FileIdentity, OwnerFile } from './lock-resources.ts';
 import { connectSQLite, workspaceIdentity } from './sqlite-database.ts';
 import type { SQLiteHandle, WorkspaceIdentity } from './sqlite-database.ts';
 import { StorageError, storageFailure } from './errors.ts';
-import { pinBinding, parseSourcePinRequest, createSourcePin, loadSourcePin, releaseSourcePin } from './source-pins.ts';
+import { pinBinding, parseSourcePinRequest, createSourcePin, loadSourcePin, releaseSourcePin, readPinnedInlineSource } from './source-pins.ts';
 import type { SourcePin } from './source-pins.ts';
+import type { RetainedSource } from './source-records.ts';
 
 const ANCHOR_KEY = 'coordinator.anchor.v1';
 const constructionKey = Symbol('WorkspaceCoordinator construction');
@@ -226,6 +227,13 @@ export class WorkspaceCoordinator {
     const binding = pinBinding(bindingInput, this.workspace), id = entityId(idInput);
     return this.#locked(() => transaction(this.#handle, false,
       () => loadSourcePin(this.#handle.db, binding, id), () => this.#guard()));
+  }
+  /** Read one verified inline copy. The pin remains active until explicitly released. */
+  readPinnedSource(bindingInput: unknown, idInput: unknown): RetainedSource {
+    const binding = pinBinding(bindingInput, this.workspace), id = entityId(idInput);
+    return this.#locked(() => transaction(this.#handle, false,
+      () => readPinnedInlineSource(this.#handle.db, binding, id, { owner_id: this.owner_id, process_instance: this.process_instance }),
+      () => this.#guard()));
   }
   releaseSourcePin(bindingInput: unknown, idInput: unknown): boolean {
     const binding = pinBinding(bindingInput, this.workspace), id = entityId(idInput);
