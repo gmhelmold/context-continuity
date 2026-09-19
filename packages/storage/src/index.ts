@@ -12,3 +12,6 @@ export type { RootRetentionBatch } from './root-records.ts';
 export { MAX_RETENTION_SOURCE_READ_BYTES, MAX_RETENTION_SOURCE_READS } from './source-records.ts';
 
 export type { StoredJob, StoredAttempt, AttemptRef, AttemptBudget, AttemptResult } from './job-records.ts';
+
+export { WorkspaceCoordinator, assertWorkspaceHold } from './workspace-coordinator.ts';
+export type { StorageOwner, WorkspaceHold, OwnerInspection } from './workspace-coordinator.ts';

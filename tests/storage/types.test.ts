@@ -36,3 +36,14 @@ resources.identity.lock.ino = 'other';
 ownerFile.fd;
 // @ts-expect-error Paths are readonly after admission.
 resources.directory = '/other';
+
+import type { WorkspaceHold, StorageOwner } from '../../packages/storage/src/index.ts';
+declare const held: WorkspaceHold;
+declare const registered: StorageOwner;
+// @ts-expect-error Workspace and owner authority cannot be mutated.
+held.owner_id = 'different';
+// @ts-expect-error Owner file identity is deeply immutable.
+registered.identity.ino = '0';
+// @ts-expect-error Plain data cannot manufacture an issued section.
+const fabricated: WorkspaceHold = { workspace: held.workspace, owner_id: held.owner_id };
+void fabricated;

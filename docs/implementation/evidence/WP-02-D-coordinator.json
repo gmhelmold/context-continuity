@@ -1,0 +1,436 @@
+{
+  "schema_version": 1,
+  "base_commit": "572bdc174b86abc35a5ea849e5e16f19e6a2b2d1",
+  "scope": "storage coordination only; no job liveness or reservation cleanup",
+  "historical_runs": {
+    "coordinator-first.tap": {
+      "sha256": "742c9b6213384b338d98f51ff3e51c1981291aa7e82ee178695414cc68cf8555",
+      "counts": {
+        "tests": 30,
+        "pass": 30,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0
+      }
+    },
+    "coordinator-processes.tap": {
+      "sha256": "f9106f3a49e68d34e8f2ef6a0ba7baa21dd44282606b404112986bb6fc25ff2e",
+      "counts": {
+        "tests": 41,
+        "pass": 41,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0
+      }
+    },
+    "coordinator-review-before.tap": {
+      "sha256": "8e47a4236853c9fadd19cf97611282d8acd7236c5c4216d6f1ea686be4a3d834",
+      "counts": {
+        "tests": 2,
+        "pass": 0,
+        "fail": 2,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0
+      }
+    },
+    "coordinator-review-after.tap": {
+      "sha256": "4b636ff47c2d30f64b6c051a6b677a3801bd61bd8a9434b90c1b428b1e1ee027",
+      "counts": {
+        "tests": 2,
+        "pass": 2,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0
+      }
+    },
+    "coordinator-bound-before.tap": {
+      "sha256": "0a834db5633657d94b5ff11dcd75a42615eb82167df0ca37f4c6b022142ae0eb",
+      "counts": {
+        "tests": 1,
+        "pass": 0,
+        "fail": 1,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0
+      }
+    },
+    "coordinator-review-final.tap": {
+      "sha256": "963b896a5105c1b43866aba5123f36bc104f12b0fb9051998b509c4e77d1957b",
+      "counts": {
+        "tests": 3,
+        "pass": 3,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0
+      }
+    },
+    "coordinator-mutations.tap": {
+      "sha256": "a2a9441da3978e453bbc3e701207500bfe18d316729bd4f9664bb36047058f8c",
+      "counts": {
+        "tests": 1,
+        "pass": 0,
+        "fail": 1,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0
+      }
+    }
+  },
+  "record_type": "prepublication history and completed integration-review local matrix; remote CI recorded separately",
+  "node": "v22.17.1",
+  "typescript": "Version 5.9.3",
+  "parallel_matrix": {
+    "build": {
+      "command": [
+        "npm",
+        "run",
+        "build:locks"
+      ],
+      "exit_code": 0,
+      "counts": {},
+      "sha256": "668bbaa42960b93d2f1159a01325dca700c10fd4d5dcba01e50be1c3dbb1cc94"
+    },
+    "check-core": {
+      "command": [
+        "npm",
+        "run",
+        "check:core"
+      ],
+      "exit_code": 0,
+      "counts": {},
+      "sha256": "e3806c19fac205c687938315713a76dd23432520806fb09445e7c3857ba48d3c"
+    },
+    "check-storage": {
+      "command": [
+        "npm",
+        "run",
+        "check:storage"
+      ],
+      "exit_code": 0,
+      "counts": {},
+      "sha256": "c751b0b339ee212453e71398dabd9d25b8421f75b50f92729d86c11f9e0c6581"
+    },
+    "coordination": {
+      "command": [
+        "npm",
+        "run",
+        "test:coordination"
+      ],
+      "exit_code": 1,
+      "counts": {
+        "tests": 98,
+        "pass": 97,
+        "fail": 1,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0
+      },
+      "sha256": "69c05358aa13f8b94360a3d9d194d8cbbb4f6a9b74a6c8c97b25ec2c9e48b655"
+    }
+  },
+  "serial_matrix": {
+    "completed_steps": {
+      "build": {
+        "command": [
+          "npm",
+          "run",
+          "build:locks"
+        ],
+        "exit_code": 0,
+        "counts": {},
+        "sha256": "668bbaa42960b93d2f1159a01325dca700c10fd4d5dcba01e50be1c3dbb1cc94"
+      },
+      "check-core": {
+        "command": [
+          "npm",
+          "run",
+          "check:core"
+        ],
+        "exit_code": 0,
+        "counts": {},
+        "sha256": "e3806c19fac205c687938315713a76dd23432520806fb09445e7c3857ba48d3c"
+      },
+      "check-storage": {
+        "command": [
+          "npm",
+          "run",
+          "check:storage"
+        ],
+        "exit_code": 0,
+        "counts": {},
+        "sha256": "c751b0b339ee212453e71398dabd9d25b8421f75b50f92729d86c11f9e0c6581"
+      }
+    },
+    "complete": false,
+    "runner_exit_code": 1,
+    "reason": "outer subprocess limit 450 seconds reached during coordination; no test timeouts changed",
+    "partial_coordination_log_sha256": "897ac23b12288e8294693bfe716450188b5133fd2969a34684ec3ff71be31d90"
+  },
+  "review_fixes": [
+    "WC01 rollback failure poisons connection",
+    "WC02 cleanup error sanitization",
+    "WC03 bound async rejected before invocation"
+  ],
+  "full_macos_matrix_passed": true,
+  "live_inference": false,
+  "job_liveness_implemented": false,
+  "source_sha256": {
+    "packages/storage/src/workspace-coordinator.ts": "953e18c21064c0bd219e96dde9dcb20c413e2cec395cf3b78bbd4f48bad2baac",
+    "tests/coordination/workspace-coordinator.test.mjs": "0f6a1f53aa7c21af345c0e03efd1f8be5ae9159d72ee3aef96e9debc44514319",
+    "tests/coordination/coordinator-mutations.test.mjs": "ba1a8e6768dfc60f0c53e8218eed3b6d6f5fcc08b9bfaa2afd629b43f447007c",
+    "specs/v0.1/18-workspace-coordinator.md": "44d218ee3ba3915f1f6d7a36251237419621189fcaeb95e4c260b5c068c43405"
+  },
+  "prepublication_source_sha256": {
+    "packages/storage/src/workspace-coordinator.ts": "44481ba92284aedc9a993b50ce8be7c6c6be85d13b7e78fc3d95135f80e1d231",
+    "packages/storage/src/index.ts": "e0d7ee7a8bafff6ad4cdfc5d6c89b83708bc576967db475e9126f1b2c7922ce1",
+    "tests/storage/types.test.ts": "8164e16471928770b1f047bc1ccdb73824d34dec7ecfb501e24c508df501bffa",
+    "specs/v0.1/18-workspace-coordinator.md": "e7d754e6ee2847eb2a57bd97268753f51a1055537af4923633ce5df077c4cfd8",
+    "tests/coordination/coordinator-fixtures.mjs": "0f165f44cfec7213b0e7def134515cdf99bba13962f2906922ba194ad93aab67",
+    "tests/coordination/coordinator-mutations.test.mjs": "531efd24608a6bdd9fab894b0104a0b4ff044f5cb8ea846664e9148fce2b30bd",
+    "tests/coordination/coordinator-processes.test.mjs": "dd9202d45297afb45ef0ef61b1621d0cd45bf4bd656eeade3362a211613b479e",
+    "tests/coordination/workspace-coordinator.test.mjs": "4f53e3b9cdc2d1cc12af9f91ad51cfad5f3707db0442299b8b8402393ca7c8c5"
+  },
+  "integration_review": {
+    "reviewed_head": "c958b2c19609f85b3fd02253e93e5477ad004937",
+    "finding": "WC04: enforce factory construction at JavaScript runtime",
+    "status": "local_passed_remote_pending",
+    "node": "v22.17.1",
+    "typescript": "Version 5.9.3",
+    "matrix": {
+      "build": {
+        "command": [
+          "npm",
+          "run",
+          "build:locks"
+        ],
+        "exit_code": 0,
+        "sha256": "668bbaa42960b93d2f1159a01325dca700c10fd4d5dcba01e50be1c3dbb1cc94",
+        "counts": {},
+        "seconds": 0.5
+      },
+      "check-core": {
+        "command": [
+          "npm",
+          "run",
+          "check:core"
+        ],
+        "exit_code": 0,
+        "sha256": "e3806c19fac205c687938315713a76dd23432520806fb09445e7c3857ba48d3c",
+        "counts": {},
+        "seconds": 1.8
+      },
+      "check-storage": {
+        "command": [
+          "npm",
+          "run",
+          "check:storage"
+        ],
+        "exit_code": 0,
+        "sha256": "c751b0b339ee212453e71398dabd9d25b8421f75b50f92729d86c11f9e0c6581",
+        "counts": {},
+        "seconds": 2.01
+      },
+      "coordination": {
+        "command": [
+          "node",
+          "--experimental-strip-types",
+          "--test",
+          "--test-concurrency=1",
+          "--test-reporter=tap",
+          "tests/coordination/coordinator-mutations.test.mjs",
+          "tests/coordination/coordinator-processes.test.mjs",
+          "tests/coordination/lock-resources.test.mjs",
+          "tests/coordination/native-locks.test.mjs",
+          "tests/coordination/native-mutations.test.mjs",
+          "tests/coordination/owner-boundaries.test.mjs",
+          "tests/coordination/resource-mutations.test.mjs",
+          "tests/coordination/workspace-coordinator.test.mjs"
+        ],
+        "exit_code": 0,
+        "sha256": "c85861ceb016c670dce07036a151645d4cb7e5e86f9185e45c8bafde3cd9681d",
+        "counts": {
+          "tests": 99,
+          "pass": 99,
+          "fail": 0,
+          "cancelled": 0,
+          "skipped": 0,
+          "todo": 0
+        },
+        "seconds": 59.2
+      },
+      "core": {
+        "command": [
+          "node",
+          "--experimental-strip-types",
+          "--test",
+          "--test-concurrency=1",
+          "--test-reporter=tap",
+          "tests/core/capabilities.test.mjs",
+          "tests/core/config.test.mjs",
+          "tests/core/context-mutations.test.mjs",
+          "tests/core/frame.test.mjs",
+          "tests/core/identity-mutations.test.mjs",
+          "tests/core/identity.test.mjs",
+          "tests/core/job-context-mutations.test.mjs",
+          "tests/core/job-context.test.mjs",
+          "tests/core/manifest-snapshot.test.mjs",
+          "tests/core/manifest.test.mjs",
+          "tests/core/proposal-data.test.mjs",
+          "tests/core/proposal.test.mjs",
+          "tests/core/roots.test.mjs",
+          "tests/core/terminal-profile.test.mjs"
+        ],
+        "exit_code": 0,
+        "sha256": "83a6af3eb1b9c172ed70499fb267d0436493a82befeb570bc55b9024b8120b78",
+        "counts": {
+          "tests": 198,
+          "pass": 198,
+          "fail": 0,
+          "cancelled": 0,
+          "skipped": 0,
+          "todo": 0
+        },
+        "seconds": 18.91
+      },
+      "storage": {
+        "command": [
+          "node",
+          "--experimental-strip-types",
+          "--test",
+          "--test-concurrency=1",
+          "--test-reporter=tap",
+          "tests/storage/bootstrap-review.test.mjs",
+          "tests/storage/inspection-snapshot.test.mjs",
+          "tests/storage/job-mutations.test.mjs",
+          "tests/storage/job-processes.test.mjs",
+          "tests/storage/jobs.test.mjs",
+          "tests/storage/retention-budget-mutations.test.mjs",
+          "tests/storage/retention-budget.test.mjs",
+          "tests/storage/root-retention-mutations.test.mjs",
+          "tests/storage/root-retention.test.mjs",
+          "tests/storage/session-store.test.mjs",
+          "tests/storage/storage-mutations.test.mjs"
+        ],
+        "exit_code": 0,
+        "sha256": "75a3bb80ed6ee1b496d882c1dfc4259fe8adf2e91ec5b4ee7a2af3e73475f3be",
+        "counts": {
+          "tests": 155,
+          "pass": 155,
+          "fail": 0,
+          "cancelled": 0,
+          "skipped": 0,
+          "todo": 0
+        },
+        "seconds": 111.94
+      },
+      "components": {
+        "command": [
+          "node",
+          "--test",
+          "tests/conformance/opencode/test-components.mjs",
+          "tests/conformance/opencode/test-review004.mjs"
+        ],
+        "exit_code": 0,
+        "sha256": "22c3d01bf9fca71d0822dfc96cc47503f3f9abbfaee0bb95cf9841d52be03920",
+        "counts": {
+          "tests": 25,
+          "pass": 25,
+          "fail": 0,
+          "cancelled": 0,
+          "skipped": 0,
+          "todo": 0
+        },
+        "seconds": 0.72
+      },
+      "witness": {
+        "command": [
+          "python3",
+          "tests/conformance/opencode/test-witness.py"
+        ],
+        "exit_code": 0,
+        "sha256": "f033a25f240678e94f674f252d30fecece0d2424eeec87236285bfc30ca5efb4",
+        "counts": {},
+        "seconds": 1.26
+      },
+      "check-spec": {
+        "command": [
+          "python3",
+          "scripts/check-spec.py"
+        ],
+        "exit_code": 0,
+        "sha256": "84b94c88305484be19b2f7dc7e37d197781bd4696596ad7236bb626e017f000f",
+        "counts": {},
+        "seconds": 0.19
+      },
+      "check-reference-model": {
+        "command": [
+          "python3",
+          "scripts/check-reference-model.py"
+        ],
+        "exit_code": 0,
+        "sha256": "33b3bf8adb541755657c27b34d613cdbff184a630e48e8e0aa8ebd5b420e02da",
+        "counts": {},
+        "seconds": 0.98
+      },
+      "test-spec-check": {
+        "command": [
+          "python3",
+          "scripts/test-spec-check.py"
+        ],
+        "exit_code": 0,
+        "sha256": "849ef1c84d05854093ab5ae795caa205f162f12d3631613d5f75b20f6314ec14",
+        "counts": {},
+        "seconds": 4.17
+      },
+      "check-canonical": {
+        "command": [
+          "python3",
+          "scripts/check-canonical.py"
+        ],
+        "exit_code": 0,
+        "sha256": "a568bbcf6aae56e3cee6c2935d467169bd8349edf9558827591d1c85f6b099d8",
+        "counts": {},
+        "seconds": 1.8
+      },
+      "check-storage-contracts": {
+        "command": [
+          "python3",
+          "scripts/check-storage-contracts.py"
+        ],
+        "exit_code": 0,
+        "sha256": "53cdaeb70f05e0554fa3fad8a320fc17f0e99df565bf88e5dac6dda056c05c71",
+        "counts": {},
+        "seconds": 0.29
+      }
+    },
+    "directed": {
+      "construction-before.tap": {
+        "sha256": "47b5bf8264d5a0e69bba8f8cdca4549f7d286609ab357a4d7150ec2f282b7fff",
+        "counts": {
+          "tests": 1,
+          "pass": 0,
+          "fail": 1,
+          "cancelled": 0,
+          "skipped": 0,
+          "todo": 0
+        }
+      },
+      "construction-after.tap": {
+        "sha256": "ecc2d2a4e532868379081b2058977b5997fc3885db2b3106417825ef0a1c6c9b",
+        "counts": {
+          "tests": 2,
+          "pass": 2,
+          "fail": 0,
+          "cancelled": 0,
+          "skipped": 0,
+          "todo": 0
+        }
+      }
+    }
+  }
+}

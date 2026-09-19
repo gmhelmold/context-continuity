@@ -92,6 +92,8 @@ A sonda atual tem 16 checks de host e 12 testes de componentes, incluindo regra 
 
 **Locks de SO — primeiro corte:** [primitiva nativa isolada](docs/implementation/WP-02-D-LOCK-PRIMITIVE.md). Build e testes explícitos; ainda não é gerenciador de workspace/liveness nem liberação de jobs.
 
-O [desenho do gerenciador de owners](docs/designs/storage/WORKSPACE-COORDINATOR.md) permanece pré-implementação. As [observações de fronteira](docs/implementation/WP-02-D-OWNER-BOUNDARIES.md) testam a ponte existente, sem homologar recuperação de jobs.
+O [desenho de origem do gerenciador de owners](docs/designs/storage/WORKSPACE-COORDINATOR.md) foi refinado pela SPEC-18. As [observações de fronteira](docs/implementation/WP-02-D-OWNER-BOUNDARIES.md) testam a ponte existente, sem homologar recuperação de jobs.
 
-Recursos privados de lock: [WP-02/D2](docs/implementation/WP-02-D-LOCK-RESOURCES.md). A camada de filesystem é distinta do registro transacional de owners ainda pendente.
+Recursos privados de lock: [WP-02/D2](docs/implementation/WP-02-D-LOCK-RESOURCES.md). A camada de filesystem é distinta do registro transacional de owners acrescentado no WP-02/D3.
+
+O incremento WP-02/D3 acrescenta coordenação transacional de anchors e participantes de storage, conforme [SPEC-18](specs/v0.1/18-workspace-coordinator.md). A seção síncrona e o registro de owners não autorizam limpeza de reservas ou liberação de jobs em quarentena.
