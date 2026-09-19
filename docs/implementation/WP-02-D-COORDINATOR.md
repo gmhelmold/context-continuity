@@ -51,3 +51,15 @@ O preflight de initialize inspeciona o banco antes da aquisição do flock; some
 **Invariants:** não expor descritor, não apagar recursos, não usar TTL como exclusão, não liberar quarantine, não reexecutar inferência, não aproveitar teste verde anterior.
 
 A repetição em série atingiu o limite global de 450 segundos do runner durante coordenação e não produziu uma contagem final. Não foi declarada aprovada nem usada como passe de gate. O CI deve executar os mesmos 98 testes completos nas duas versões; seus resultados e logs do head final são registrados no PR e na issue #5.
+
+## Revisão de integração WC04
+
+A continuação partiu do PR #34 em `c958b2c19609f85b3fd02253e93e5477ad004937`. O pacote D3 preparado anteriormente na conversa não foi reaplicado: esta implementação do PR é a referência canônica. As contagens e APIs dos candidatos não são cumulativas. O patch antigo de LR05 também permanece substituído pelo PR #32.
+
+WC04: a privacidade do construtor TypeScript desaparecia na execução JavaScript, permitindo criar uma instância fora da factory. A regressão chamou diretamente o construtor e falhou por ausência da recusa esperada (0/1); não adquiriu locks, não alterou banco nem alegou exploração. Uma chave local privada agora é exigida antes de acessar recursos. Após a correção, a regressão e o controle de abertura real passaram 2/2. Chaves ausentes, nulas ou símbolos com a mesma descrição não são aceitos.
+
+A campanha passa a dez pares controle/mutante, acrescentando a remoção dessa verificação. A suíte de coordenação passa de 98 para 99 casos (37 comportamentos do coordenador, oito processos e uma campanha, mais 53 anteriores). O tipo privado e a validação de runtime trabalham juntos; não é promessa de sandbox para código arbitrário. Os arquivos executáveis fora desse módulo e da campanha não foram alterados.
+
+A matriz anterior de 98 casos é histórica. Resultados desta integração e hashes estão no campo `integration_review` do JSON de evidências. O CI precisa aprovar o head que contém WC04; o verde de c958b2c não é usado como validação desta mudança. O merge e sua árvore efetiva serão registrados no PR e na issue #5 depois da conferência.
+
+Matriz local desta integração concluída com Node 22.17.1 e TypeScript 5.9.3: coordenação 99/99, núcleo 198/198, storage 155/155, componentes 25/25, testemunha 4/4; build nativo, dois typechecks e cinco verificadores documentais aprovados. As suítes pesadas rodaram por arquivos em série; concorrência explícita de processos nas fixtures e comandos/timeouts do CI permanecem intactos. Dez mutações do coordenador, cinco nativas e oito de recursos foram rejeitadas com seus controles positivos. Não foi executado OpenCode stock localmente nesta integração; o gate remoto continua obrigatório.

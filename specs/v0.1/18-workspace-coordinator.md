@@ -12,6 +12,8 @@ Anchor v1 fechado por igualdade canônica: `{schema_version:1, workspace, resour
 
 ## Participante de storage
 
+A construção da instância passa exclusivamente pela factory `open`. O construtor exige uma chave local privada em runtime, além de ser privado nos tipos; chamadas diretas de JavaScript são recusadas antes de acessar recursos fornecidos. Isso preserva a origem da instância, não isola código hostil do mesmo usuário.
+
 Cada open cria owner_id e process_instance novos; process_instance identifica esta instância participante, não PID nem afirmação de unicidade por processo. Abre exclusivamente `owners/<owner_id>.lock`, sincroniza o arquivo/diretório e mantém seu flock antes de publicar `storage_owners(active)` e o metadado `coordinator.owner.v1:<id>` juntos.
 
 Metadado fechado v1: `{schema_version:1,owner_id,process_instance,created_at,identity}`. O registro SQL conserva chave relativa canônica e timestamp UTC de diagnóstico. Toda leitura compara registro e metadado; ausência parcial, versão/identidade contraditória ou arquivo substituído não é corrigido silenciosamente. O esquema DDL não muda; arquivos de lock nunca são reutilizados/removidos. Timestamp não é prova de vida e não é usado como TTL.

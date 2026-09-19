@@ -8,6 +8,7 @@ import {fileURLToPath} from 'node:url';
 import {spawnSync} from 'node:child_process';
 const root=fileURLToPath(new URL('../../',import.meta.url));
 const cases=[
+ ['construction-origin', 'if (key !== constructionKey)', 'if (false)', 'Coordinator review: direct JavaScript construction is rejected before acquiring resources'],
  ['bound-async', 'Object.getPrototypeOf(callback) !== Function.prototype || ', '', 'Coordinator review: binding an async function cannot execute it inside a synchronous hold'],
  ['rollback-poison', "poisoned.add(handle);\n        try { handle.db.close(); } catch { /* Remains unusable even when driver close fails. */ }", 'void handle;', 'Coordinator review: rollback failure cannot leave a usable borrowed section'],
  ['cleanup-error', 'try { handle?.db.close(); } catch (cause) { failure ??= cause; }', 'handle?.db.close();', 'Coordinator review: connection cleanup errors never expose raw driver details'],
@@ -18,7 +19,7 @@ const cases=[
  ['reservation','noReservations(this.#handle, id);','void id;','Coordinator: staging reservation prevents automatic retirement and is preserved'],
  ['owner-identity','if (!sameFile(inspected.identity, row.identity)) return capability();','void row.identity;','Coordinator: replacing an old owner file does not provide retirement authority'],
 ];
-test('Coordinator proof: nine positive controls reject nine incorrect coordinator implementations',{timeout:180000},()=>{
+test('Coordinator proof: ten positive controls reject ten incorrect coordinator implementations',{timeout:180000},()=>{
  for(const [name,from,to,expected]of cases)for(const mutant of [false,true]){
   const directory=mkdtempSync(join(tmpdir(),'cc-coordinator-mut-'));
   try{

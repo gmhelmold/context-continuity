@@ -195,3 +195,13 @@ test('Coordinator review: binding an async function cannot execute it inside a s
  const a=f.open();let ran=false;const callback=(async()=>{ran=true;}).bind(null);
  reject(()=>a.withWorkspaceLock(callback),'E_CAPABILITY');assert.equal(ran,false);
 }));
+
+// TypeScript private constructors are erased for JavaScript consumers.
+test('Coordinator review: direct JavaScript construction is rejected before acquiring resources',()=>{
+ const record={owner_id:id(90),process_instance:id(91)},access=[];
+ const resources=new Proxy({}, {get(_target,name){access.push(name);throw Error('fixture resource must not be accessed');}});
+ for(const key of [undefined,null,Symbol('WorkspaceCoordinator construction')]){
+  reject(()=>Reflect.construct(WorkspaceCoordinator,[resources,{identity:workspace},{},record,key]),'E_OWNER');
+ }
+ assert.deepEqual(access,[]);
+});

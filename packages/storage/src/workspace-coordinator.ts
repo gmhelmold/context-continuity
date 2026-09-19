@@ -12,6 +12,7 @@ import type { SQLiteHandle, WorkspaceIdentity } from './sqlite-database.ts';
 import { StorageError, storageFailure } from './errors.ts';
 
 const ANCHOR_KEY = 'coordinator.anchor.v1';
+const constructionKey = Symbol('WorkspaceCoordinator construction');
 const poisoned = new WeakSet<SQLiteHandle>();
 const ownerKey = (id: string): string => `coordinator.owner.v1:${id}`;
 export type StorageOwner = Readonly<{
@@ -122,7 +123,8 @@ export class WorkspaceCoordinator {
   #owner: OwnerFile;
   #closed = false;
   #busy = false;
-  private constructor(resources: LockResources, handle: SQLiteHandle, owner: OwnerFile, record: StorageOwner) {
+  private constructor(resources: LockResources, handle: SQLiteHandle, owner: OwnerFile, record: StorageOwner, key: symbol) {
+    if (key !== constructionKey) throw new StorageError('E_OWNER', 'coordinator must be opened through its factory');
     this.#resources = resources; this.#handle = handle; this.#owner = owner;
     this.workspace = handle.identity; this.owner_id = record.owner_id; this.process_instance = record.process_instance;
     Object.freeze(this);
@@ -172,7 +174,7 @@ export class WorkspaceCoordinator {
         return readOwner(h, id)!;
       }, () => { checkAnchor(h, r); o.guard(); });
       resources.release();
-      return new WorkspaceCoordinator(resources, handle, owner, record);
+      return new WorkspaceCoordinator(resources, handle, owner, record, constructionKey);
     } catch (cause) {
       dispose(handle, resources);
       return storageFailure(cause);
