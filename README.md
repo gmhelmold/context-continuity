@@ -103,3 +103,5 @@ O incremento WP-02/D3 acrescenta coordenação transacional de anchors e partici
 **Pins inline de leitura/exportação:** [WP-02/E1](docs/implementation/WP-02-E-SOURCE-PINS.md) implementa o registro durável, não readers, staging ou coleta de lixo. O aceite depende do CI do incremento; não há nova release.
 
 Recuperação de pins inline: [WP-02/E3](docs/implementation/WP-02-E-PIN-RECOVERY.md) acrescenta liberação de uma reserva do participante original sob inspeção de identidade/lock, sem inferir término de jobs ou implementar GC.
+
+**Orçamento compartilhado de conteúdo:** [WP-02/F1](docs/implementation/WP-02-F-STORAGE-BUDGET.md) permite inspecionar bytes inline, catálogo de blobs e reservas, usando a mesma contabilidade da admissão inline. Não reserva staging nem mede ocupação física do disco.

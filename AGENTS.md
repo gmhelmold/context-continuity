@@ -111,3 +111,7 @@ SPEC-21 rege source-pins.ts e métodos de WorkspaceCoordinator. Reserva/metadado
 ## Recuperação de pins WP-02/E3
 
 SPEC-21 limita recoverSourcePin a uma reserva inline identificada. Validar pin/owner/inode e adquirir lock sem bloquear; manter inspeção até COMMIT. Não usar TTL, retired ou recibo de job como substitutos; não alterar conteúdo/jobs/staging nem aposentar implicitamente. Rodar pin-recovery e contraprovas com toda a matriz exclusivamente no Actions.
+
+## Orçamento compartilhado WP-02/F1
+
+SPEC-23 rege storage-budget.ts e readStorageBudget. Diagnóstico não reserva espaço: retainSource deve recontar sob IMMEDIATE antes de inserir. Não duplicar o algoritmo de quota, ignorar reservas por owner/idade ou vender contagem de catálogo como auditoria de disco. Rodar storage-budget, processos, contraprovas e a matriz anterior somente Actions; preservar os limites de blobs/staging/GC ainda não implementados.

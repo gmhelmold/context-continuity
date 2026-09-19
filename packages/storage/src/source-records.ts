@@ -9,9 +9,10 @@ import type { SourceRef } from '../../core/src/roots.ts';
 import { dataList, distinct } from '../../core/src/contract-data.ts';
 import { closedRecord, ContractError, integer } from '../../core/src/validation.ts';
 import { StorageError } from './errors.ts';
+import { assertStorageCapacity } from './storage-budget.ts';
+export { WORKSPACE_CONTENT_QUOTA_BYTES } from './storage-budget.ts';
 
 export const MAX_INLINE_SOURCE_BYTES = 256 * 1024;
-export const WORKSPACE_CONTENT_QUOTA_BYTES = 2 * 1024 * 1024 * 1024;
 export type InlineSource = Readonly<{ ref: SourceRef; native_refs: readonly string[]; media_type: string; bytes: Uint8Array }>;
 export type RetainedSource = InlineSource & Readonly<{ policy_revision: number }>;
 function nativeRefs(input: unknown): readonly string[] {
@@ -91,13 +92,6 @@ export function loadSource(db: DatabaseSync, binding: SessionBinding, input: Sou
   return Object.freeze({ ref, bytes, native_refs: nativeRefs(parseJSON(row.native_refs_json)),
     media_type: opaqueId(row.media_type), policy_revision: integer(row.policy_revision, 0, Number.MAX_SAFE_INTEGER, 'source.policy') });
 }
-function accountedBytes(db: DatabaseSync): number {
-  const inline = db.prepare("SELECT COALESCE(SUM(length(inline_bytes)),0) AS n FROM sources WHERE availability='captured'").get()!.n;
-  const blobs = db.prepare('SELECT COALESCE(SUM(size_bytes),0) AS n FROM blobs').get()!.n;
-  const reservations = db.prepare('SELECT COALESCE(SUM(size_bytes),0) AS n FROM storage_reservations').get()!.n;
-  const count = (value: unknown) => integer(value, 0, Number.MAX_SAFE_INTEGER, 'storage.accounting');
-  return count(count(inline) + count(blobs) + count(reservations));
-}
 export function retainSource(db: DatabaseSync, binding: SessionBinding, source: InlineSource, policy: number, created: string, read: SourceReader): void {
   const { ref } = source;
   const existing = db.prepare('SELECT revision FROM sources WHERE session_key=? AND source_id=? AND revision=?')
@@ -117,7 +111,7 @@ export function retainSource(db: DatabaseSync, binding: SessionBinding, source: 
     if (status !== 'captured') throw new StorageError('E_SOURCE', 'source lifecycle requires authorized recovery');
     if (previous === Number.MAX_SAFE_INTEGER || ref.revision !== previous + 1) throw new StorageError('E_CONFLICT', 'source revision gap');
   } else if (ref.revision !== 0) throw new StorageError('E_CONFLICT', 'source must begin at revision zero');
-  if (accountedBytes(db) + source.bytes.length > WORKSPACE_CONTENT_QUOTA_BYTES) throw new StorageError('E_BUDGET', 'workspace content quota exceeded');
+  assertStorageCapacity(db, source.bytes.length);
   db.prepare(`INSERT INTO sources(session_key,source_id,revision,digest,native_refs_json,availability,media_type,size_bytes,inline_bytes,blob_key,policy_revision,created_at)
     VALUES (?,?,?,?,?,'captured',?,?,?,NULL,?,?)`).run(binding.session_key, ref.source_id, ref.revision, ref.digest,
       canonical(source.native_refs), source.media_type, source.bytes.length, source.bytes, policy, created);

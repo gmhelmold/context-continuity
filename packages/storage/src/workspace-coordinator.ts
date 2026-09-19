@@ -10,6 +10,8 @@ import type { FileIdentity, OwnerFile } from './lock-resources.ts';
 import { connectSQLite, workspaceIdentity } from './sqlite-database.ts';
 import type { SQLiteHandle, WorkspaceIdentity } from './sqlite-database.ts';
 import { StorageError, storageFailure } from './errors.ts';
+import { readWorkspaceBudget } from './storage-budget.ts';
+import type { StorageBudget } from './storage-budget.ts';
 import { pinBinding, parseSourcePinRequest, createSourcePin, loadSourcePin, releaseSourcePin, readPinnedInlineSource,
   parseSourcePinPageRequest, listSourcePins as listActiveSourcePins } from './source-pins.ts';
 import type { SourcePin, SourcePinPage } from './source-pins.ts';
@@ -230,6 +232,11 @@ export class WorkspaceCoordinator {
       try { const value = callback(hold) as T; synchronousResult(value); return value; }
       finally { holds.delete(hold); }
     });
+  }
+  /** Logical content and reservations, not free disk space or admission authority. */
+  readStorageBudget(): StorageBudget {
+    return this.#locked(() => transaction(this.#handle, false,
+      () => readWorkspaceBudget(this.#handle.db), () => this.#guard()));
   }
   readOwner(idInput: unknown): StorageOwner | null {
     const id = entityId(idInput);

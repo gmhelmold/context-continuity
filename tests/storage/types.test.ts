@@ -89,3 +89,14 @@ pinPage.pins[0]!.owner_id = 'different';
 pinPage.next_after = 'different';
 // @ts-expect-error Page bounds are immutable request data.
 pinPageRequest.limit = 0;
+
+import type { StorageBudget, WorkspaceCoordinator } from '../../packages/storage/src/index.ts';
+declare const budgetCoordinator: WorkspaceCoordinator;
+const budget: StorageBudget = budgetCoordinator.readStorageBudget();
+// @ts-expect-error A diagnostic report cannot change the workspace quota.
+budget.quota_bytes = 1;
+// @ts-expect-error Capacity is immutable data, never a caller-provided override.
+budgetCoordinator.readStorageBudget({ quota_bytes: 1 });
+// @ts-expect-error Budget inspection does not return a workspace hold.
+const budgetHold: WorkspaceHold = budget;
+void budgetHold;
