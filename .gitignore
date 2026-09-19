@@ -15,3 +15,6 @@ coverage/
 # Local validation artifacts
 __pycache__/
 *.pyc
+
+# Explicit local native build; never commit binaries
+packages/storage/native/build/

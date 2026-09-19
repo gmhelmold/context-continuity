@@ -89,3 +89,5 @@ A sonda atual tem 16 checks de host e 12 testes de componentes, incluindo regra 
 **Retenção incremental:** [limite de verificação por operação](docs/implementation/WP-02-B-VERIFICATION-BUDGET.md) separa catálogo estrutural de auditoria integral, sem cache persistente de confiança.
 
 **Jobs duráveis:** [WP-02/C](docs/implementation/WP-02-C.md) registra admissão, tentativas, resultados e recuperação explícita sem replay. Perfil inicial: raízes/fontes inline. Não publica View, não emite permit de rede e não libera quarentena cross-owner sem prova de liveness.
+
+**Locks de SO — primeiro corte:** [primitiva nativa isolada](docs/implementation/WP-02-D-LOCK-PRIMITIVE.md). Build e testes explícitos; ainda não é gerenciador de workspace/liveness nem liberação de jobs.

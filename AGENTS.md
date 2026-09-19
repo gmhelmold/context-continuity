@@ -83,3 +83,7 @@ SPEC-14 distingue RootCatalog estrutural retornado por retainRoots de verificaç
 ## Persistência de eventos WP-02/C
 
 SPEC-15 e docs/implementation/WP-02-C.md distinguem persistência de eventos de permissão de transporte. Rodar jobs/job-processes/job-mutations com toda a matriz de storage. Preservar regressões J01–J05 e campanha negativa; não integrar enquanto houver teste vermelho. Parser de diagnóstico retorna apenas dados imutáveis, nunca handle verificado. Recovery não usa TTL como prova de parada e não emite rede; liveness cross-owner, blocos/chapters/recibos e publicação mantêm seus gates próprios.
+
+## Primitiva de locks WP-02/D
+
+SPEC-16 limita a ponte nativa a descritores autorizados. Rodar build:locks/test:coordination e os gates prévios; nunca tratar ausência de lock como prova de morte sem protocolo do owner. Não importar a primitiva em core/SQLite antes do gerenciador de identidade/lifetime; não emitir permissões de rede. Não versionar build/locks.node.
