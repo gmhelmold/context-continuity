@@ -10,8 +10,9 @@ import type { FileIdentity, OwnerFile } from './lock-resources.ts';
 import { connectSQLite, workspaceIdentity } from './sqlite-database.ts';
 import type { SQLiteHandle, WorkspaceIdentity } from './sqlite-database.ts';
 import { StorageError, storageFailure } from './errors.ts';
-import { pinBinding, parseSourcePinRequest, createSourcePin, loadSourcePin, releaseSourcePin, readPinnedInlineSource } from './source-pins.ts';
-import type { SourcePin } from './source-pins.ts';
+import { pinBinding, parseSourcePinRequest, createSourcePin, loadSourcePin, releaseSourcePin, readPinnedInlineSource,
+  parseSourcePinPageRequest, listSourcePins as listActiveSourcePins } from './source-pins.ts';
+import type { SourcePin, SourcePinPage } from './source-pins.ts';
 import type { RetainedSource } from './source-records.ts';
 
 const ANCHOR_KEY = 'coordinator.anchor.v1';
@@ -223,6 +224,12 @@ export class WorkspaceCoordinator {
     return this.#locked(() => transaction(this.#handle, true,
       () => createSourcePin(this.#handle.db, binding, request, { owner_id: this.owner_id, process_instance: this.process_instance }),
       () => this.#guard()));
+  }
+  /** Bounded active metadata candidates across this workspace, never cleanup authority. */
+  listSourcePins(input: unknown): SourcePinPage {
+    const request = parseSourcePinPageRequest(input);
+    return this.#locked(() => transaction(this.#handle, false,
+      () => listActiveSourcePins(this.#handle.db, this.workspace, request), () => this.#guard()));
   }
   readSourcePin(bindingInput: unknown, idInput: unknown): SourcePin | null {
     const binding = pinBinding(bindingInput, this.workspace), id = entityId(idInput);
