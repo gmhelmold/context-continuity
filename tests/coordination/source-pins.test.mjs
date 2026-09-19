@@ -170,3 +170,39 @@ test('Source pins: active limit is inclusive and replay consumes no extra slot',
   fails(()=>f.coordinator.pinSource(f.b,{...f.request,reservation_id:id(8000)}),'E_BUDGET');
   assert.equal(sql(f,'SELECT count(*) AS n FROM storage_reservations')[0].n,MAX_ACTIVE_SOURCE_PINS);
 }));
+
+test('Source pins review: owner revocation inside admission rolls back both records',()=>pinFixture(f=>{
+  const original=DatabaseSync.prototype.prepare;let changed=0;
+  DatabaseSync.prototype.prepare=function(q){
+    const st=original.call(this,q),db=this;
+    if(q==='INSERT INTO meta(key,value) VALUES (?,?)'){const run=st.run;st.run=function(...args){
+      const result=run.apply(this,args);
+      if(args[0]===metadataKey(f.request.reservation_id)){
+        changed++;original.call(db,"UPDATE storage_owners SET state='retired' WHERE owner_id=?").run(f.coordinator.owner_id);
+      }return result;
+    };}return st;
+  };
+  try{fails(()=>f.coordinator.pinSource(f.b,f.request),'E_OWNER');}finally{DatabaseSync.prototype.prepare=original;}
+  assert.equal(changed,1);assert.equal(f.coordinator.readSourcePin(f.b,f.request.reservation_id),null);
+  assert.equal(sql(f,'SELECT state FROM storage_owners WHERE owner_id=?',f.coordinator.owner_id)[0].state,'active');
+  assert.equal(sql(f,'SELECT count(*) AS n FROM storage_reservations')[0].n,0);
+}));
+test('Source pins review: metadata reservation cannot certify corrupted source bytes',()=>pinFixture(f=>{
+  const sameLength=Buffer.alloc(f.source.bytes.length,120);
+  sql(f,'UPDATE sources SET inline_bytes=? WHERE source_id=?',sameLength,f.source.ref.source_id);
+  const pin=f.coordinator.pinSource(f.b,f.request);assert.equal(pin.state,'active');
+  fails(()=>f.s.readSource(f.b,f.source.ref),'E_SOURCE');
+  assert.equal(f.coordinator.releaseSourcePin(f.b,pin.reservation_id),true);
+}));
+test('Source pins review: initialized sessions retain independent source reservations',()=>pinFixture(f=>{
+  const b=createSessionBinding({...f.b.scope,host_session_id:'second'},f.b.incarnation,0);
+  f.s.createSession(b,f.cfg);const lease=f.s.acquireLease(b);
+  f.s.retainRoots(lease,{expected_catalog_digest:f.s.readRootCatalog(b).catalog_digest,sources:[f.source],observations:[f.observation]});
+  const a=f.coordinator.pinSource(f.b,f.request),request={...f.request,reservation_id:id(205)};
+  const second=f.coordinator.pinSource(b,request);
+  assert.notEqual(a.binding.session_key,second.binding.session_key);
+  fails(()=>f.coordinator.releaseSourcePin(f.b,second.reservation_id),'E_SCOPE');
+  assert.equal(f.coordinator.releaseSourcePin(f.b,a.reservation_id),true);
+  assert.equal(f.coordinator.readSourcePin(b,second.reservation_id).state,'active');
+  assert.equal(f.coordinator.releaseSourcePin(b,second.reservation_id),true);
+}));

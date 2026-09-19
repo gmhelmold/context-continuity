@@ -19,3 +19,9 @@ Todas as compilações, typechecks e execuções de teste deste incremento serã
 Success Criteria, Quality Standards, Completeness Criteria, Definition of Done e Invariants estão definidos na SPEC-21. Aceite exige sete workflows/dez jobs verdes e logs conferidos no commit exato. A matriz anterior (coordenação184/core198/storage155) é baseline, não aprovação herdada.
 
 Pins ativos e seus tombstones released usam o ledger existente. Não existe expiração silenciosa nem remoção de recursos de outro participante. Não há promessa de durabilidade de hardware, qualidade semântica, economia de cache ou plugin instalado. Revisão do autor, não auditoria independente.
+
+## Revisão de integração
+
+Três provas adicionais cobrem revogação do owner dentro da admissão (rollback dos dois registros), sessões realmente inicializadas com fontes de mesma identidade local e a diferença entre reserva de metadados e verificação de bytes: uma corrupção de mesmo comprimento não é certificada pelo pin, e `readSource` continua recusando seu hash. Não foram relaxadas assertions anteriores nem mudados timeouts.
+
+A garantia implementada permanece declaradamente menor que um reader ou GC: estas APIs conservam reservas, mas chamadas legadas de exclusão/leitura não passam a obedecê-las automaticamente. A futura integração de leitura/exportação e GC deve consultar pins e revalidar política. Não registrar esses serviços como concluídos pela existência deste registro.
