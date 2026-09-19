@@ -1,6 +1,6 @@
 # WP-02/D5 — repetição explícita de persistência de recibo
 
-Base de integração `bc4295951118e1c4cbc36097e87013f7f136bdd3`, após os PRs #37/#38. Continuidade da [issue #5](https://github.com/gmhelmold/context-continuity/issues/5); contrato em [SPEC-20](../../specs/v0.1/20-local-completion-receipts.md). O patch candidato da conversa foi preparado em bd62cf0: os dois arquivos-base continuavam idênticos, e as entregas posteriores foram preservadas. Não há implementação alternativa a reaplicar depois desta branch.
+Base de integração `bc4295951118e1c4cbc36097e87013f7f136bdd3`, após os PRs #37/#38. Continuidade da [issue #5](https://github.com/gmhelmold/context-continuity/issues/5), [PR #39](https://github.com/gmhelmold/context-continuity/pull/39); contrato em [SPEC-20](../../specs/v0.1/20-local-completion-receipts.md). O patch candidato da conversa foi preparado em bd62cf0: os dois arquivos-base continuavam idênticos, e as entregas posteriores foram preservadas. Não há implementação alternativa a reaplicar depois desta branch.
 
 ## Problema e correção
 
@@ -20,9 +20,13 @@ A política existente de close é mantida: execução pendente impede fechar; fe
 
 `completion-retry.test.mjs` usa SQLite e locks reais, com fontes/adaptadores sintéticos e injeções identificadas nas fronteiras de recibo/resultado. Os onze casos iniciais cobrem falha transitória, flush que também falha, troca de proprietário, binding/geração divergentes, ausência de observação, close explícito, falha após recibo confirmado, erro pós-commit, Promise pendente, rollback e rejeição da operação. Conferem contadores, run, proposta, ausência de capítulos e invocação única.
 
-`completion-retry-mutations.test.mjs` exige quatro pares controle/mutante: perda da observação, remoção antes da gravação, consumo num flush falho e falta de conferência da geração. Cada controle deve passar; sua cópia incorreta deve falhar no teste nomeado com ERR_ASSERTION. Timeout/import/build/setup não contam como detecção. Cada par é um caso.
+`completion-retry-review.test.mjs` acrescenta três fronteiras: contenção real do lock tanto antes da gravação inicial quanto no flush; erro percebido depois do commit de um flush explícito; e nova geração elegível no SQL, mas bloqueada enquanto existe recibo anterior não reconhecido. Este último caso não depende de um job ainda ativo para ser recusado e libera a nova execução somente após reconhecimento explícito da observação anterior.
 
-Toda compilação, typecheck e execução ocorrem no GitHub Actions. O patch anterior não foi testado localmente e nenhuma validação local é apresentada como CI. O PR e a issue #5 devem registrar os resultados reais, SHA, workflows/jobs e comparação das árvores depois do merge. O registro de pré-publicação não antecipa PASS. Não alterar os comandos, prazos ou versões fixadas para acomodar este corte.
+As duas campanhas `completion-retry-mutations.test.mjs` e `completion-retry-review-mutations.test.mjs` exigem cinco pares controle/mutante: perda da observação, remoção antes da gravação, consumo num flush falho, falta de conferência da geração e ausência do bloqueio de admissão com pendência. Cada controle deve passar; sua cópia incorreta deve falhar no teste nomeado com ERR_ASSERTION. Timeout/import/build/setup não contam como detecção. Cada par é um caso. São 19 casos novos: 14 comportamentos e cinco pares, sem somar subprocessos.
+
+Toda compilação, typecheck e execução ocorrem no GitHub Actions. O patch anterior não foi testado localmente e nenhuma validação local é apresentada como CI. O PR e a issue #5 registram resultados reais, SHA, workflows/jobs e comparação das árvores depois do merge. O registro de pré-publicação não antecipa PASS. Não alterar comandos, prazos ou versões fixadas para acomodar este corte. A revisão é do autor, não auditoria independente.
+
+A primeira publicação foi e6c5044 (11 comportamentos e quatro pares); a revisão ampliou as fronteiras sem alterar o módulo de produção. A matriz final deve incluir os 220 casos anteriores de coordenação e os 19 novos, mais core/storage, documentos, OpenCode stock sintético e todas as campanhas anteriores. Verde de um head anterior não autoriza integrar um novo head.
 
 ## Cinco axiomas
 
@@ -30,7 +34,7 @@ Toda compilação, typecheck e execução ocorrem no GitHub Actions. O patch ant
 
 **Quality Standards:** componentes reais, dados sintéticos, controle positivo e assertion negativa específica; todos os testes no Actions e logs do head exato.
 
-**Completeness Criteria:** sucesso/falha antes e depois do commit, identidade original, lease substituído, ausência de observação, idempotência, fechamento e preservação de estado remoto/custos.
+**Completeness Criteria:** sucesso/falha antes e depois do commit, identidade original, lease substituído, ausência de observação, idempotência, lock ocupado, nova geração elegível, fechamento e preservação de estado remoto/custos.
 
 **Definition of Done:** código/contrato/testes alinhados, matriz completa do head final aprovada, logs lidos, árvore integrada correspondente e issue #5 atualizada sem encerrar o WP-02 inteiro.
 
