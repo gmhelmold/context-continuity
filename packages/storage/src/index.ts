@@ -10,3 +10,5 @@ export { MAX_RETENTION_BATCH_BYTES } from './root-records.ts';
 export type { RootRetentionBatch } from './root-records.ts';
 
 export { MAX_RETENTION_SOURCE_READ_BYTES, MAX_RETENTION_SOURCE_READS } from './source-records.ts';
+
+export type { StoredJob, StoredAttempt, AttemptRef, AttemptBudget, AttemptResult } from './job-records.ts';

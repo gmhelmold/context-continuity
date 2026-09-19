@@ -79,3 +79,7 @@ SPEC-14 limita retainRoots a fontes inline e observações explícitas. Rodar te
 ## Limite de verificação da retenção (#28)
 
 SPEC-14 distingue RootCatalog estrutural retornado por retainRoots de verificação dos bytes. Preservar leitura integral em readSource/readRoot/readRootCatalog, metadados atuais no índice e budget antes do BLOB. O chamador incremental reutiliza o digest retornado, não dispara auditoria integral a cada lote. Rodar retention-budget e suas mutações com toda a matriz; nenhum cache sobrevive à transação. Registro em docs/implementation/WP-02-B-VERIFICATION-BUDGET.md.
+
+## Persistência de eventos WP-02/C
+
+SPEC-15 e docs/implementation/WP-02-C.md distinguem persistência de eventos de permissão de transporte. Rodar jobs/job-processes/job-mutations com toda a matriz de storage. Preservar regressões J01–J05 e campanha negativa; não integrar enquanto houver teste vermelho. Parser de diagnóstico retorna apenas dados imutáveis, nunca handle verificado. Recovery não usa TTL como prova de parada e não emite rede; liveness cross-owner, blocos/chapters/recibos e publicação mantêm seus gates próprios.
