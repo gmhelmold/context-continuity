@@ -20,5 +20,5 @@ export { LocalAttemptSupervisor } from './local-attempt-supervisor.ts';
 export type { LocalAttemptOperation, LocalAttemptOutcome } from './local-attempt-supervisor.ts';
 export type { AttemptOwnership } from './attempt-owner.ts';
 
-export { MAX_ACTIVE_SOURCE_PINS } from './source-pins.ts';
-export type { SourcePin, SourcePinRequest } from './source-pins.ts';
+export { MAX_ACTIVE_SOURCE_PINS, MAX_SOURCE_PIN_PAGE_SIZE } from './source-pins.ts';
+export type { SourcePin, SourcePinRequest, SourcePinPageRequest, SourcePinPage } from './source-pins.ts';
