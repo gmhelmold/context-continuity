@@ -1,5 +1,5 @@
 /** Storage failures never expose SQL, filesystem paths or stored content. */
-export type StorageCode = 'E_STORAGE' | 'E_SCOPE' | 'E_CONFLICT' | 'E_OWNER' | 'E_CAPABILITY';
+export type StorageCode = 'E_STORAGE' | 'E_SCOPE' | 'E_CONFLICT' | 'E_OWNER' | 'E_CAPABILITY' | 'E_SOURCE' | 'E_BUDGET';
 export class StorageError extends Error {
   readonly code: StorageCode;
   readonly reason: string;

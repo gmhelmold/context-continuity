@@ -83,3 +83,5 @@ A sonda atual tem 16 checks de host e 12 testes de componentes, incluindo regra 
 
 
 **Coerência de abertura SQLite:** [inspeção em snapshot único](docs/implementation/WP-02-A-INSPECTION.md), sem confundir transação de leitura com persistência de conteúdo já implementada.
+
+**WP-02/B — retenção inline:** [fontes e raízes duráveis](docs/implementation/WP-02-B.md) liga os bytes originais a revisões persistidas, com proprietário validado e transação única. Não é captura automática do host, armazenamento de blobs ou publicação de capítulos.

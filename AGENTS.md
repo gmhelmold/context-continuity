@@ -71,3 +71,7 @@ SPEC-12 define SnapshotRecord/JobContext/JobProposal. Parsers e handles não sã
 ## Fundação WP-02/A
 
 Storage é separado do core e segue SPEC-13. Rodar check:storage/test:storage com os pins existentes, além dos gates anteriores. DDL executável deve coincidir com SPEC-03; alterações futuras exigem migração explícita. Usar exclusivamente diretórios sintéticos privados nos testes. Lease SQLite não substitui o lock de workspace de blobs/GC. Não encerrar WP-02 por esta fundação.
+
+## Retenção inline WP-02/B
+
+SPEC-14 limita retainRoots a fontes inline e observações explícitas. Rodar testes de retenção, processos e campanha negativa junto à matriz completa de storage. Reusar RootIdentityRegistry; não inferir cronologia da ordem canônica do catálogo. Nenhum resultado de retenção autoriza compactação, publicação, remoção ou bypass de tombstones/fence. Blobs e invalidação de derivados mantêm seus gates próprios.

@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "base_commit": "a332213659c56d81081f41bbd0a0ccfecd385e14",
+  "scope": "WP-02/B inline retention and root revision storage only",
+  "node": "v22.17.1",
+  "typescript": "Version 5.9.3",
+  "local_tests": {
+    "tests": 32,
+    "pass": 32,
+    "fail": 0,
+    "includes_mutation_campaign": true,
+    "mutation_children": "control plus four incorrect implementations, four targeted cases each; not additional acceptance cases"
+  },
+  "initial_run": {
+    "tests": 25,
+    "pass": 23,
+    "fail": 2,
+    "note": "two commit-barrier timeouts during device connectivity interruption; repeated unchanged in isolation 2/2"
+  },
+  "logs_sha256": {
+    "retention-full.tap": "b43f49facc9290ce7ce37d548c713653e22de6e2e82f1c467bf70696a54d70c1",
+    "retention-tests.tap": "34fc7901c3e7a9f9a70e573f1420880492da408145abb8fb2067926f9258f2d7",
+    "retention-crash-repeat.tap": "34b1d033fbb4f86f9592c2fa399c5e30ca4bc978acd6fb7285bdc876e7fe5bc7",
+    "retention-types-final.log": "c751b0b339ee212453e71398dabd9d25b8421f75b50f92729d86c11f9e0c6581"
+  },
+  "source_sha256": {
+    "packages/storage/src/source-records.ts": "7bc8d01308c8e6b63df113ae475fb5690c0fbba0bbbeb4833c4c479dfe9b0217",
+    "packages/storage/src/root-records.ts": "457c94a070f8f9b186f2ce0fffb8cd65a95d4d8606c800cf55fb97ccfce4b05c",
+    "packages/storage/src/session-store.ts": "1ae1098549e263e1f76b7e62425595ad87ef0c21e732276e0d84cfa4ee676989",
+    "packages/storage/src/errors.ts": "fa60a337d774b66c89017c04a82147998340d5780989a102fd06392af0c78974",
+    "packages/storage/src/index.ts": "a5635a3147172e315c691401b98ce09fa0a79081c5cab8ef0e92a666f51e8710",
+    "tests/storage/root-retention.test.mjs": "faa1f18c25c89aee5083897e2c79a42c052bda88d6d4246979f554795f768911",
+    "tests/storage/root-retention-mutations.test.mjs": "6282d490997669fb96fb379f5ede525c84ee72d4b4ef85bf3d0005ca99316480",
+    "tests/storage/types.test.ts": "d745dcbb33cb7e739ffacd66f8aafaf6a06b6706007b0063b194e883b635b653"
+  },
+  "full_suite_and_ci": "See final-head PR logs; not inferred from local targeted suite",
+  "live_inference": false,
+  "complete_enabled": false
+}
