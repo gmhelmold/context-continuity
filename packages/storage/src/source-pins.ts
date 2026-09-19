@@ -60,14 +60,24 @@ function parsePin(input: unknown): SourcePin {
     policy_revision: integer(r.policy_revision, 0, Number.MAX_SAFE_INTEGER, 'stored_pin.policy'),
     state: choice(r.state, ['active', 'released'] as const, 'stored_pin.state'), created_at: r.created_at });
 }
-/** Shared structural verification for scoped reads and workspace discovery. */
+/** Shared structural verification for scoped reads and workspace discovery.
+ * Caller keeps one SQLite transaction across scalar preflight and value retrieval. */
 function readSourcePinRecord(db: DatabaseSync, id: string): SourcePin | null {
+  // Only scalar metadata crosses into Node before the stored envelope is bounded.
+  // octet_length counts bytes including NUL; length(TEXT) counts code points instead.
+  const size = db.prepare('SELECT typeof(value) AS storage_type, octet_length(value) AS size_bytes FROM meta WHERE key=?').get(key(id));
+  if (size && (size.storage_type !== 'text' || typeof size.size_bytes !== 'number' ||
+      !Number.isSafeInteger(size.size_bytes) || size.size_bytes < 0 || size.size_bytes > 16384)) return invalid();
+  // The contract counts UTF-8 bytes, not the potentially smaller UTF-16 storage size.
+  if (size && db.prepare('PRAGMA encoding').get()?.encoding !== 'UTF-8') return invalid();
   const metadata = db.prepare('SELECT value FROM meta WHERE key=?').get(key(id));
   const row = db.prepare('SELECT * FROM storage_reservations WHERE reservation_id=?').get(id);
   if (!metadata) { if (row) return invalid(); return null; }
   let pin: SourcePin;
   try {
     if (typeof metadata.value !== 'string' || Buffer.byteLength(metadata.value) > 16384) return invalid();
+    // A driver-truncated TEXT prefix is not the complete stored envelope.
+    if (!size || Buffer.byteLength(metadata.value) !== size.size_bytes) return invalid();
     const e = closedRecord(parseJSON(metadata.value), ['value', 'digest'], ['value', 'digest'], 'pin_envelope');
     pin = parsePin(e.value);
     if (e.digest !== hashPayload(pin) || pin.reservation_id !== id) return invalid();
