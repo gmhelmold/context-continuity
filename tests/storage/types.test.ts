@@ -60,3 +60,13 @@ outcome.local_stopped;
 new LocalAttemptSupervisor({}, {}, Symbol());
 // @ts-expect-error A process identity cannot be changed on a live issued hold.
 held.process_instance = 'other';
+
+import type { SourcePin, SourcePinRequest } from '../../packages/storage/src/index.ts';
+declare const pin: SourcePin;
+declare const pinRequest: SourcePinRequest;
+// @ts-expect-error A pin's scoped reference is immutable.
+pin.source_ref.revision = 2;
+// @ts-expect-error Only the coordinator can change persisted pin state.
+pin.state = 'released';
+// @ts-expect-error No filesystem path is accepted in pin options.
+pinRequest.staging_path_key = '/arbitrary';
