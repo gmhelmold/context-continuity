@@ -77,3 +77,15 @@ declare const recoveredPin: SourcePinRecovery;
 recoveredPin.pin.owner_id = 'different';
 // @ts-expect-error A recovery result is immutable, not a mutable control flag.
 recoveredPin.state = 'released';
+
+import type { SourcePinPage, SourcePinPageRequest } from '../../packages/storage/src/index.ts';
+declare const pinPage: SourcePinPage;
+declare const pinPageRequest: SourcePinPageRequest;
+// @ts-expect-error Discovery cannot append reservations through a returned page.
+pinPage.pins.push(pin);
+// @ts-expect-error Returned metadata does not grant mutable owner identity.
+pinPage.pins[0]!.owner_id = 'different';
+// @ts-expect-error Continuation is immutable diagnostic data.
+pinPage.next_after = 'different';
+// @ts-expect-error Page bounds are immutable request data.
+pinPageRequest.limit = 0;
