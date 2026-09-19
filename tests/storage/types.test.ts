@@ -15,3 +15,14 @@ batch.expected_catalog_digest = 'changed';
 source.ref.revision = 2;
 // @ts-expect-error Native references cannot be appended through the read result.
 source.native_refs.push('other');
+
+import type {StoredJob, AttemptRef, AttemptResult} from '../../packages/storage/src/index.ts';
+declare const job: StoredJob;
+declare const attempt: AttemptRef;
+declare const result: AttemptResult;
+// @ts-expect-error Persisted job identity is immutable.
+job.ref.job_id = 'other';
+// @ts-expect-error Attempt identity is immutable.
+attempt.attempt_no = 0;
+// @ts-expect-error Transport facts are supplied as immutable data.
+result.local_stopped = true;

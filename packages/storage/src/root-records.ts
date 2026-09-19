@@ -72,7 +72,7 @@ export function loadRootCatalog(db: DatabaseSync, binding: SessionBinding): Root
   return loadCatalog(db, binding, ref => loadSource(db, binding, ref));
 }
 /** Structural index for CAS, with live metadata checks but no content-byte attestation. */
-function loadRootIndex(db: DatabaseSync, binding: SessionBinding): RootCatalog {
+export function loadRootIndex(db: DatabaseSync, binding: SessionBinding): RootCatalog {
   return loadCatalog(db, binding, ref => sourceMetadata(db, binding, ref));
 }
 export function loadRoot(db: DatabaseSync, binding: SessionBinding, input: RootRef): RootUnit | null {

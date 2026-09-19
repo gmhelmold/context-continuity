@@ -1,4 +1,4 @@
-/** Durable session foundation. No blobs, jobs, inference or View publication API. */
+/** Durable session and job events. No blobs, inference or View publication API. */
 import type { DatabaseSync } from 'node:sqlite';
 import { parseJSON } from '../../core/src/canonical.mjs';
 import { canonical } from '../../core/src/canonical.mjs';
@@ -15,6 +15,10 @@ import { loadSource } from './source-records.ts';
 import type { RetainedSource } from './source-records.ts';
 import { parseSourceRef, parseRootRef } from '../../core/src/roots.ts';
 import type { RootCatalog, RootUnit } from '../../core/src/roots.ts';
+import { parseJobContextRef, assertJobContext } from '../../core/src/job-context.ts';
+import type { JobContextRef } from '../../core/src/job-context.ts';
+import * as jobs from './job-records.ts';
+import type { StoredJob, AttemptRef } from './job-records.ts';
 export const OWNER_LEASE_MS = 30_000;
 const MAX_TIME = 8_640_000_000_000_000 - OWNER_LEASE_MS;
 export type SessionRecord = Readonly<{
@@ -215,6 +219,64 @@ export class SqliteSessionStore {
       this.#owned(lease, this.#now()); // A long synchronous batch cannot outlive its admitted lease.
       return result;
     });
+  }
+  /** Job mutations share current scope and double-checked ownership. */
+  #jobWrite<T>(leaseInput: unknown, action: (row: SessionRecord, now: number) => T): T {
+    const lease = leaseValue(leaseInput), binding = this.#scope(lease.binding);
+    return this.#transaction(true, () => {
+      const now = this.#now(); this.#owned(lease, now);
+      const result = action(this.#require(binding), now);
+      this.#owned(lease, this.#now());
+      return result;
+    });
+  }
+  readJob(input: unknown, expectedInput: unknown): StoredJob | null {
+    const binding = this.#scope(input), expected = parseJobContextRef(expectedInput);
+    return this.#transaction(false, () => { this.#require(binding); return jobs.loadJob(this.#db, binding, expected); });
+  }
+  #jobFresh(row: SessionRecord, ref: JobContextRef): void {
+    jobs.assertJobCurrent(jobs.requireJob(this.#db, row.binding, ref), row, this.#now());
+  }
+  admitJob(leaseInput: unknown, contextInput: unknown, expectedInput: unknown): StoredJob {
+    const lease = leaseValue(leaseInput), expected = parseJobContextRef(expectedInput);
+    const context = assertJobContext(this.#scope(lease.binding), contextInput, expected);
+    return this.#jobWrite(lease, (row, now) => {
+      const prior = jobs.loadJob(this.#db, row.binding, expected);
+      const result = jobs.admitJob(this.#db, row, context, expected, now);
+      if (!prior) this.#jobFresh(row, expected);
+      return result;
+    });
+  }
+  reserveJobAttempt(leaseInput: unknown, expectedInput: unknown, budgetInput: unknown): AttemptRef {
+    const expected = parseJobContextRef(expectedInput), budget = jobs.parseAttemptBudget(budgetInput);
+    return this.#jobWrite(leaseInput, (row, now) => {
+      const result = jobs.reserveJobAttempt(this.#db, row, expected, budget, now); this.#jobFresh(row, expected); return result;
+    });
+  }
+  markJobAttemptDispatched(leaseInput: unknown, expectedInput: unknown, attemptInput: unknown): StoredJob {
+    const expected = parseJobContextRef(expectedInput), attempt = jobs.parseAttemptRef(attemptInput);
+    return this.#jobWrite(leaseInput, (row, now) => {
+      const result = jobs.markJobAttemptDispatched(this.#db, row, expected, attempt, now); this.#jobFresh(row, expected); return result;
+    });
+  }
+  recordJobAttemptResult(leaseInput: unknown, expectedInput: unknown, attemptInput: unknown, resultInput: unknown): StoredJob {
+    const expected = parseJobContextRef(expectedInput), attempt = jobs.parseAttemptRef(attemptInput), result = jobs.parseAttemptResult(resultInput);
+    return this.#jobWrite(leaseInput, (row, now) => {
+      const stored = jobs.recordJobAttemptResult(this.#db, row, expected, attempt, result, now);
+      if (jobs.jobIsActive(stored)) this.#jobFresh(row, expected);
+      return stored;
+    });
+  }
+  cancelJob(leaseInput: unknown, expectedInput: unknown): StoredJob {
+    const expected = parseJobContextRef(expectedInput);
+    return this.#jobWrite(leaseInput, (row, now) => jobs.cancelJob(this.#db, row, expected, now));
+  }
+  confirmJobAttemptStopped(leaseInput: unknown, expectedInput: unknown, attemptInput: unknown): StoredJob {
+    const expected = parseJobContextRef(expectedInput), attempt = jobs.parseAttemptRef(attemptInput);
+    return this.#jobWrite(leaseInput, row => jobs.confirmJobAttemptStopped(this.#db, row, expected, attempt));
+  }
+  recoverJobs(leaseInput: unknown): readonly StoredJob[] {
+    return this.#jobWrite(leaseInput, (row, now) => jobs.recoverJobs(this.#db, row, now));
   }
   /** Closing a connection does not assert that an unknown execution stopped remotely. */
   close(): void {

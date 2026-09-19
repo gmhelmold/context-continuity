@@ -87,3 +87,5 @@ A sonda atual tem 16 checks de host e 12 testes de componentes, incluindo regra 
 **WP-02/B — retenção inline:** [fontes e raízes duráveis](docs/implementation/WP-02-B.md) liga os bytes originais a revisões persistidas, com proprietário validado e transação única. Não é captura automática do host, armazenamento de blobs ou publicação de capítulos.
 
 **Retenção incremental:** [limite de verificação por operação](docs/implementation/WP-02-B-VERIFICATION-BUDGET.md) separa catálogo estrutural de auditoria integral, sem cache persistente de confiança.
+
+**Jobs duráveis:** [WP-02/C](docs/implementation/WP-02-C.md) registra admissão, tentativas, resultados e recuperação explícita sem replay. Perfil inicial: raízes/fontes inline. Não publica View, não emite permit de rede e não libera quarentena cross-owner sem prova de liveness.

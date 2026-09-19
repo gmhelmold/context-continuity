@@ -5,7 +5,7 @@ import { parseJSON } from './canonical.mjs';
 import { choice, closedRecord, ContractError, integer } from './validation.ts';
 import { assertSessionBinding, entityId, hashPayload } from './identity.ts';
 import type { SessionBinding } from './identity.ts';
-import { assertVerifiedManifest } from './manifest.ts';
+import { assertVerifiedManifest, parseManifest } from './manifest.ts';
 import type { VerifiedManifest } from './manifest.ts';
 import { contentString, dataList, distinct } from './contract-data.ts';
 export type Claim = Readonly<{ text: string; sources: readonly number[] }>;
@@ -28,6 +28,16 @@ export function decodeProposal(text: unknown, finish: unknown, binding: unknown,
   const terminal = choice(finish, ['complete', 'length', 'tool_call', 'cancelled', 'error'] as const, 'finish');
   if (terminal === 'tool_call') throw new ProposalError('E_TOOL');
   if (terminal !== 'complete') throw new ProposalError('E_PROTOCOL');
+  const proposal = parseModelProposal(text, manifest.manifest, feedbackInput);
+  const result = Object.freeze({ binding: manifest.binding, manifest_id: manifest.manifest.manifest_id, manifest_digest: manifest.digest,
+    proposal, proposal_digest: hashPayload(proposal) }) as ValidatedProposal;
+  validated.add(result);
+  return result;
+}
+/** Schema-only parsing for persisted diagnostics. Returns data, NEVER a
+ * ValidatedProposal/VerifiedManifest or permission to consume source content. */
+export function parseModelProposal(text: unknown, manifestInput: unknown, feedbackInput: unknown = []): ModelProposal {
+  const manifest = parseManifest(manifestInput);
   if (typeof text !== 'string' || !text.isWellFormed() || Buffer.byteLength(text, 'utf8') > MAX_PROPOSAL_BYTES) throw new ContractError('proposal', 'expected bounded UTF-8 JSON');
   const delivered = dataList(feedbackInput, 32, 'feedback').map(x => entityId(x, 'feedback.id'));
   distinct(delivered, x => x, 'feedback');
@@ -52,11 +62,11 @@ export function decodeProposal(text: unknown, finish: unknown, binding: unknown,
       if (count > 128) throw new ContractError('proposal.claims', 'total claim limit exceeded');
       return Object.freeze(items.map(item => {
         const c = closedRecord(item, ['text', 'sources'], ['text', 'sources'], 'claim');
-        const sources = dataList(c.sources, manifest.manifest.entries.length, 'claim.sources').map(x => integer(x, 1, manifest.manifest.entries.length, 'claim.source'));
+        const sources = dataList(c.sources, manifest.entries.length, 'claim.sources').map(x => integer(x, 1, manifest.entries.length, 'claim.source'));
         if (!sources.length) throw new ContractError('claim.sources', 'at least one presented source is required');
         distinct(sources, x => x, 'claim.sources');
         for (const index of sources) {
-          if (manifest.manifest.entries[index - 1]?.presented_as === 'reference_only') throw new ContractError('claim.sources', 'reference-only source cannot support content');
+          if (manifest.entries[index - 1]?.presented_as === 'reference_only') throw new ContractError('claim.sources', 'reference-only source cannot support content');
         }
         return Object.freeze({ text: contentString(c.text, 4000, 'claim.text'), sources: Object.freeze(sources) });
       }));
@@ -70,10 +80,7 @@ export function decodeProposal(text: unknown, finish: unknown, binding: unknown,
     proposal = Object.freeze({ schema_version: 1, action, title: contentString(v.title, 160, 'proposal.title'), outcome, decisions, open_items, constraints, evidence,
       warnings: Object.freeze(warnings), feedback_applied: Object.freeze(applied) });
   }
-  const result = Object.freeze({ binding: manifest.binding, manifest_id: manifest.manifest.manifest_id, manifest_digest: manifest.digest,
-    proposal, proposal_digest: hashPayload(proposal) }) as ValidatedProposal;
-  validated.add(result);
-  return result;
+  return proposal;
 }
 /** A proposal must remain bound to this exact job manifest and session incarnation. */
 export function assertProposalContext(binding: unknown, manifestInput: unknown, input: unknown): ValidatedProposal {

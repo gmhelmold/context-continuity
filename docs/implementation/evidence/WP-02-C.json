@@ -1,0 +1,384 @@
+{
+  "schema_version": 1,
+  "base_commit": "62fe09a2cbadb1f5d65e16ac39f964984e5435a7",
+  "status": "local_validated_pending_remote_gate",
+  "scope": "offline durable job events; not transport authority or full WP-02",
+  "node": "v22.17.1",
+  "typescript": "Version 5.9.3",
+  "blocking_regressions": [],
+  "resolved": [
+    "J01",
+    "J02",
+    "J03",
+    "J04",
+    "J05"
+  ],
+  "corrective_edit_executed": true,
+  "previous_preparation": {
+    "schema_version": 1,
+    "base_commit": "62fe09a2cbadb1f5d65e16ac39f964984e5435a7",
+    "status": "changes_required",
+    "node": "v22.17.1",
+    "typescript": "Version 5.9.3",
+    "scope": "offline durable job events; not transport authority or full WP-02",
+    "blocking_regressions": [
+      "J01",
+      "J02",
+      "J03",
+      "J04",
+      "J05"
+    ],
+    "corrective_edit_executed": false,
+    "logs": {
+      "jobs-second.tap": {
+        "sha256": "ad34f8abf9b7327746db7d257f78183bc49423555ea8477d51d44ed2b570569c",
+        "counts": {
+          "tests": 39,
+          "pass": 38,
+          "fail": 1,
+          "skipped": 0,
+          "todo": 0
+        }
+      },
+      "jobs-review-before.tap": {
+        "sha256": "3002e844cfa1df5f3ed4bf323e0fed622ea0bbb7f430e968b3806c08005d9fac",
+        "counts": {
+          "tests": 5,
+          "pass": 1,
+          "fail": 4,
+          "skipped": 0,
+          "todo": 0
+        }
+      },
+      "job-processes.tap": {
+        "sha256": "34878d5e93b801b3793c33714731d5f7543a3e793d46100199201f7021e2a2d1",
+        "counts": {
+          "tests": 8,
+          "pass": 8,
+          "fail": 0,
+          "skipped": 0,
+          "todo": 0
+        }
+      },
+      "job-mutations.tap": {
+        "sha256": "b0ed2da298082be40f521cb2b06d476ef4b51e43c23149b37a0388ffeacddfa6",
+        "counts": {
+          "tests": 1,
+          "pass": 1,
+          "fail": 0,
+          "skipped": 0,
+          "todo": 0
+        }
+      },
+      "jobs-all.log": {
+        "sha256": "7f463e6b92c241510cbdade1b4738d42cc40e2754eb731d4b3a31f48f149015f",
+        "counts": {
+          "tests": 53,
+          "pass": 48,
+          "fail": 5,
+          "skipped": 0,
+          "todo": 0
+        }
+      },
+      "typecheck-initial.log": {
+        "sha256": "c751b0b339ee212453e71398dabd9d25b8421f75b50f92729d86c11f9e0c6581",
+        "counts": {}
+      }
+    },
+    "source_sha256": {
+      "packages/storage/src/job-records.ts": "3053f74c87f3660b3906fa7ccf979485c9200700e28baf59980cf269bfd2ade1",
+      "packages/storage/src/session-store.ts": "c0e44c0ff3e52a882c05b3952c08f0299b68ca40f28bc1d966692d806a2134cc",
+      "packages/storage/src/root-records.ts": "b216631d689dee2c0654db9ee8e8f08990c3f7d66d940e16f910d7bd74dd68c7",
+      "tests/storage/job-fixtures.mjs": "a999a6f775803a96c75e81ee7377d45b479ee92baf0802dc0e5f1532a6760573",
+      "tests/storage/jobs.test.mjs": "efd44c645db844fa3205cbc7a2980bce56749a107d65401c00569c5c87f8b60e",
+      "tests/storage/job-processes.test.mjs": "d200121854db62d5eee723d41d05025e7ad1e9886c05de176d6716c71dcd442c",
+      "tests/storage/job-mutations.test.mjs": "700b88d7b593f275131a85d0692889f170d00fcb96eb7b79e8f8f330f274c7a0"
+    },
+    "full_validation": {
+      "execution": "serial local files, pins preserved; CI default commands unchanged",
+      "exit_codes": {
+        "check-storage": 0,
+        "check-core": 0,
+        "jobs-all": 1,
+        "storage-all": 1,
+        "core-all": 0,
+        "components": 0,
+        "witness": 0
+      },
+      "logs": {
+        "check-storage": {
+          "sha256": "c751b0b339ee212453e71398dabd9d25b8421f75b50f92729d86c11f9e0c6581",
+          "counts": {}
+        },
+        "check-core": {
+          "sha256": "e3806c19fac205c687938315713a76dd23432520806fb09445e7c3857ba48d3c",
+          "counts": {}
+        },
+        "jobs-all": {
+          "sha256": "7f463e6b92c241510cbdade1b4738d42cc40e2754eb731d4b3a31f48f149015f",
+          "counts": {
+            "tests": 53,
+            "pass": 48,
+            "fail": 5,
+            "cancelled": 0,
+            "skipped": 0,
+            "todo": 0
+          }
+        },
+        "storage-all": {
+          "sha256": "aa1cf13e1972cd1280715054a00d178554e63e1d1fd566a04a93cf83753193a7",
+          "counts": {
+            "tests": 148,
+            "pass": 142,
+            "fail": 6,
+            "cancelled": 0,
+            "skipped": 0,
+            "todo": 0
+          }
+        },
+        "core-all": {
+          "sha256": "0cd2fdd0c586b5d5070191c9028c4512f47a95520b3adbeca155625dd23e2c48",
+          "counts": {
+            "tests": 196,
+            "pass": 196,
+            "fail": 0,
+            "cancelled": 0,
+            "skipped": 0,
+            "todo": 0
+          }
+        },
+        "components": {
+          "sha256": "279023875ce99c89bd919720f2df32e658d5117c8761eb5ee81d22484e31b219",
+          "counts": {
+            "tests": 25,
+            "pass": 25,
+            "fail": 0,
+            "cancelled": 0,
+            "skipped": 0,
+            "todo": 0
+          }
+        },
+        "witness": {
+          "sha256": "4ae1e3bb4a5e40aa31c285851b885e1729544e1b71212e0d031184f25a7a3b8f",
+          "counts": {}
+        }
+      }
+    },
+    "live_inference": false,
+    "host_storage_integration_tested": false
+  },
+  "directed": {
+    "continuation-before.tap": {
+      "sha256": "93f5283a3b1f797fe79f1f396a14efb8e00529a292fc1bbe3ae778c40574cca0",
+      "counts": {
+        "tests": 6,
+        "pass": 1,
+        "fail": 5,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0
+      }
+    },
+    "continuation-after.tap": {
+      "sha256": "159a9288bf5af6fc2cc58e708032ac6024fcef5d74c36691d78509533c3d4044",
+      "counts": {
+        "tests": 6,
+        "pass": 6,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0
+      }
+    },
+    "lifecycle-before.tap": {
+      "sha256": "48f00e236c0cb0890b2f62fa4e69e4ddb16afb8fa5a4a733ec7a056dfd527366",
+      "counts": {
+        "tests": 2,
+        "pass": 0,
+        "fail": 2,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0
+      }
+    },
+    "continuation-jobs.tap": {
+      "sha256": "931b9b11a8f787d65d255482e7ea6e73433fa99a8ef6200bac0e272dfb79633c",
+      "counts": {
+        "tests": 62,
+        "pass": 62,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0
+      }
+    }
+  },
+  "final_local": {
+    "typecheck-core": {
+      "exit_code": 0,
+      "sha256": "e3806c19fac205c687938315713a76dd23432520806fb09445e7c3857ba48d3c",
+      "command": [
+        "npm",
+        "run",
+        "check:core"
+      ],
+      "log": {
+        "sha256": "e3806c19fac205c687938315713a76dd23432520806fb09445e7c3857ba48d3c",
+        "counts": {}
+      }
+    },
+    "typecheck-storage": {
+      "exit_code": 0,
+      "sha256": "c751b0b339ee212453e71398dabd9d25b8421f75b50f92729d86c11f9e0c6581",
+      "command": [
+        "npm",
+        "run",
+        "check:storage"
+      ],
+      "log": {
+        "sha256": "c751b0b339ee212453e71398dabd9d25b8421f75b50f92729d86c11f9e0c6581",
+        "counts": {}
+      }
+    },
+    "storage": {
+      "exit_code": 0,
+      "sha256": "3c212cb8398cba73f09ab921c24b1c0a1f600abe714760ec2f5d3abe4eb9aede",
+      "command": [
+        "node",
+        "--experimental-strip-types",
+        "--test",
+        "--test-concurrency=1",
+        "--test-reporter=tap",
+        "tests/storage/bootstrap-review.test.mjs",
+        "tests/storage/inspection-snapshot.test.mjs",
+        "tests/storage/job-mutations.test.mjs",
+        "tests/storage/job-processes.test.mjs",
+        "tests/storage/jobs.test.mjs",
+        "tests/storage/retention-budget-mutations.test.mjs",
+        "tests/storage/retention-budget.test.mjs",
+        "tests/storage/root-retention-mutations.test.mjs",
+        "tests/storage/root-retention.test.mjs",
+        "tests/storage/session-store.test.mjs",
+        "tests/storage/storage-mutations.test.mjs"
+      ],
+      "log": {
+        "sha256": "3c212cb8398cba73f09ab921c24b1c0a1f600abe714760ec2f5d3abe4eb9aede",
+        "counts": {
+          "tests": 155,
+          "pass": 155,
+          "fail": 0,
+          "cancelled": 0,
+          "skipped": 0,
+          "todo": 0
+        }
+      }
+    },
+    "core": {
+      "exit_code": 0,
+      "sha256": "f976349fbab9b716a06c3b5f1bef73b88b703c3caf33aa949c646c657526c5f7",
+      "command": [
+        "node",
+        "--experimental-strip-types",
+        "--test",
+        "--test-concurrency=1",
+        "--test-reporter=tap",
+        "tests/core/capabilities.test.mjs",
+        "tests/core/config.test.mjs",
+        "tests/core/context-mutations.test.mjs",
+        "tests/core/frame.test.mjs",
+        "tests/core/identity-mutations.test.mjs",
+        "tests/core/identity.test.mjs",
+        "tests/core/job-context-mutations.test.mjs",
+        "tests/core/job-context.test.mjs",
+        "tests/core/manifest-snapshot.test.mjs",
+        "tests/core/manifest.test.mjs",
+        "tests/core/proposal-data.test.mjs",
+        "tests/core/proposal.test.mjs",
+        "tests/core/roots.test.mjs",
+        "tests/core/terminal-profile.test.mjs"
+      ],
+      "log": {
+        "sha256": "f976349fbab9b716a06c3b5f1bef73b88b703c3caf33aa949c646c657526c5f7",
+        "counts": {
+          "tests": 198,
+          "pass": 198,
+          "fail": 0,
+          "cancelled": 0,
+          "skipped": 0,
+          "todo": 0
+        }
+      }
+    },
+    "components": {
+      "exit_code": 0,
+      "sha256": "475848a689fcfbca33397face141d14fc126e1da2fa7318fbc76efab2bdff453",
+      "command": [
+        "node",
+        "--test",
+        "tests/conformance/opencode/test-components.mjs",
+        "tests/conformance/opencode/test-review004.mjs"
+      ],
+      "log": {
+        "sha256": "475848a689fcfbca33397face141d14fc126e1da2fa7318fbc76efab2bdff453",
+        "counts": {
+          "tests": 25,
+          "pass": 25,
+          "fail": 0,
+          "cancelled": 0,
+          "skipped": 0,
+          "todo": 0
+        }
+      }
+    },
+    "witness": {
+      "exit_code": 0,
+      "sha256": "c3e30559137fae5bba45e607372bf5e1bfc1339982742d6c09e3704c643ce918",
+      "command": [
+        "python3",
+        "tests/conformance/opencode/test-witness.py"
+      ],
+      "log": {
+        "sha256": "c3e30559137fae5bba45e607372bf5e1bfc1339982742d6c09e3704c643ce918",
+        "counts": {}
+      }
+    }
+  },
+  "document_checks": {
+    "check-spec": {
+      "exit_code": 0,
+      "sha256": "e2f54e308112ee40a36568713faea34e599e0d629f927c34a0f42799f05bb9b0"
+    },
+    "check-reference-model": {
+      "exit_code": 0,
+      "sha256": "59cd8b75d6af2456adbec725a20111f16e2939e06b28d1aeb8b9a3da14e4af66"
+    },
+    "test-spec-check": {
+      "exit_code": 0,
+      "sha256": "849ef1c84d05854093ab5ae795caa205f162f12d3631613d5f75b20f6314ec14"
+    },
+    "check-canonical": {
+      "exit_code": 0,
+      "sha256": "a568bbcf6aae56e3cee6c2935d467169bd8349edf9558827591d1c85f6b099d8"
+    },
+    "check-storage-contracts": {
+      "exit_code": 0,
+      "sha256": "0d972e500de54458d88e88f322aec2dba0973cbe5d03918f959453e7d1863476"
+    }
+  },
+  "source_sha256": {
+    "packages/core/src/proposal.ts": "5208c222e7806bd8b22da984993bfbdb4051193621dcc3f751e74096bac4690a",
+    "packages/storage/src/job-records.ts": "7fd51ea9a4141337ab94566e9f61dc4f8242d904db1ba139faad8b542da512eb",
+    "packages/storage/src/session-store.ts": "c0e44c0ff3e52a882c05b3952c08f0299b68ca40f28bc1d966692d806a2134cc",
+    "packages/storage/src/root-records.ts": "b216631d689dee2c0654db9ee8e8f08990c3f7d66d940e16f910d7bd74dd68c7",
+    "tests/storage/jobs.test.mjs": "e2f9683c77fd80789853786c4d20be1d4a1150d198c41a545a7269971ed166c7",
+    "tests/storage/job-processes.test.mjs": "d200121854db62d5eee723d41d05025e7ad1e9886c05de176d6716c71dcd442c",
+    "tests/storage/job-fixtures.mjs": "a999a6f775803a96c75e81ee7377d45b479ee92baf0802dc0e5f1532a6760573",
+    "tests/storage/job-mutations.test.mjs": "0baced10eb9d7c7c8cdaa3c07948a711cd5a174d0d077618ed3bd6883f3dc2da",
+    "tests/core/proposal-data.test.mjs": "7fffdf0220ec461d50ceefb1599aed9231ca0f226d8052fb26e515f581ad0f2b",
+    "tests/core/context-mutations.test.mjs": "8729662848c2b0ee0f9ddb1d8b1673d3946a984cc282e5c568c9b9f3a7d64299",
+    "tests/storage/root-retention-mutations.test.mjs": "b5914412c54336a2bde5320365355bcf96a4c4ed2fef335f12cfdef2a7c36aac"
+  },
+  "live_inference": false,
+  "host_storage_integration_tested": false,
+  "remote_ci": "must read final-head logs before merge"
+}
