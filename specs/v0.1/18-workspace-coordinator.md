@@ -20,6 +20,14 @@ Metadado fechado v1: `{schema_version:1,owner_id,process_instance,created_at,ide
 
 A instância conserva o descritor original até close. Não expõe, duplica nem transmite seu descritor. Toda operação verifica recursos/anchor e o próprio owner active. A garantia pressupõe participantes cooperantes; não é sandbox contra código do mesmo usuário que ignora o protocolo. Aposentar recurso de storage não certifica fim de subprocessos/chamadas remotas.
 
+## Limite de metadados de identidade
+
+Anchor e metadado de owner têm teto inclusivo de 8192 bytes UTF-8. A leitura verifica encoding e usa uma projeção SQL condicional: somente TEXT dentro do teto pode atravessar o driver como valor; tipo/tamanho são escalares. O texto recebido precisa ter exatamente o tamanho medido no mesmo SELECT antes do parser. Prefixo truncado em NUL não representa o envelope completo. Fora do perfil UTF-8, recusa com E_CAPABILITY, sem conversão ou migração.
+
+Initialize consulta somente existência para decidir bootstrap; não lê o payload nessa decisão. Guarda de anchor e leitura de owner compartilham o loader privado. A projeção única mede e retorna o valor no mesmo statement, inclusive nas guardas fora de transação. Transações, flock, igualdade canônica, comparação entre registros e revogação permanecem inalterados. Nenhum dado inválido é reparado ou adotado.
+
+O teto cobre somente esses dois tipos de envelope em meta, não os demais campos SQL, todo o banco ou o RSS do processo. Igualdade de tamanho detecta transferência incompleta, não autentica substituições de mesmo comprimento. Erros SQL continuam sanitizados pelos chamadores. [Provas e blast radius](../../docs/implementation/WP-02-D-IDENTITY-ENVELOPES.md).
+
 ## Seção síncrona
 
 `withWorkspaceLock(callback)` adquire uma vez e entrega WorkspaceHold imutável ligado à instância, workspace e seção. `assertWorkspaceHold(workspace,hold)` aceita somente handle local emitido e ainda ativo, revalidando recursos e owner. Cópia/JSON, outro workspace, uso após retorno/erro e reentrância são recusados. A seção não expõe banco/path/fd e não é AttemptPermit.
