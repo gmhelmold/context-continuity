@@ -90,8 +90,12 @@ SPEC-16 limita a ponte nativa a descritores autorizados. Rodar build:locks/test:
 
 ## Fronteiras do futuro gerenciador de owners
 
-O desenho em docs/designs/storage/WORKSPACE-COORDINATOR.md é proposto, não API implementada. owner-boundaries.test.mjs demonstra limites da primitiva atual; não usar seus três casos para homologar owner/liveness. Preservar distinção entre lock, identidade persistida e execução/supervisor. Não liberar jobs por TTL ou lock disponível. Registro em docs/implementation/WP-02-D-OWNER-BOUNDARIES.md.
+O desenho de origem em docs/designs/storage/WORKSPACE-COORDINATOR.md foi refinado por SPEC-18; as observações de fronteira não são a implementação. owner-boundaries.test.mjs demonstra limites da primitiva atual; não usar seus três casos para homologar owner/liveness. Preservar distinção entre lock, identidade persistida e execução/supervisor. Não liberar jobs por TTL ou lock disponível. Registro em docs/implementation/WP-02-D-OWNER-BOUNDARIES.md.
 
 ## Recursos privados WP-02/D2
 
-SPEC-17 rege lock-resources.ts, ainda separado de SQLite e jobs. Rodar coordination e resource-mutations além dos gates anteriores. Parent close revoga todos os filhos; não expor fd nem usar novo open como prova de identidade durável. O coordenador transacional continua pendente; não confundir sua ausência com lock de workspace já conectado ao ledger.
+SPEC-17 rege lock-resources.ts, ainda separado de SQLite e jobs. Rodar coordination e resource-mutations além dos gates anteriores. Parent close revoga todos os filhos; não expor fd nem usar novo open como prova de identidade durável. D2 não inclui o coordenador transacional; sua implementação D3 segue SPEC-18 e não conecta automaticamente locks aos jobs.
+
+## Coordenador WP-02/D3
+
+SPEC-18 rege workspace-coordinator.ts. Rodar coordination/coordinator-processes/coordinator-mutations com a matriz anterior. Anchor deve impedir nova instância de adotar inode substituído; só publicar owner com lock detido; holds expiram em finally. Rollback falho inutiliza a conexão. Não usar retirement como prova de término de job nem remover reservas por disponibilidade de lock.

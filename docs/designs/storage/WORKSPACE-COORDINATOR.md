@@ -1,6 +1,6 @@
-# Desenho proposto — gerenciador de recursos e owners de storage
+# Desenho de origem — gerenciador de recursos e owners de storage
 
-**Pré-implementação: as APIs abaixo NÃO existem no runtime.** Este desenho não substitui SPEC-03/16 e não encerra WP-02/D. A edição do gerenciador foi bloqueada antes de executar. As observações de fronteira estão em [WP-02-D-OWNER-BOUNDARIES](../../implementation/WP-02-D-OWNER-BOUNDARIES.md).
+**Registro histórico da proposta, agora refinada por [SPEC-18](../../../specs/v0.1/18-workspace-coordinator.md).** As seções originais abaixo conservam decisões e limites pré-implementação. O coordenador foi acrescentado no WP-02/D3; não encerra WP-02/D nem substitui o supervisor de execução. As observações de fronteira estão em [WP-02-D-OWNER-BOUNDARIES](../../implementation/WP-02-D-OWNER-BOUNDARIES.md).
 
 Proposta para WP-02/D2. API interna autorizada, não ferramenta do modelo. Esta etapa associa locks reais a recursos e registros de storage; não atesta morte de processo, execução remota ou liberação de jobs antigos.
 
@@ -57,3 +57,7 @@ tests/coordination/owner-boundaries.test.mjs usa a ponte integrada e SQLite reai
 ## Continuação D2
 
 A camada interna de recursos foi implementada conforme [SPEC-17](../../../specs/v0.1/17-lock-resources.md). WorkspaceCoordinator e suas operações acima continuam propostas: não foram gravadas. Guardas locais de recurso não substituem o anchor e as transações descritas neste desenho.
+
+## Continuação D3
+
+O desenho acima conserva o estado da proposta original. A implementação foi acrescentada em `packages/storage/src/workspace-coordinator.ts`, refinada por [SPEC-18](../../../specs/v0.1/18-workspace-coordinator.md). O coordenador persiste anchors/owners e aposenta somente participantes de storage sem reservas; não conecta locks a jobs nem certifica parada de execução.
