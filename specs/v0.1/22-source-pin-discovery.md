@@ -22,20 +22,28 @@ Ordem: validar opções -> workspace flock -> BEGIN de leitura -> selecionar e v
 
 Cada página materializa no máximo 65 IDs e valida no máximo 65 envelopes, cada um sujeito ao limite existente de 16 KiB. Não lê histórico de envelopes released nem fontes/raízes. Isso limita o trabalho de materialização da aplicação, NÃO é promessa de I/O físico constante ou de custo constante do plano SQL; a seleção pode examinar reservas staging enquanto percorre a chave primária. Não modifica DDL ou adiciona índice sem migração.
 
+### Fronteira de bytes do envelope — E4.1
+
+Antes de selecionar `meta.value`, o loader compartilhado consulta apenas `typeof(value)` e `octet_length(value)`. Valor existente deve ser TEXT com tamanho inteiro entre zero e 16384 bytes, inclusive; o parser ainda recusa texto vazio ou JSON inválido. Tipo/tamanho inválido recusa com E_STORAGE sem transferir aquele valor para Node. A guarda cobre também o lookahead e todas as chamadas por ID de SPEC-21, inclusive histórico released, replay, leitura de bytes, liberação e recuperação. Nenhuma guarda de conteúdo, digest, owner ou reserva é removida.
+
+O perfil dessa leitura exige encoding SQLite UTF-8, conferido antes do SELECT de um valor existente. A criação normal do ledger usa UTF-8; outro encoding é recusado, não convertido ou migrado. Isso evita aceitar como tamanho UTF-8 a contagem em bytes de armazenamento UTF-16. `length(TEXT)` é inadequado: conta caracteres e para no primeiro NUL. O limite inclui whitespace do envelope JSON; o limite exato continua aceito quando os dados são válidos. A verificação existente por `Buffer.byteLength` permanece após o SELECT como defesa adicional.
+
+A consulta escalar e a obtenção do valor permanecem dentro da MESMA transação SQLite mantida pelo coordenador. Não abrir um snapshot por consulta, reutilizar uma medida anterior entre chamadas, carregar um valor excessivo para então truncá-lo, nem interpretar recusa como ausência. Uma escrita por outra conexão entre as consultas não pode trocar o valor do snapshot já observado. Os limites são da transferência desses envelopes para a aplicação; não constituem teto global de RSS, limite de todas as colunas corrompidas ou garantia de custo físico do SQLite.
+
 Uma página tem um snapshot consistente; páginas diferentes NÃO compartilham snapshot. Liberações e admissões entre chamadas são permitidas. Remover o pin usado como cursor não desloca os próximos resultados. Novos IDs menores ou iguais ao cursor não aparecem naquela continuação; iniciar outra varredura para observá-los. next_after é posição de consulta, não handle de autoridade, compromisso sobre resultados futuros ou prova de inventário completo.
 
 A listagem parte das reservas existentes: não audita envelopes órfãos cuja reserva sumiu, reservas alteradas para staging, outras tabelas ou registros além da janela selecionada. Esses casos mantêm as verificações por ID e os gates de integridade próprios. Falha de leitura não apaga ou repara metadados. Reinício não adota os pins do participante antigo nem os libera por TTL.
 
 ## Cinco axiomas
 
-**Success Criteria:** uma nova instância descobre bindings/IDs retidos e pode solicitar E3 separadamente, sem transferir propriedade ou repetir trabalho.
+**Success Criteria:** uma nova instância descobre bindings/IDs retidos e pode solicitar E3 separadamente, sem transferir propriedade ou repetir trabalho. Envelopes acima do limite são recusados antes de transferir seu valor para Node.
 
 **Quality Standards:** SQLite, locks e processos reais; dados sintéticos; testemunha Python; controles negativos com assertion identificada. Toda compilação, typecheck e teste ocorre no GitHub Actions.
 
-**Completeness Criteria:** vazio, limites inclusivos, cursor estrito, lookahead, imutabilidade, sessões/epochs, política/tombstone, corrupção/escopo/owner, concorrência entre páginas, snapshot único por página, erros de COMMIT/guarda/unlock, reinício e preservação de dados/custos.
+**Completeness Criteria:** vazio, limites inclusivos, cursor estrito, lookahead, imutabilidade, sessões/epochs, política/tombstone, corrupção/escopo/owner, concorrência entre páginas, snapshot único por página, erros de COMMIT/guarda/unlock, reinício e preservação de dados/custos. E4.1 inclui observação da ponte do driver, bytes versus caracteres/NUL, encoding, tipo persistido, limite exato e concorrência entre medida e valor.
 
 **Definition of Done:** contrato/código/testes alinhados; sete workflows e dez jobs do head final aprovados, logs conferidos; árvores testada/integrada correspondentes; registro na issue #5. Não conclui WP-02 inteiro nem homologa host completo.
 
 **Invariants:** diagnóstico não é liveness nem permissão de leitura/liberação; sem BLOB, rede, coleta, exclusão, estorno, mudança de DDL ou escrita causada pela listagem; sem continuação que consuma o lookahead.
 
-Registro de execução: [WP-02/E4](../../docs/implementation/WP-02-E-PIN-DISCOVERY.md). Resultados são associados ao commit efetivamente executado, não à existência dos arquivos de testes.
+Registro de execução: [WP-02/E4](../../docs/implementation/WP-02-E-PIN-DISCOVERY.md) e [correção E4.1](../../docs/implementation/WP-02-E-PIN-ENVELOPE-BUDGET.md). Resultados são associados ao commit efetivamente executado, não à existência dos arquivos de testes.
