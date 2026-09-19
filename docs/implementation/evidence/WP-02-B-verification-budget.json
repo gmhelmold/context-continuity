@@ -1,0 +1,83 @@
+{
+  "schema_version": 1,
+  "scope": "issue #28 bounded retention content verification",
+  "base_commit": "7cfde7770963a1fa0c826cde9ca5b9f1a234968b",
+  "node": "22.17.1",
+  "typescript": "5.9.3",
+  "platform": "Darwin-x86_64",
+  "before": {
+    "tests": 16,
+    "pass": 2,
+    "fail": 14,
+    "log_sha256": "40e52bf405b6a87024f4e9a83f8d933920f223a97a88375ccd803dc9fbe3812e"
+  },
+  "after_same_cases": {
+    "tests": 16,
+    "pass": 16,
+    "fail": 0,
+    "log_sha256": "8360060d01b0736d4a54c6573e67686281c767a8125077cd066012b08a6f317a"
+  },
+  "targeted_final": {
+    "tests": 20,
+    "pass": 20,
+    "fail": 0,
+    "positive_negative_pairs": 4,
+    "log_sha256": "72029baeb6268cf49f3506e8909e21e6ab6013af5f53c9b79a2b60f7c4558bd0"
+  },
+  "measurements": [
+    {
+      "roots": 8,
+      "operation": "empty",
+      "reads": 0,
+      "bytes": 0,
+      "in_transaction": 0
+    },
+    {
+      "roots": 8,
+      "operation": "append",
+      "reads": 1,
+      "bytes": 16384,
+      "in_transaction": 1
+    },
+    {
+      "roots": 32,
+      "operation": "empty",
+      "reads": 0,
+      "bytes": 0,
+      "in_transaction": 0
+    },
+    {
+      "roots": 32,
+      "operation": "append",
+      "reads": 1,
+      "bytes": 16384,
+      "in_transaction": 1
+    },
+    {
+      "roots": 128,
+      "operation": "empty",
+      "reads": 0,
+      "bytes": 0,
+      "in_transaction": 0
+    },
+    {
+      "roots": 128,
+      "operation": "append",
+      "reads": 1,
+      "bytes": 16384,
+      "in_transaction": 1
+    }
+  ],
+  "source_sha256": {
+    "packages/storage/src/root-records.ts": "90790c1edc1a98c3c650c7b51e472283851b44267878f7d90301070699d46d53",
+    "packages/storage/src/source-records.ts": "96538abeb3833660d76bd5f8c74273f7135263ed11c48d4ff3d976f14c7af201",
+    "packages/storage/src/index.ts": "e23117f92be059897ee5f3ad510f576492c0c0c8aac69d2bbd7679c3f3cca84c",
+    "tests/storage/retention-budget.test.mjs": "5699d3296b000306acaa8fbc1a20c387296ac5a51716c28e5a3db75e31188984",
+    "tests/storage/retention-budget-mutations.test.mjs": "dbcf44ee21d94c00b5b726678d1cc5297417b0523104c9579231870da9a9c587",
+    "tests/storage/root-retention.test.mjs": "6263c4e28c80f40c73001e7c22233a5fe52b1b1e70b3e16b1d5e4a93cf80f193"
+  },
+  "full_ci": "record separately on final-head PR; not inferred from component tests",
+  "physical_io_measured": false,
+  "live_inference": false,
+  "wp02_complete": false
+}

@@ -86,7 +86,7 @@ test('WP02B: source revisions cannot rewrite content, skip or resurrect unavaila
  reject(()=>f.s.readSource(f.b,a.ref),'E_SOURCE');reject(()=>write(f,source(10,'other',1)),'E_SOURCE');
 }));
 test('WP02B: corrupt retained bytes are not returned or accepted as root provenance',()=>fixture(f=>{
- const a=source();write(f,a);exec(f,"UPDATE sources SET inline_bytes=X'00'");
+ const a=source();write(f,a);exec(f,"UPDATE sources SET inline_bytes=zeroblob(length(inline_bytes))");
  reject(()=>f.s.readSource(f.b,a.ref),'E_SOURCE');reject(()=>f.s.readRootCatalog(f.b),'E_SOURCE');
 }));
 test('WP02B: root columns must agree with the serialized record',()=>fixture(f=>{
