@@ -156,6 +156,8 @@ export class WorkspaceCoordinator {
     let handle: SQLiteHandle | undefined, resources: LockResources | undefined;
     try {
       handle = connectSQLite(directory, workspace, false);
+      // Refuse unsupported encoding before creating any coordinator resources.
+      if (handle.db.prepare('PRAGMA encoding').get()?.encoding !== 'UTF-8') return capability();
       const existing = handle.db.prepare('SELECT 1 FROM meta WHERE key=?').get(ANCHOR_KEY);
       resources = LockResources.open(directory, !existing);
       resources.acquire();
