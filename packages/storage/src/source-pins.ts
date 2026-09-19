@@ -13,6 +13,7 @@ import type { WorkspaceIdentity } from './sqlite-database.ts';
 import { StorageError } from './errors.ts';
 
 export const MAX_ACTIVE_SOURCE_PINS = 4096;
+export const MAX_SOURCE_PIN_PAGE_SIZE = 64;
 export type SourcePinRequest = Readonly<{
   reservation_id: string; operation_id: string; kind: 'read_pin' | 'export_pin'; source_ref: SourceRef;
 }>;
@@ -20,6 +21,8 @@ export type SourcePin = SourcePinRequest & Readonly<{
   schema_version: 1; binding: SessionBinding; owner_id: string; process_instance: string;
   policy_revision: number; state: 'active' | 'released'; created_at: string;
 }>;
+export type SourcePinPageRequest = Readonly<{ limit: number; after?: string }>;
+export type SourcePinPage = Readonly<{ pins: readonly SourcePin[]; next_after: string | null }>;
 type PinOwner = Readonly<{ owner_id: string; process_instance: string }>;
 const key = (id: string): string => `storage.source-pin.v1:${id}`;
 const equal = (a: unknown, b: unknown): boolean => canonical(a) === canonical(b);
@@ -38,6 +41,11 @@ export function parseSourcePinRequest(input: unknown): SourcePinRequest {
   return Object.freeze({ reservation_id: entityId(r.reservation_id), operation_id: entityId(r.operation_id),
     kind: choice(r.kind, ['read_pin', 'export_pin'] as const, 'source_pin.kind'), source_ref: parseSourceRef(r.source_ref) });
 }
+export function parseSourcePinPageRequest(input: unknown): SourcePinPageRequest {
+  const r = closedRecord(input, ['limit', 'after'], ['limit'], 'source_pin_page');
+  const limit = integer(r.limit, 1, MAX_SOURCE_PIN_PAGE_SIZE, 'source_pin_page.limit');
+  return Object.freeze(Object.hasOwn(r, 'after') ? { limit, after: entityId(r.after) } : { limit });
+}
 function parsePin(input: unknown): SourcePin {
   const fields = ['schema_version', 'binding', 'owner_id', 'process_instance', 'policy_revision', 'state',
     'created_at', 'reservation_id', 'operation_id', 'kind', 'source_ref'];
@@ -52,8 +60,8 @@ function parsePin(input: unknown): SourcePin {
     policy_revision: integer(r.policy_revision, 0, Number.MAX_SAFE_INTEGER, 'stored_pin.policy'),
     state: choice(r.state, ['active', 'released'] as const, 'stored_pin.state'), created_at: r.created_at });
 }
-/** A pin describes a reservation; it cannot serve as a current read/publication permit. */
-export function loadSourcePin(db: DatabaseSync, binding: SessionBinding, id: string): SourcePin | null {
+/** Shared structural verification for scoped reads and workspace discovery. */
+function readSourcePinRecord(db: DatabaseSync, id: string): SourcePin | null {
   const metadata = db.prepare('SELECT value FROM meta WHERE key=?').get(key(id));
   const row = db.prepare('SELECT * FROM storage_reservations WHERE reservation_id=?').get(id);
   if (!metadata) { if (row) return invalid(); return null; }
@@ -72,8 +80,35 @@ export function loadSourcePin(db: DatabaseSync, binding: SessionBinding, id: str
     const owner = db.prepare('SELECT process_instance FROM storage_owners WHERE owner_id=?').get(pin.owner_id);
     if (!owner || owner.process_instance !== pin.process_instance) return invalid();
   } catch { return invalid(); }
-  if (!equal(pin.binding, binding)) throw new StorageError('E_SCOPE', 'source pin session mismatch');
   return pin;
+}
+/** A pin describes a reservation; it cannot serve as a current read/publication permit. */
+export function loadSourcePin(db: DatabaseSync, binding: SessionBinding, id: string): SourcePin | null {
+  const pin = readSourcePinRecord(db, id);
+  if (pin && !equal(pin.binding, binding)) throw new StorageError('E_SCOPE', 'source pin session mismatch');
+  return pin;
+}
+/** Read-only keyset page under the caller's workspace lock and single read snapshot.
+ * This discovers candidates, not liveness, verified bytes, or permission to release. */
+export function listSourcePins(db: DatabaseSync, workspace: WorkspaceIdentity, request: SourcePinPageRequest): SourcePinPage {
+  const rows = db.prepare(`SELECT reservation_id FROM storage_reservations
+    WHERE kind IN ('read_pin','export_pin') AND reservation_id > ?
+    ORDER BY reservation_id LIMIT ?`).all(request.after ?? '', request.limit + 1);
+  const pins: SourcePin[] = [];
+  for (const row of rows) {
+    let id: string;
+    try { id = entityId(row.reservation_id); } catch { return invalid(); }
+    const pin = readSourcePinRecord(db, id);
+    if (!pin || pin.state !== 'active') return invalid();
+    // A stored foreign scope is corrupt data, not a caller-supplied scope error.
+    try { pinBinding(pin.binding, workspace); } catch { return invalid(); }
+    const owner = db.prepare('SELECT state FROM storage_owners WHERE owner_id=?').get(pin.owner_id);
+    if (!owner || owner.state !== 'active') return invalid();
+    pins.push(pin);
+  }
+  const more = pins.length > request.limit;
+  if (more) pins.pop(); // The lookahead was also verified, but is not consumed by this page.
+  return Object.freeze({ pins: Object.freeze(pins), next_after: more ? pins[pins.length - 1]!.reservation_id : null });
 }
 function currentPolicy(db: DatabaseSync, binding: SessionBinding): number {
   if (db.prepare('SELECT 1 FROM tombstones WHERE scope_hash=? LIMIT 1').get(binding.session_key)) {
