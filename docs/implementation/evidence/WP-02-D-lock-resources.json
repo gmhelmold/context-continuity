@@ -72,11 +72,6 @@
       }
     }
   },
-  "source_sha256": {
-    "packages/storage/src/lock-resources.ts": "2b0f3995c594c128b6e15c3e8bd8e37fae22b7605134cfbc7b179a49710395cc",
-    "tests/coordination/lock-resources.test.mjs": "1664b299e84f87d868a3d3e71960755c03654958b6f03337dc6658d16b0674c2",
-    "tests/coordination/resource-mutations.test.mjs": "852ec76496d25200efa01d4f42688835c957d4905dc74ccfe68fcddfa7689828"
-  },
   "full_matrix": {
     "status": "passed_local",
     "execution": "Node 22.17.1; heavy core/storage serial; CI commands unchanged",
@@ -263,7 +258,116 @@
         "sha256": "76eb03e314fd21a634e4edb458a8ac237f86f2507816e60f22ea4d980d6c960f",
         "counts": {}
       }
+    },
+    "note": "Historical passing matrix on e565702 sources, before LR05 tests. The latest coordination run is 50/51, not approved."
+  },
+  "live_inference": false,
+  "status": "changes_required",
+  "blocking_regressions": [
+    {
+      "id": "LR05",
+      "issue": 33,
+      "corrective_edit_executed": false
+    }
+  ],
+  "prior_validated_head": "e56570240ca53eb9a714e4e493878cca40317b2d",
+  "prior_ci": {
+    "head": "e56570240ca53eb9a714e4e493878cca40317b2d",
+    "base": "c5d94ac62cf2ef3e1beb16b86b6209fa8b8beae9",
+    "runs": {
+      "Specification checks": 35421878604,
+      "REVIEW-004 gateway regressions": 35421878598,
+      "SQLite storage foundation": 35421878590,
+      "Native workspace lock primitive": 35421878579,
+      "Core contract checks": 35421878636,
+      "OpenCode integration probe": 35421878600,
+      "OpenCode oracle mutations": 35421878651
+    },
+    "jobs": {
+      "105840967223": {
+        "name": "Document integrity and reference models",
+        "run": 35421878604,
+        "sha256": "db7bd20bcd2f0ccb704d5b40a8c6d075475f41dbd0033a6a4aaa1069ae800ca1"
+      },
+      "105840967285": {
+        "name": "Cancellation and stale-view recovery",
+        "run": 35421878598,
+        "sha256": "18b8312fc4e8b572576cd216402fdd188dea8039c1ba297878648d52393f7cac"
+      },
+      "105840967246": {
+        "name": "SQLite sessions / Node 24.0.0",
+        "run": 35421878590,
+        "sha256": "da507754cad03a6a2d2c17f4bc10d7a6460a71983e322e2e23b079915ecb9c74"
+      },
+      "105840967417": {
+        "name": "SQLite sessions / Node 22.17.1",
+        "run": 35421878590,
+        "sha256": "af62eaf086715b7ca6d13bd34035a48ac4187b1e291078e50aa16b5f20c72516"
+      },
+      "105840967298": {
+        "name": "POSIX locks / Node 24.0.0",
+        "run": 35421878579,
+        "sha256": "4231688483309276a007856da8e26abc5747da2ffe29e28c28b410908391768b"
+      },
+      "105840967444": {
+        "name": "POSIX locks / Node 22.17.1",
+        "run": 35421878579,
+        "sha256": "7386c967cc34a15aaf9fd1c2464e5d43e2daff1a3a5cf88d758b1fc54f8f8f02"
+      },
+      "105840967318": {
+        "name": "Pure core contracts / Node 24.0.0",
+        "run": 35421878636,
+        "sha256": "ad09102da34dc4741bde3eb86a9391fbc163f76d1aa7f864e9c1f88b87ee8852"
+      },
+      "105840967459": {
+        "name": "Pure core contracts / Node 22.17.1",
+        "run": 35421878636,
+        "sha256": "915ca88b99580f6ce8246bfd99e7a1a31f7e75034756567e4310c4f95915bf40"
+      },
+      "105840967312": {
+        "name": "Stock OpenCode / synthetic provider",
+        "run": 35421878600,
+        "sha256": "5b905dfa5a006ab574892b552d48ae8a4d350a491bd02663f85f5dd10ba6c170"
+      },
+      "105840967494": {
+        "name": "Stock OpenCode / eight incorrect implementations",
+        "run": 35421878651,
+        "sha256": "2d3cc0db7b2b8831c4d2c9db0280d9a403fa01c6dd943e734cde7d47254534c2"
+      }
     }
   },
-  "live_inference": false
+  "final_review_logs": {
+    "resource-close-before.tap": {
+      "sha256": "a4fda27d42dbe98c9c4cacbecd21cb58810c68be3d53ea59f2c431e71aa4450f",
+      "counts": {
+        "tests": 2,
+        "pass": 1,
+        "fail": 1,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0
+      }
+    },
+    "resource-coordination-review.tap": {
+      "sha256": "cb9368f2877a63f81848c1ea0ccb44bcc1ff0b46afd4a30bd07839f36d6f4f6e",
+      "counts": {
+        "tests": 51,
+        "pass": 50,
+        "fail": 1,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0
+      }
+    }
+  },
+  "prior_source_sha256": {
+    "packages/storage/src/lock-resources.ts": "2b0f3995c594c128b6e15c3e8bd8e37fae22b7605134cfbc7b179a49710395cc",
+    "tests/coordination/lock-resources.test.mjs": "1664b299e84f87d868a3d3e71960755c03654958b6f03337dc6658d16b0674c2",
+    "tests/coordination/resource-mutations.test.mjs": "852ec76496d25200efa01d4f42688835c957d4905dc74ccfe68fcddfa7689828"
+  },
+  "current_source_sha256": {
+    "packages/storage/src/lock-resources.ts": "2b0f3995c594c128b6e15c3e8bd8e37fae22b7605134cfbc7b179a49710395cc",
+    "tests/coordination/lock-resources.test.mjs": "d9c192797a226cbbfe6cdd44a95a3b0ea80d18c56934207e2c2bcdf7022b469d",
+    "tests/coordination/resource-mutations.test.mjs": "852ec76496d25200efa01d4f42688835c957d4905dc74ccfe68fcddfa7689828"
+  }
 }

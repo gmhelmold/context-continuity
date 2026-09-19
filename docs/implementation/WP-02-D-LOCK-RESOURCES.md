@@ -1,5 +1,7 @@
 # WP-02/D2 — recursos privados de lock
 
+**CHANGES REQUIRED — LR05 / issue #33. O PR #32 permanece em rascunho e não deve ser integrado com a regressão de fechamento conhecida.**
+
 Base `c5d94ac62cf2ef3e1beb16b86b6209fa8b8beae9`. Continuação da worktree preservada; refs #5. Contrato [SPEC-17](../../specs/v0.1/17-lock-resources.md). Este corte implementa recursos de filesystem, não o gerenciador transacional de proprietários.
 
 ## Entrega e fronteira
@@ -56,3 +58,15 @@ As suites completas e o CI são registrados após a execução, sem herdar verde
 ## Matriz local concluída
 
 Nos pins Node22.17.1/TypeScript5.9.3: coordenação49/49, núcleo198/198, storage155/155, componentes25/25, testemunha4/4, ambos typechecks e cinco verificadores documentais aprovados. As suites pesadas core/storage foram executadas em série; comandos/pins do CI permanecem intactos. O CI do head final precisa de resultados próprios, registrados no PR antes do merge.
+
+## Revisão final LR05 — classificação de erro de fechamento (aberta)
+
+Depois da matriz verde de `e56570240ca53eb9a714e4e493878cca40317b2d`, foram acrescentados dois casos de falha de close. O teste delega ao fechamento real de um descritor da fixture e depois injeta EIO sintético, restaurando a instrumentação no finally. Não é um erro de hardware/OS observado nem evidência de vazamento real.
+
+`PrivateDescriptor.close()` revoga o handle e remove o filho da coleção, mas deixa o erro original de closeSync escapar. O teste exige E_CAPABILITY sanitizado conforme SPEC-17 e reprova. O controle de fechamento pelo pai passa: mesmo com falha num filho, os demais locks são encerrados e a testemunha Python consegue adquiri-los.
+
+Dirigidos: **2 casos, 1 pass/1 fail**. Coordenação completa após a revisão: **51 testes, 50 pass/1 fail**, sem skip/todo/cancelled. Os 49/49 locais e os sete workflows/dez jobs verdes anteriores pertencem à suíte de e565702 e não cobrem esse caso. Não se herda aprovação de CI para este novo head.
+
+A edição corretiva foi bloqueada antes da execução; a repetição idêntica também foi bloqueada. O arquivo de produção permaneceu byte a byte igual a e565702. Não foi aplicada por rota alternativa. A [issue #33](https://github.com/gmhelmold/context-continuity/issues/33) contém reprodução, critérios e limites. A correção precisa manter revogação antes de fechar, sanitização do erro, fechamento dos demais recursos e ausência de repetição de close sobre número possivelmente reutilizado.
+
+Os dois testes são normais e ficam publicados na mesma branch, sem expected-failure ou relaxamento da assertion. O incremento só será considerado concluído após a correção, repetição da matriz completa e conferência do novo head. WorkspaceCoordinator e seu registro transacional permanecem separados e não implementados.

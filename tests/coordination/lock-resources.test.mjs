@@ -1,5 +1,7 @@
 /** Real private files and kernel locks; no user data or liveness claims. */
 import test from 'node:test';
+import fs from 'node:fs';
+import {syncBuiltinESMExports} from 'node:module';
 import assert from 'node:assert/strict';
 import {mkdtempSync,rmSync,mkdirSync,cpSync,realpathSync,writeFileSync,readFileSync,lstatSync,readdirSync,renameSync,chmodSync,unlinkSync,symlinkSync,linkSync} from 'node:fs';
 import {tmpdir} from 'node:os';
@@ -148,4 +150,27 @@ test('Resources: fixture process exit releases its managed workspace and owner l
   child.kill('SIGTERM');await exited;assert.equal(pythonTry(f.lock),'acquired');assert.equal(pythonTry(path),'acquired');
   const again=f.open(false);again.acquire();again.release();
  }finally{clearTimeout(timer);if(child.exitCode===null&&child.signalCode===null){child.kill('SIGKILL');await exited;}}
+}));
+
+function closeFault(file,body){
+ const original=fs.closeSync;let fired=0;
+ fs.closeSync=function(fd){
+  const stat=fs.fstatSync(fd,{bigint:true}),mine=stat.dev.toString()===file.dev&&stat.ino.toString()===file.ino;
+  original(fd);
+  if(mine){fired++;throw Object.assign(new Error('private fixture close detail'),{code:'EIO'});}
+ };
+ syncBuiltinESMExports();
+ try{body();assert.equal(fired,1,'the injected close path must execute once');}
+ finally{fs.closeSync=original;syncBuiltinESMExports();}
+}
+test('Resources review: an owner close failure is sanitized and its handle stays revoked',()=>fixture(f=>{
+ const r=f.open(),owner=r.owner(id(1),true),path=join(f.owners,id(1)+'.lock');owner.tryLock();
+ closeFault(owner.identity,()=>assert.throws(()=>owner.close(),e=>e.code==='E_CAPABILITY'&&!e.message.includes('private fixture')));
+ reject(()=>owner.tryLock());owner.close();assert.equal(pythonTry(path),'acquired');
+}));
+test('Resources: one close failure does not prevent closing other owned locks',()=>fixture(f=>{
+ const r=f.open(),a=r.owner(id(1),true),b=r.owner(id(2),true);r.acquire();a.tryLock();b.tryLock();
+ closeFault(a.identity,()=>reject(()=>r.close()));
+ for(const path of [f.lock,join(f.owners,id(1)+'.lock'),join(f.owners,id(2)+'.lock')])assert.equal(pythonTry(path),'acquired');
+ reject(()=>a.guard());reject(()=>b.guard());reject(()=>r.guard());
 }));
