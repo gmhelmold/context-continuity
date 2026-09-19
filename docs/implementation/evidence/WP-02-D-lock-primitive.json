@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "base_commit": "e2c1ec33aab11cf2c7a7dc4d731a6a2c73dac2c7",
+  "scope": "isolated kernel lock primitive only",
+  "local_platform": "darwin-x64",
+  "node": "22.17.1",
+  "napi_version": 8,
+  "local_test_counts": {
+    "tests": 17,
+    "pass": 17,
+    "fail": 0,
+    "skipped": 0,
+    "todo": 0
+  },
+  "negative_controls": 5,
+  "incorrect_builds_rejected": 5,
+  "log_sha256": "8f480111ebf8ba189137e28c8b326019a9bc0caa411ed6150a3ed9568d372473",
+  "source_sha256": {
+    "packages/storage/native/locks.c": "5e807fef2b5f5279f68685b0fef184cb15aa0207de35d916a5426b166aa12fd2",
+    "scripts/build-locks.mjs": "f5bdac7df279df18c283a1802a8c9022debaea665d732348c30d905712f17362",
+    "tests/coordination/native-locks.test.mjs": "b54f6dffb61254f0c9dce05c739ff6dda210119487758efea4a5d7ca42297378",
+    "tests/coordination/native-mutations.test.mjs": "ea81db14a49422dc93adf398e472dc321a57ce720e3a63b523fe24377dcc0852",
+    ".github/workflows/locks-check.yml": "46ce01b334889b3d944511c04082361165a7edc29d7cba73741cc39ba0c37933"
+  },
+  "manager_implemented": false,
+  "old_local_matrix_reexecuted": false,
+  "network_inference": false,
+  "runtime_storage_integration": false,
+  "remote_validation": "must be read from final-head workflow logs"
+}

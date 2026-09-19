@@ -21,6 +21,7 @@
 | [SPEC-13](13-storage-foundation.md) | Fundação SQLite de sessão/proprietário: escopo, inicialização e garantias verificadas. |
 | [SPEC-14](14-inline-root-retention.md) | Fontes inline e mapa de raízes: revisão, CAS de catálogo, quota lógica e reabertura. |
 | [SPEC-15](15-durable-jobs.md) | Rascunho WP-02/C: persistência de jobs/tentativas, não integrado enquanto o gate estiver vermelho. |
+| [SPEC-16](16-native-lock-primitive.md) | Primitiva Node-API de flock; não gerencia owners nem libera quarentena de jobs. |
 | [Work packages](WORK-PACKAGES.md) | Oito pacotes com cinco axiomas e DoDs sem dependências retroativas. |
 | [traceability.json](traceability.json) | Fonte única do mapa requisito/casos/donos/dependências. |
 

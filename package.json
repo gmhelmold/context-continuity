@@ -10,7 +10,9 @@
     "check:core": "tsc --project tsconfig.core.json",
     "test:core": "node --experimental-strip-types --test tests/core/*.test.mjs",
     "check:storage": "tsc --project tsconfig.storage.json",
-    "test:storage": "node --experimental-strip-types --test tests/storage/*.test.mjs"
+    "test:storage": "node --experimental-strip-types --test tests/storage/*.test.mjs",
+    "build:locks": "node scripts/build-locks.mjs",
+    "test:coordination": "node --experimental-strip-types --test tests/coordination/*.test.mjs"
   },
   "devDependencies": {
     "@types/node": "22.17.1",
