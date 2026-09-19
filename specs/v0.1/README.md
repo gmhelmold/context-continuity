@@ -20,11 +20,11 @@
 | [SPEC-12](12-generation-context.md) | Identidade imutável de job/Snapshot/manifesto/feedback, registros e respostas vinculadas. |
 | [SPEC-13](13-storage-foundation.md) | Fundação SQLite de sessão/proprietário: escopo, inicialização e garantias verificadas. |
 | [SPEC-14](14-inline-root-retention.md) | Fontes inline e mapa de raízes: revisão, CAS de catálogo, quota lógica e reabertura. |
-| [SPEC-15](15-durable-jobs.md) | Rascunho WP-02/C: persistência de jobs/tentativas, não integrado enquanto o gate estiver vermelho. |
+| [SPEC-15](15-durable-jobs.md) | Persistência de jobs/tentativas e recuperação explícita sem replay; não é executor de transporte. |
 | [SPEC-16](16-native-lock-primitive.md) | Primitiva Node-API de flock; não gerencia owners nem libera quarentena de jobs. |
 | [SPEC-17](17-lock-resources.md) | Recursos privados, identidades de arquivos e duração de locks; não é coordenador de owners. |
 | [SPEC-18](18-workspace-coordinator.md) | Anchor durável, registro e aposentadoria de owners e seção síncrona revogável. |
-| [SPEC-19](19-local-attempt-supervisor.md) | Rascunho de supervisão local e vínculo de tentativa; S01/S02 bloqueiam integração. |
+| [SPEC-19](19-local-attempt-supervisor.md) | Supervisão local, vínculo de tentativa, término observado e recuperação conservadora antes de invocação. |
 | [Work packages](WORK-PACKAGES.md) | Oito pacotes com cinco axiomas e DoDs sem dependências retroativas. |
 | [traceability.json](traceability.json) | Fonte única do mapa requisito/casos/donos/dependências. |
 

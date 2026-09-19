@@ -580,5 +580,208 @@
       "tests/coordination/supervisor-processes.test.mjs": "0c1de343d151972d8b03a9d453f4c56e2a36d54013fde651d4dd9ebb4057813e",
       "tests/coordination/supervisor-mutations.test.mjs": "e4a9fe9b3ac9d56e2c5249fb0c63f01e71a7e27ac21590332b10977176112aaf"
     }
+  },
+  "resolution": {
+    "record_type": "prepublication local evidence; exact-head CI and merge are recorded on PR 36 and issues 35/5",
+    "pre_fix_head": "da1ae6e2892a88c11421f7308e0d90cc75b1226e",
+    "main_base": "d81e2ace6f9f0edc34139074cdeec1c73cf0b951",
+    "platform": "darwin x64",
+    "node": "22.17.1",
+    "typescript": "5.9.3",
+    "source_sha256": {
+      "packages/storage/src/local-attempt-supervisor.ts": "ef169c710ee38531d1892841a5d842042ca6975ba56b3fa20a91862d12384964",
+      "packages/storage/src/attempt-owner.ts": "04b933921ed209a2d965986c62702c4a0cfcc48411a67af733d2b5d00af80348",
+      "packages/storage/src/session-store.ts": "e5cd6857e528f37721b795e921e32fb12723fad924a0f29ae78193403d730c48",
+      "packages/storage/src/workspace-coordinator.ts": "9aa02a7458306ad2b484bf1585763ce73fcab5eaaf047fec8cac0ac923b48626",
+      "packages/storage/native/locks.c": "5e807fef2b5f5279f68685b0fef184cb15aa0207de35d916a5426b166aa12fd2",
+      "tests/coordination/attempt-supervisor.test.mjs": "b3d18861d216ab6fd05ffbc2ee4f90d31e3b7e155824190bcdd1ecb2b7fa3144",
+      "tests/coordination/supervisor-mutations.test.mjs": "4789cd621cc9294eff0780a0ddcab90ec80570e9105039fda61100131452fdf6",
+      "tests/coordination/supervisor-processes.test.mjs": "0c1de343d151972d8b03a9d453f4c56e2a36d54013fde651d4dd9ebb4057813e"
+    },
+    "runs": {
+      "before": {
+        "log": "before.tap",
+        "command": "node --experimental-strip-types --test --test-reporter=tap --test-name-pattern='^Supervisor review:' tests/coordination/attempt-supervisor.test.mjs",
+        "exit_code": 1,
+        "counts": {
+          "tests": 5,
+          "pass": 0,
+          "fail": 5,
+          "cancelled": 0,
+          "skipped": 0,
+          "todo": 0
+        },
+        "sha256": "647b2ec4175de1c1eab3e9f3187787a77ec83f7eede5d34820b5248e80db71b4"
+      },
+      "after_unchanged_tests": {
+        "log": "after.tap",
+        "command": "node --experimental-strip-types --test --test-reporter=tap tests/coordination/attempt-supervisor.test.mjs",
+        "exit_code": 0,
+        "counts": {
+          "tests": 32,
+          "pass": 32,
+          "fail": 0,
+          "cancelled": 0,
+          "skipped": 0,
+          "todo": 0
+        },
+        "sha256": "2a8206fbd81dbe94946860a0992aabd2bcb9e0c9c6aa76f81d9da4834668163b"
+      },
+      "targeted": {
+        "log": "targeted.tap",
+        "command": "node --experimental-strip-types --test --test-concurrency=1 --test-reporter=tap tests/coordination/attempt-supervisor.test.mjs tests/coordination/supervisor-mutations.test.mjs tests/coordination/supervisor-processes.test.mjs",
+        "exit_code": 0,
+        "counts": {
+          "tests": 51,
+          "pass": 51,
+          "fail": 0,
+          "cancelled": 0,
+          "skipped": 0,
+          "todo": 0
+        },
+        "sha256": "db0432215be22c24e8a938048211cd731f8dc6b840be5281900b2bed4bebb7ca"
+      },
+      "coordination_parallel": {
+        "log": "coordination.log",
+        "command": "npm run test:coordination",
+        "exit_code": 1,
+        "counts": {
+          "tests": 150,
+          "pass": 149,
+          "fail": 1,
+          "cancelled": 0,
+          "skipped": 0,
+          "todo": 0
+        },
+        "sha256": "af45133db22148122f668de86213bd64f34d36eba495e4afcbb2a680db8b716f"
+      },
+      "coordination_serial": {
+        "log": "coordination-serial.log",
+        "command": "node --experimental-strip-types --test --test-concurrency=1 --test-reporter=tap tests/coordination/*.test.mjs",
+        "exit_code": 0,
+        "counts": {
+          "tests": 150,
+          "pass": 150,
+          "fail": 0,
+          "cancelled": 0,
+          "skipped": 0,
+          "todo": 0
+        },
+        "sha256": "717473025f32e8171b21ed76016c380895541f91c7a46b964c387a4c48c7b71e"
+      },
+      "storage": {
+        "log": "storage.log",
+        "command": "node --experimental-strip-types --test --test-concurrency=1 --test-reporter=tap tests/storage/*.test.mjs",
+        "exit_code": 0,
+        "counts": {
+          "tests": 155,
+          "pass": 155,
+          "fail": 0,
+          "cancelled": 0,
+          "skipped": 0,
+          "todo": 0
+        },
+        "sha256": "1099036282c9b3f6ad64525b84f5989242e2164e900c4f149988f8da54589974"
+      },
+      "core": {
+        "log": "core.log",
+        "command": "node --experimental-strip-types --test --test-concurrency=1 --test-reporter=tap tests/core/*.test.mjs",
+        "exit_code": 0,
+        "counts": {
+          "tests": 198,
+          "pass": 198,
+          "fail": 0,
+          "cancelled": 0,
+          "skipped": 0,
+          "todo": 0
+        },
+        "sha256": "a5aa97c5b44fa9bcc8a8b803d3442c8292821067142ed0e7d2b408a6fe2a0824"
+      },
+      "components": {
+        "log": "components.log",
+        "command": "node --test tests/conformance/opencode/test-components.mjs tests/conformance/opencode/test-review004.mjs",
+        "exit_code": 0,
+        "counts": {
+          "tests": 25,
+          "pass": 25,
+          "fail": 0,
+          "cancelled": 0,
+          "skipped": 0,
+          "todo": 0
+        },
+        "sha256": "ab3b4c7f75cb7dcb60e11663b4ad40c6ef330bf24ac28efcf173d952075d7d88"
+      },
+      "build": {
+        "command": "npm run build:locks",
+        "log": "build.log",
+        "exit_code": 0,
+        "sha256": "668bbaa42960b93d2f1159a01325dca700c10fd4d5dcba01e50be1c3dbb1cc94"
+      },
+      "check-core": {
+        "command": "npm run check:core",
+        "log": "check-core.log",
+        "exit_code": 0,
+        "sha256": "e3806c19fac205c687938315713a76dd23432520806fb09445e7c3857ba48d3c"
+      },
+      "check-storage": {
+        "command": "npm run check:storage",
+        "log": "check-storage.log",
+        "exit_code": 0,
+        "sha256": "c751b0b339ee212453e71398dabd9d25b8421f75b50f92729d86c11f9e0c6581"
+      },
+      "witness": {
+        "command": "python3 tests/conformance/opencode/test-witness.py",
+        "log": "witness.log",
+        "exit_code": 0,
+        "sha256": "e7c51101a9da20eaeff0b678fccb5a764f1b6979d41017eb4b84d5e6943090bf"
+      },
+      "check-spec": {
+        "command": "python3 scripts/check-spec.py",
+        "log": "check-spec.log",
+        "exit_code": 0,
+        "sha256": "c15f2c08d1030c2555df25623da0388d209518599f85dca873803438898ae1de"
+      },
+      "check-reference-model": {
+        "command": "python3 scripts/check-reference-model.py",
+        "log": "check-reference-model.log",
+        "exit_code": 0,
+        "sha256": "43d96bf5070831ad921617c178d362d7cd45407258f550db7ffb2f45c948776f"
+      },
+      "test-spec-check": {
+        "command": "python3 scripts/test-spec-check.py",
+        "log": "test-spec-check.log",
+        "exit_code": 0,
+        "sha256": "849ef1c84d05854093ab5ae795caa205f162f12d3631613d5f75b20f6314ec14"
+      },
+      "check-canonical": {
+        "command": "python3 scripts/check-canonical.py",
+        "log": "check-canonical.log",
+        "exit_code": 0,
+        "sha256": "a568bbcf6aae56e3cee6c2935d467169bd8349edf9558827591d1c85f6b099d8"
+      },
+      "check-storage-contracts": {
+        "command": "python3 scripts/check-storage-contracts.py",
+        "log": "check-storage-contracts.log",
+        "exit_code": 0,
+        "sha256": "4a8e1465e5c84bd07f5b5f46c62af11e425e1cdf36f9ebccacd91bc10e379282"
+      }
+    },
+    "new_behavior_tests": 4,
+    "new_mutation_pairs": 6,
+    "total_supervisor_behavior_tests": 36,
+    "total_supervisor_mutation_pairs": 11,
+    "supervisor_process_tests": 4,
+    "all_32_prior_behaviors_preserved_as_exact_prefix": true,
+    "prior_test_file_sha256": "684a2623f5b3b67e1ec0012a817f61ee3c0185dd39ad671036e194d0de8929bd",
+    "fixes": {
+      "S01": "Only observed native Promise settlement supplies local completion; invalid return/synchronous throw remains unknown/quarantined and is signaled without assimilation.",
+      "S02": "Reconcile pre-invocation failure only with current authority, including committed dispatch; keep costs and original error when reconciliation fails."
+    },
+    "historical_parallel_failure": "One existing native mutation subprocess timed out; not accepted as a detected mutation. Full serial repeat passed without changing test deadlines or CI commands.",
+    "initial_typecheck_correction": "Internal throw used E_PROTOCOL outside StorageCode; replaced with E_CAPABILITY before after-tests. No new error code or dependency.",
+    "live_inference": false,
+    "cross_process_quarantine_release_implemented": false,
+    "http_transport_implemented": false,
+    "ci_at_capture": "not yet published; no remote approval claimed in this record"
   }
 }

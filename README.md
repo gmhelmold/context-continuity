@@ -98,4 +98,4 @@ Recursos privados de lock: [WP-02/D2](docs/implementation/WP-02-D-LOCK-RESOURCES
 
 O incremento WP-02/D3 acrescenta coordenação transacional de anchors e participantes de storage, conforme [SPEC-18](specs/v0.1/18-workspace-coordinator.md). A seção síncrona e o registro de owners não autorizam limpeza de reservas ou liberação de jobs em quarentena.
 
-**WP-02/D4 em revisão, não integrado:** [supervisão local de tentativa](docs/implementation/WP-02-D-ATTEMPT-SUPERVISOR.md). A branch vincula tentativas a participantes, mas S01/S02 impedem aprovação. Não libera execuções de outros processos nem homologa transporte.
+**WP-02/D4 — supervisão local de tentativa:** [associação, término e recuperação anterior à invocação](docs/implementation/WP-02-D-ATTEMPT-SUPERVISOR.md). As regressões de S01/S02 exigem observação de Promise e reconciliação com autoridade vigente. Não libera execuções de outros processos nem homologa transporte; o gate do head final está registrado no PR #36.

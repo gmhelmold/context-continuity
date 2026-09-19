@@ -1,6 +1,6 @@
 # WP-02/D4 — vínculo e supervisão local de tentativa
 
-**CHANGES REQUIRED. Não integrado. S01/S02 não corrigidos.** Base `d81e2ace6f9f0edc34139074cdeec1c73cf0b951`, continuidade de #5. Contrato proposto: [SPEC-19](../../specs/v0.1/19-local-attempt-supervisor.md).
+**S01/S02 corrigidos no código; integração condicionada ao gate do head final.** Base `d81e2ace6f9f0edc34139074cdeec1c73cf0b951`, continuidade de #5. Contrato: [SPEC-19](../../specs/v0.1/19-local-attempt-supervisor.md).
 
 ## Implementação da branch
 
@@ -10,7 +10,7 @@ LocalAttemptSupervisor conserva coordenador privado e uma conexão de sessão da
 
 Sem HTTP implementado, ferramentas de projeto, retries internos, novo host, alteração de configuração pessoal ou inferência real. O callback usado nos testes é uma operação sintética cuja Promise cobre sua vida inteira. Não é prova de que um adaptador arbitrário fecha sockets antes de resolver; o transporte final terá seu gate. Não há liberação cross-owner nesta implementação.
 
-## Revisão com regressões
+## Histórico preservado — revisão e fases vermelhas anteriores
 
 Primeira suíte: 18/18 passaram. Acrescentei seis casos, incluindo duas regressões que demonstraram:
 
@@ -72,3 +72,21 @@ Mac Intel / Node 22.17.1 / TypeScript 5.9.3: **135/140 em coordenação**, com c
 As três regressões novas do S01 não elevam o número de issues: detalham o mesmo defeito de validação/término. A campanha nova exige cinco controles corretos e cinco cópias incorretas falhando na assertion esperada. As cópias descartáveis não alteram o checkout. Não foram executados transporte HTTP real, provider pago ou recuperação cross-process que libere quarentena. A fase 121/123 acima é histórica e esta matriz não é aprovação do incremento.
 
 Continuidade obrigatória: corrigir S01/S02 no PR #36, demonstrar que nenhuma ausência de Promise vira stopped, testar reconciliação autorizada/recusada e acrescentar os mutantes da remoção dos fixes. Não encerrar #35/#5 nem integrar enquanto as regressões permanecerem vermelhas.
+
+## Resolução S01/S02 — continuação a partir de da1ae6e
+
+O código do supervisor foi corrigido na mesma branch do PR #36, sem reaplicar artefatos antigos. As cinco regressões existentes foram reexecutadas antes da mudança: 0/5. Após a mudança e correção de um erro de typecheck (código interno de StorageError fora da união), os 32 comportamentos anteriores passaram sem alteração nas assertions. As contagens históricas acima não são o estado dessa correção.
+
+S01: o retorno é verificado como Promise nativa antes de observar seu término por then intrínseco. Retorno inválido/throw síncrono mantém local_stopped=false; nenhuma confirmação separada o transforma em stopped. O supervisor tenta persistir falha/quarentena antes de sinalizar abort. Uma Promise realmente encerrada, inclusive rejeitada, continua constituindo a observação exigida do adaptador interno confiável. Isso não certifica adaptadores arbitrários ou subprocessos destacados.
+
+S02: antes de qualquer invocação, erro de dispatch tenta cancelamento sob owner/fence ainda válidos. Se o commit do dispatch ocorreu antes do erro, a mesma instância pode confirmar a não invocação e o encerramento local; remote unknown e custos continuam preservados. Se a reconciliação também falha ou a autoridade expira, o registro fica conservador e o erro original é reportado. Não há retry ou estorno implícito.
+
+Quatro casos novos cobrem estado durável observado pelo listener de abort, Promise com then sobrescrito, erro pós-commit anterior à invocação e falha na própria reconciliação. Seis novos pares controle/mutante cobrem remoção das correções. Nenhum teste anterior, deadline, pin, schema ou workflow foi alterado para obter aprovação. Resultados, comandos e hashes finais ficam no campo resolution do JSON de evidências, coletados no head correspondente; o PR/issue guardam os resultados de CI e merge.
+
+O bookkeeping local pode ser removido sem prova de parada quando o protocolo do adaptador é inválido. Nesse caso, fechar o supervisor não altera o run em quarantine: nenhuma geração nova é admitida para aquela sessão pelo ledger. Aposentadoria do owner de storage não é confirmação de cleanup ou licença para liberação cross-owner.
+
+### Matriz final local da resolução
+
+macOS Intel, Node 22.17.1 / TypeScript 5.9.3: coordenação **150/150** em série, storage **155/155**, núcleo **198/198**, componentes **25/25**, testemunha **4/4**, build nativo, ambos typechecks e cinco verificadores documentais aprovados. Total de coordenação: 99 casos anteriores + 36 comportamentos do supervisor + quatro processos + onze pares controle/mutante. Esta continuação acrescenta dez casos (quatro comportamentos, seis pares), não 51 testes novos. Cada par é um teste; não somar subprocessos/repetições.
+
+O comando paralelo original terminou **149/150**, por ETIMEDOUT num subprocesso da campanha nativa preexistente. A falha foi preservada, não aceita como detecção; a repetição completa em série passou mantendo os timeouts e os comandos de CI. O CI do head publicado deve executar sua matriz normal antes do merge. O JSON de resolução é captura pré-publicação; os logs remotos do head final e a comparação de árvores são registrados no PR #36 e nas issues #35/#5, sem herdar aprovação de outro commit.

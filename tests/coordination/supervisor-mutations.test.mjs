@@ -9,6 +9,18 @@ import {spawnSync} from 'node:child_process';
 const root=fileURLToPath(new URL('../../',import.meta.url));
 const cancellation='const job = this.#coordinator.withWorkspaceLock(() => this.store.cancelJob(lease, expected));';
 const cases=[
+ ['s01-assimilation','local-attempt-supervisor.ts','const pending = operation(task.controller.signal);','const pending = Promise.resolve(operation(task.controller.signal));',
+  'Supervisor review: a foreign thenable is not assimilated as a completion signal'],
+ ['s01-sync-stop','local-attempt-supervisor.ts','let result: AttemptResult, localStopped = false;','let result: AttemptResult, localStopped = true;',
+  'Supervisor review: synchronous adapter throw cannot prove local cleanup'],
+ ['s01-confirm','local-attempt-supervisor.ts','if (result.local_stopped && job.attempts.some','if (job.attempts.some',
+  'Supervisor review: invalid return leaves local completion unknown'],
+ ['s01-signal','local-attempt-supervisor.ts','try { if (!result.local_stopped) task.controller.abort(); }','try { /* missing cancellation */ }',
+  'Supervisor review: invalid return leaves local completion unknown'],
+ ['s02-reconcile','local-attempt-supervisor.ts','const job = this.store.cancelJob(owned, expected);','const job = this.store.readJob(owned.binding, expected)!;',
+  'Supervisor review: failed dispatch reconciles the unused reservation without invoking adapter'],
+ ['s02-post-commit','local-attempt-supervisor.ts','this.store.confirmJobAttemptStopped(owned, expected, attempt, hold);','void hold;',
+  'Supervisor resolution: post-commit dispatch failure stops an uninvoked attempt without replay'],
  ['reservation-binding','session-store.ts','bindAttemptOwner(this.#db, leaseValue(leaseInput), expected, result, ownerHold);','void result;',
   'Supervisor: reservation ownership is observable before dispatch admission'],
  ['ownership-digest','attempt-owner.ts',' || envelope.digest !== hashPayload(value)','',

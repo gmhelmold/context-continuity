@@ -293,3 +293,65 @@ test('Supervisor: reservation ownership is observable before dispatch admission'
   assert.equal(f.store.readJob(f.b,f.job.ref).attempts[0].state,'reserved');
  }finally{f.store.cancelJob(f.lease,f.job.ref);coordinator.close();}
 }));
+
+// Completion observations and pre-invocation failures exercise the public supervisor.
+test('Supervisor resolution: invalid adapter cancellation observes durable quarantine',()=>supervised(async f=>{
+ let observed,signals=0;
+ const job=await f.supervisor.start(f.lease,f.job.ref,amount,signal=>{
+  signal.addEventListener('abort',()=>{signals++;observed=f.store.readJob(f.b,f.job.ref);},{once:true});
+  return result();
+ });
+ assert.equal(signals,1);assert.equal(observed.status,'failed');
+ assert.equal(observed.attempts[0].local_state,'quarantine');assert.equal(observed.attempts[0].local_stopped,false);
+ assert.equal(job.attempts[0].remote_state,'unknown');
+ let calls=0;reject(()=>f.supervisor.start(f.lease,f.job.ref,amount,async()=>{calls++;return result();}),'E_CONFLICT');
+ assert.equal(calls,0);const before=sql(f,'SELECT * FROM aux_runs');
+ f.supervisor.close();assert.deepEqual(sql(f,'SELECT * FROM aux_runs'),before);
+ assert.equal(sql(f,'SELECT count(*) AS n FROM attempts')[0].n,1);
+}));
+test('Supervisor resolution: native Promise observation does not call an overridden then',()=>supervised(async f=>{
+ const d=deferred();let reads=0;
+ Object.defineProperty(d.promise,'then',{get(){reads++;throw Error('private then override');}});
+ const done=f.supervisor.start(f.lease,f.job.ref,amount,()=>d.promise);
+ assert.equal(f.store.readJob(f.b,f.job.ref).attempts[0].local_stopped,false);
+ d.resolve(result());const job=await done;
+ assert.equal(reads,0);assert.equal(job.status,'ready');assert.equal(job.attempts[0].local_stopped,true);
+}));
+test('Supervisor resolution: post-commit dispatch failure stops an uninvoked attempt without replay',()=>supervised(async f=>{
+ const prototype=Object.getPrototypeOf(f.store),original=prototype.markJobAttemptDispatched;
+ let committed=0,calls=0;
+ prototype.markJobAttemptDispatched=function(...args){
+  original.apply(this,args);committed++;
+  const error=new Error('synthetic post-commit dispatch failure');error.code='E_STORAGE';throw error;
+ };
+ try{await rejects(f.supervisor.start(f.lease,f.job.ref,amount,async()=>{calls++;return result();}),'E_STORAGE');}
+ finally{prototype.markJobAttemptDispatched=original;}
+ assert.equal(committed,1);assert.equal(calls,0);
+ const job=f.store.readJob(f.b,f.job.ref);
+ assert.equal(job.status,'cancelled');assert.equal(job.attempts[0].state,'unknown');
+ assert.equal(job.attempts[0].local_state,'stopped');assert.equal(job.attempts[0].local_stopped,true);
+ assert.equal(job.attempts[0].remote_state,'unknown');assert.equal(job.attempts[0].input_reserved,amount.input_tokens);
+ assert.equal(job.attempts.length,1);assert.equal(job.proposal,null);
+}));
+test('Supervisor resolution: failed reconciliation preserves reservation and original dispatch error',()=>supervised(async f=>{
+ const original=DatabaseSync.prototype.prepare;let attempts=0,cancellations=0,calls=0;
+ DatabaseSync.prototype.prepare=function(q){
+  const st=original.call(this,q);
+  if(q==='UPDATE attempts SET state=? WHERE session_key=? AND attempt_id=? AND state=?'){
+   const run=st.run;st.run=function(...args){
+    if(args[0]==='dispatched'){attempts++;throw Error('private initial failure');}
+    if(args[0]==='cancelled'){cancellations++;throw Error('private cleanup failure');}
+    return run.apply(this,args);
+   };
+  }return st;
+ };
+ try{await assert.rejects(f.supervisor.start(f.lease,f.job.ref,amount,async()=>{calls++;return result();}),e=>e.code==='E_STORAGE'&&!e.message.includes('private'));}
+ finally{DatabaseSync.prototype.prepare=original;}
+ assert.equal(attempts,1);assert.equal(cancellations,1);assert.equal(calls,0);
+ const before=f.store.readJob(f.b,f.job.ref);
+ assert.equal(before.status,'running');assert.equal(before.attempts[0].state,'reserved');
+ assert.equal(before.attempts[0].input_reserved,amount.input_tokens);
+ const cancelled=f.supervisor.cancel(f.lease,f.job.ref);
+ assert.equal(cancelled.status,'cancelled');assert.equal(cancelled.attempts[0].local_stopped,true);
+ assert.equal(cancelled.attempts.length,1);assert.equal(calls,0);
+}));

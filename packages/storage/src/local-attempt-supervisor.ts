@@ -62,16 +62,37 @@ export class LocalAttemptSupervisor {
     try {
       this.#coordinator.withWorkspaceLock(hold => this.store.markJobAttemptDispatched(owned, expected, attempt, hold));
     } catch (cause) {
+      // No adapter was invoked. Reconcile only with the still-valid generation.
+      // A failure after COMMIT can leave dispatched rather than reserved state.
+      try {
+        this.#coordinator.withWorkspaceLock(hold => {
+          const job = this.store.cancelJob(owned, expected);
+          if (job.attempts.some(a => a.ref.run_id === attempt.run_id && a.local_state === 'quarantine')) {
+            this.store.confirmJobAttemptStopped(owned, expected, attempt, hold);
+          }
+        });
+      } catch { /* Keep the original failure; the durable record remains conservative. */ }
       this.#tasks.delete(session.binding.session_key);
-      // A failed dispatch did not invoke operation. Preserve the reservation and surface the error.
       return Promise.reject(cause);
     }
     return this.#perform(task, operation);
   }
   async #perform(task: Task, operation: LocalAttemptOperation): Promise<StoredJob> {
-    let result: AttemptResult;
-    try { result = outcome(await operation(task.controller.signal)); }
-    catch { result = Object.freeze({ kind: 'aborted' as const, local_stopped: true }); }
+    let result: AttemptResult, localStopped = false;
+    try {
+      const pending = operation(task.controller.signal);
+      if (!types.isPromise(pending)) throw new StorageError('E_CAPABILITY', 'local operation must return a Promise');
+      // Observe the native Promise, not an arbitrary thenable or overridden then.
+      // Wrap its value so observation itself does not assimilate another value.
+      const settled = await new Promise<{ fulfilled: boolean; value: unknown }>(resolve => {
+        Promise.prototype.then.call(pending,
+          (value: unknown) => resolve({ fulfilled: true, value }),
+          () => resolve({ fulfilled: false, value: undefined }));
+      });
+      localStopped = true;
+      if (!settled.fulfilled) throw new StorageError('E_CAPABILITY', 'local operation rejected');
+      result = outcome(settled.value);
+    } catch { result = Object.freeze({ kind: 'aborted' as const, local_stopped: localStopped }); }
     try {
       return this.#coordinator.withWorkspaceLock(hold => {
         // Renewal may extend time, but cannot change the admitted generation/owner.
@@ -81,12 +102,17 @@ export class LocalAttemptSupervisor {
         }
         const lease = Object.freeze({ ...task.lease, lease_until_ms: session.lease_until_ms });
         let job = this.store.recordJobAttemptResult(lease, task.expected, task.attempt, result, hold);
-        if (job.attempts.some(a => a.ref.run_id === task.attempt.run_id && a.local_state === 'quarantine')) {
+        if (result.local_stopped && job.attempts.some(a => a.ref.run_id === task.attempt.run_id && a.local_state === 'quarantine')) {
           job = this.store.confirmJobAttemptStopped(lease, task.expected, task.attempt, hold);
         }
         return job;
       });
-    } finally { this.#tasks.delete(task.lease.binding.session_key); }
+    } finally {
+      // Invalid adapter protocol has no completion observation. Signal cancellation
+      // without claiming cleanup; its durable quarantine survives this bookkeeping.
+      try { if (!result.local_stopped) task.controller.abort(); }
+      finally { this.#tasks.delete(task.lease.binding.session_key); }
+    }
   }
   /** Commit cancellation before signaling; a pending adapter still owns its execution slot. */
   cancel(lease: OwnerLease, expectedInput: unknown): StoredJob {
