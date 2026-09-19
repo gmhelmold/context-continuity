@@ -98,7 +98,8 @@ test('Pin discovery review: failed read rollback poisons only the reader and pre
     };
     try {
       assert.throws(() => { returned = reader.listSourcePins({ limit: 1 }); },
-        e => e.code === 'E_STORAGE' && e.message === 'coordinator rollback failed');
+        e => e.code === 'E_STORAGE' && e.reason === 'coordinator rollback failed' &&
+          e.message === 'storage: coordinator rollback failed');
     } finally {
       DatabaseSync.prototype.prepare = prepare;
       DatabaseSync.prototype.exec = exec;
