@@ -28,6 +28,8 @@ Antes de selecionar `meta.value`, o loader compartilhado consulta apenas `typeof
 
 O perfil dessa leitura exige encoding SQLite UTF-8, conferido antes do SELECT de um valor existente. A criação normal do ledger usa UTF-8; outro encoding é recusado, não convertido ou migrado. Isso evita aceitar como tamanho UTF-8 a contagem em bytes de armazenamento UTF-16. `length(TEXT)` é inadequado: conta caracteres e para no primeiro NUL. O limite inclui whitespace do envelope JSON; o limite exato continua aceito quando os dados são válidos. A verificação existente por `Buffer.byteLength` permanece após o SELECT como defesa adicional.
 
+Após receber TEXT, seu tamanho UTF-8 deve ser IGUAL ao tamanho escalar observado no mesmo snapshot, além de respeitar o teto. Um prefixo JSON válido seguido por NUL/sufixo não pode virar um envelope completo quando a conversão do driver o encurta. Diferença de tamanho é E_STORAGE antes do parser; nenhuma parte truncada é aceita, reparada ou liberada. Esta comparação detecta diferença de comprimento, não autentica todas as possíveis conversões de mesmo tamanho ou um banco inteiramente reescrito.
+
 A consulta escalar e a obtenção do valor permanecem dentro da MESMA transação SQLite mantida pelo coordenador. Não abrir um snapshot por consulta, reutilizar uma medida anterior entre chamadas, carregar um valor excessivo para então truncá-lo, nem interpretar recusa como ausência. Uma escrita por outra conexão entre as consultas não pode trocar o valor do snapshot já observado. Os limites são da transferência desses envelopes para a aplicação; não constituem teto global de RSS, limite de todas as colunas corrompidas ou garantia de custo físico do SQLite.
 
 Uma página tem um snapshot consistente; páginas diferentes NÃO compartilham snapshot. Liberações e admissões entre chamadas são permitidas. Remover o pin usado como cursor não desloca os próximos resultados. Novos IDs menores ou iguais ao cursor não aparecem naquela continuação; iniciar outra varredura para observá-los. next_after é posição de consulta, não handle de autoridade, compromisso sobre resultados futuros ou prova de inventário completo.
@@ -36,11 +38,11 @@ A listagem parte das reservas existentes: não audita envelopes órfãos cuja re
 
 ## Cinco axiomas
 
-**Success Criteria:** uma nova instância descobre bindings/IDs retidos e pode solicitar E3 separadamente, sem transferir propriedade ou repetir trabalho. Envelopes acima do limite são recusados antes de transferir seu valor para Node.
+**Success Criteria:** uma nova instância descobre bindings/IDs retidos e pode solicitar E3 separadamente, sem transferir propriedade ou repetir trabalho. Envelopes acima do limite são recusados antes de transferir seu valor para Node; transferência encurtada nunca autoriza um registro completo.
 
 **Quality Standards:** SQLite, locks e processos reais; dados sintéticos; testemunha Python; controles negativos com assertion identificada. Toda compilação, typecheck e teste ocorre no GitHub Actions.
 
-**Completeness Criteria:** vazio, limites inclusivos, cursor estrito, lookahead, imutabilidade, sessões/epochs, política/tombstone, corrupção/escopo/owner, concorrência entre páginas, snapshot único por página, erros de COMMIT/guarda/unlock, reinício e preservação de dados/custos. E4.1 inclui observação da ponte do driver, bytes versus caracteres/NUL, encoding, tipo persistido, limite exato e concorrência entre medida e valor.
+**Completeness Criteria:** vazio, limites inclusivos, cursor estrito, lookahead, imutabilidade, sessões/epochs, política/tombstone, corrupção/escopo/owner, concorrência entre páginas, snapshot único por página, erros de COMMIT/guarda/unlock, reinício e preservação de dados/custos. E4.1 inclui observação da ponte do driver, bytes versus caracteres/NUL, encoding, tipo persistido, limite exato, texto recebido completo e concorrência entre medida e valor.
 
 **Definition of Done:** contrato/código/testes alinhados; sete workflows e dez jobs do head final aprovados, logs conferidos; árvores testada/integrada correspondentes; registro na issue #5. Não conclui WP-02 inteiro nem homologa host completo.
 

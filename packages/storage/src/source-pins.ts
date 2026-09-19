@@ -76,6 +76,8 @@ function readSourcePinRecord(db: DatabaseSync, id: string): SourcePin | null {
   let pin: SourcePin;
   try {
     if (typeof metadata.value !== 'string' || Buffer.byteLength(metadata.value) > 16384) return invalid();
+    // A driver-truncated TEXT prefix is not the complete stored envelope.
+    if (!size || Buffer.byteLength(metadata.value) !== size.size_bytes) return invalid();
     const e = closedRecord(parseJSON(metadata.value), ['value', 'digest'], ['value', 'digest'], 'pin_envelope');
     pin = parsePin(e.value);
     if (e.digest !== hashPayload(pin) || pin.reservation_id !== id) return invalid();

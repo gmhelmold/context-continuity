@@ -15,6 +15,8 @@ const prefix = 'storage.source-pin.v1:';
 const reject = fn => assert.throws(fn, e => e.code === 'E_STORAGE' &&
   e.reason === 'source pin records inconsistent' && e.message === 'storage: source pin records inconsistent');
 const readText = (f, key) => sql(f, 'SELECT value FROM meta WHERE key=?', key)[0].value;
+// Test-only byte witness: TEXT conversion in the pinned driver can stop at NUL.
+const readBytes = (f, key) => Buffer.from(sql(f, 'SELECT CAST(value AS BLOB) AS bytes FROM meta WHERE key=?', key)[0].bytes);
 const writeText = (f, key, value) => sql(f, 'UPDATE meta SET value=? WHERE key=?', value, key);
 const padded = (text, bytes) => text + ' '.repeat(bytes - Buffer.byteLength(text));
 function snapshot(f) {
@@ -102,11 +104,45 @@ for (const [name, value] of corruptions) {
     assert.ok(Buffer.byteLength(value) > LIMIT);
     writeText(f, key, value);
     try {
+      assert.deepEqual(readBytes(f, key), Buffer.from(value), 'fixture retains all inserted bytes');
       const lengths = sql(f, 'SELECT length(value) AS characters, octet_length(value) AS bytes FROM meta WHERE key=?', key)[0];
       assert.ok(lengths.characters < LIMIT); assert.equal(lengths.bytes, Buffer.byteLength(value));
       observe(trace => { reject(() => f.coordinator.listSourcePins({ limit: 1 })); notMaterialized(trace, key); });
-      assert.equal(readText(f, key), value, 'refusal must not repair the stored bytes');
+      assert.deepEqual(readBytes(f, key), Buffer.from(value), 'refusal must not repair the stored bytes');
     } finally { writeText(f, key, saved); }
+  }));
+}
+
+for (const variant of ['bounded', 'exact-limit']) {
+  test(`Pin envelope budget: ${variant} NUL suffix cannot turn a valid prefix into a complete record`, () => pinFixture(f => {
+    const original = f.coordinator.pinSource(f.b, f.request), key = metadataKey(id(101)), saved = readText(f, key);
+    const value = variant === 'bounded' ? saved + '\0synthetic' : padded(saved + '\0', LIMIT);
+    assert.ok(Buffer.byteLength(value) <= LIMIT);
+    if (variant === 'exact-limit') assert.equal(Buffer.byteLength(value), LIMIT);
+    writeText(f, key, value);
+    try {
+      assert.deepEqual(readBytes(f, key), Buffer.from(value));
+      const before = snapshot(f);
+      observe(trace => {
+        for (const call of [() => f.coordinator.readSourcePin(f.b, id(101)), () => f.coordinator.listSourcePins({ limit: 1 })]) {
+          let returned;
+          assert.throws(() => { returned = call(); }, e => e.code === 'E_STORAGE' &&
+            e.reason === 'source pin records inconsistent' && e.message === 'storage: source pin records inconsistent',
+            'PIN_METADATA_TEXT_COMPLETENESS');
+          assert.equal(returned, undefined);
+        }
+        assert.deepEqual(trace.probes.map(row => row.bytes), [Buffer.byteLength(value), Buffer.byteLength(value)]);
+        // Neither a truncating driver nor a future complete transfer may authorize this invalid JSON.
+        assert.equal(trace.values.length, 2);
+        assert.ok(trace.values.every(row => row.bytes <= Buffer.byteLength(value)));
+        assert.ok(trace.transactions.every(Boolean));
+      });
+      assert.deepEqual(snapshot(f), before);
+      assert.deepEqual(readBytes(f, key), Buffer.from(value));
+      assert.equal(pythonTry(join(f.directory, 'workspace.lock')), 'acquired');
+      assert.equal(pythonTry(join(f.directory, 'owners', f.coordinator.owner_id + '.lock')), 'busy');
+    } finally { writeText(f, key, saved); }
+    assert.deepEqual(f.coordinator.readSourcePin(f.b, id(101)), original);
   }));
 }
 

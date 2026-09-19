@@ -16,6 +16,8 @@ const cases = [
     'Pin envelope budget: 16384 UTF-8 bytes remain readable', 'PIN_METADATA_INCLUSIVE_BOUND'],
   ['encoding', "if (size && db.prepare('PRAGMA encoding').get()?.encoding !== 'UTF-8') return invalid();", 'void size;',
     'Pin envelope budget: UTF-16le cannot understate UTF-8 bytes', 'PIN_METADATA_PREMATERIALIZATION'],
+  ['delivered-size', 'if (!size || Buffer.byteLength(metadata.value) !== size.size_bytes) return invalid();', 'void size;',
+    'Pin envelope budget: bounded NUL suffix cannot turn a valid prefix into a complete record', 'PIN_METADATA_TEXT_COMPLETENESS'],
 ];
 for (const [name, from, to, selected, assertion] of cases) {
   test(`Pin envelope mutation: ${name} distinguishes control and regression`, { timeout: 90000 }, () => {
