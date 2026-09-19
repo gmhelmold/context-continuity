@@ -36,6 +36,6 @@ A listagem parte das reservas existentes: não audita envelopes órfãos cuja re
 
 **Definition of Done:** contrato/código/testes alinhados; sete workflows e dez jobs do head final aprovados, logs conferidos; árvores testada/integrada correspondentes; registro na issue #5. Não conclui WP-02 inteiro nem homologa host completo.
 
-**Invariants:** diagnóstico não é liveness/permite de leitura/liberação; sem BLOB, rede, coleta, exclusão, estorno, mudança de DDL ou escrita causada pela listagem; sem continuação que consuma o lookahead.
+**Invariants:** diagnóstico não é liveness nem permissão de leitura/liberação; sem BLOB, rede, coleta, exclusão, estorno, mudança de DDL ou escrita causada pela listagem; sem continuação que consuma o lookahead.
 
 Registro de execução: [WP-02/E4](../../docs/implementation/WP-02-E-PIN-DISCOVERY.md). Resultados são associados ao commit efetivamente executado, não à existência dos arquivos de testes.

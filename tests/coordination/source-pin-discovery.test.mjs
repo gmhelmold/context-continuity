@@ -238,8 +238,10 @@ test('Pin discovery: failed final resource guard prevents returning a page', () 
     if (isPageQuery(q)) { const all = s.all; s.all = function(...args) { const rows = all.apply(this, args); chmodSync(f.directory, 0o755); changed++; return rows; }; }
     return s;
   };
-  try { fail(() => f.coordinator.listSourcePins({ limit: 1 }), 'E_CAPABILITY'); }
-  finally { DatabaseSync.prototype.prepare = prepare; chmodSync(f.directory, 0o700); }
+  try {
+    assert.throws(() => f.coordinator.listSourcePins({ limit: 1 }),
+      e => e.code === 'E_STORAGE' && e.message.includes('workspace directory must be private'));
+  } finally { DatabaseSync.prototype.prepare = prepare; chmodSync(f.directory, 0o700); }
   assert.equal(changed, 1); assert.equal(pythonTry(join(f.directory, 'workspace.lock')), 'acquired');
   assert.deepEqual(ids(page(f.coordinator)), [id(101)]);
 }));

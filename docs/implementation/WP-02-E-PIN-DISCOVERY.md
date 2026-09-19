@@ -37,3 +37,9 @@ A existência destes testes não é PASS. O PR registra cada head executado, IDs
 **Invariants:** nenhuma liberação ou inferência por consulta; metadado não vira prova de bytes/liveness; lookahead não é consumido; cursor não é autoridade; não fabricar inventário global consistente entre páginas.
 
 A revisão é do autor, não auditoria independente. Não há release, gasto de inferência, uso de dados pessoais ou homologação do plugin completo neste incremento.
+
+## Primeira execução preservada
+
+Head `52e2c43658d4b03445e2f657e8fff3c2fbbb8340`, run de coordenação `35469415820`, jobs `105967533536` (Node22) e `105967533592` (Node24): **330/331 em ambas as versões**. A única falha foi a expectativa de código no teste de guarda final. O diretório sintético teve suas permissões alteradas; `sqlite-database.ts:directoryInfo` recusou corretamente com E_STORAGE, antes da guarda de LockResources. O teste esperava incorretamente E_CAPABILITY.
+
+A correção mantém a alteração de permissões e todas as verificações de recusa/liberação/reuso; passa a exigir o código E_STORAGE e a mensagem sanitizada específica da guarda que efetivamente detecta esse caso. Não altera código de produção, timeouts ou testes anteriores. Não é um defeito do produto corrigido nem flexibilização para aceitar sucesso indevido. Os logs completos da rodada vermelha foram preservados, com hashes, em `/private/tmp/cc-pin-discovery-ci-kbsb8tjd/` e no Actions. O novo head requer novamente toda a matriz antes do merge.
