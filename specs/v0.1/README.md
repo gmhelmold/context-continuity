@@ -22,6 +22,7 @@
 | [SPEC-14](14-inline-root-retention.md) | Fontes inline e mapa de raízes: revisão, CAS de catálogo, quota lógica e reabertura. |
 | [SPEC-15](15-durable-jobs.md) | Rascunho WP-02/C: persistência de jobs/tentativas, não integrado enquanto o gate estiver vermelho. |
 | [SPEC-16](16-native-lock-primitive.md) | Primitiva Node-API de flock; não gerencia owners nem libera quarentena de jobs. |
+| [SPEC-17](17-lock-resources.md) | Recursos privados, identidades de arquivos e duração de locks; não é coordenador de owners. |
 | [Work packages](WORK-PACKAGES.md) | Oito pacotes com cinco axiomas e DoDs sem dependências retroativas. |
 | [traceability.json](traceability.json) | Fonte única do mapa requisito/casos/donos/dependências. |
 

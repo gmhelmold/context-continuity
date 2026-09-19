@@ -87,3 +87,11 @@ SPEC-15 e docs/implementation/WP-02-C.md distinguem persistência de eventos de 
 ## Primitiva de locks WP-02/D
 
 SPEC-16 limita a ponte nativa a descritores autorizados. Rodar build:locks/test:coordination e os gates prévios; nunca tratar ausência de lock como prova de morte sem protocolo do owner. Não importar a primitiva em core/SQLite antes do gerenciador de identidade/lifetime; não emitir permissões de rede. Não versionar build/locks.node.
+
+## Fronteiras do futuro gerenciador de owners
+
+O desenho em docs/designs/storage/WORKSPACE-COORDINATOR.md é proposto, não API implementada. owner-boundaries.test.mjs demonstra limites da primitiva atual; não usar seus três casos para homologar owner/liveness. Preservar distinção entre lock, identidade persistida e execução/supervisor. Não liberar jobs por TTL ou lock disponível. Registro em docs/implementation/WP-02-D-OWNER-BOUNDARIES.md.
+
+## Recursos privados WP-02/D2
+
+SPEC-17 rege lock-resources.ts, ainda separado de SQLite e jobs. Rodar coordination e resource-mutations além dos gates anteriores. Parent close revoga todos os filhos; não expor fd nem usar novo open como prova de identidade durável. O coordenador transacional continua pendente; não confundir sua ausência com lock de workspace já conectado ao ledger.

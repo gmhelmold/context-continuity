@@ -1,0 +1,269 @@
+{
+  "schema_version": 1,
+  "base_commit": "c5d94ac62cf2ef3e1beb16b86b6209fa8b8beae9",
+  "scope": "private lock resources only; coordinator/SQL registry not implemented",
+  "node": "22.17.1",
+  "typescript": "5.9.3",
+  "directed_logs": {
+    "resource-before.tap": {
+      "sha256": "832433619a3cdb7f8d89b5686cc4c18d67c345d7cfd82e04d653538cce2c7f0e",
+      "counts": {
+        "tests": 21,
+        "pass": 18,
+        "fail": 3,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0
+      }
+    },
+    "resource-after.tap": {
+      "sha256": "48830a23fb87098a1a4ec81252bf03d5b4681daec7c10b977af7fa8c6662d873",
+      "counts": {
+        "tests": 21,
+        "pass": 21,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0
+      }
+    },
+    "resource-path-before.tap": {
+      "sha256": "19f6c02301de74434802fa0d94eb6b34e1e64ef9cc1a70350bfbb25f6bd0042d",
+      "counts": {
+        "tests": 1,
+        "pass": 0,
+        "fail": 1,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0
+      }
+    },
+    "resource-full.tap": {
+      "sha256": "fb0a5aa48223b47b6e39bff2d5718589304606a49b61429f456bd599a6c5b0e7",
+      "counts": {
+        "tests": 28,
+        "pass": 27,
+        "fail": 1,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0
+      }
+    },
+    "resource-final.tap": {
+      "sha256": "339450bbd8b780bae9de7951a3eb0e79d0c88e761c294aebc32a6dce82b30bda",
+      "counts": {
+        "tests": 29,
+        "pass": 28,
+        "fail": 1,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0
+      }
+    },
+    "resource-verified.tap": {
+      "sha256": "97f147c35edaa5f0a06ecff93e4eab76394d965794ed26568b7aaa6f43ad2f3f",
+      "counts": {
+        "tests": 29,
+        "pass": 29,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0
+      }
+    }
+  },
+  "source_sha256": {
+    "packages/storage/src/lock-resources.ts": "2b0f3995c594c128b6e15c3e8bd8e37fae22b7605134cfbc7b179a49710395cc",
+    "tests/coordination/lock-resources.test.mjs": "1664b299e84f87d868a3d3e71960755c03654958b6f03337dc6658d16b0674c2",
+    "tests/coordination/resource-mutations.test.mjs": "852ec76496d25200efa01d4f42688835c957d4905dc74ccfe68fcddfa7689828"
+  },
+  "full_matrix": {
+    "status": "passed_local",
+    "execution": "Node 22.17.1; heavy core/storage serial; CI commands unchanged",
+    "results": {
+      "build-locks": {
+        "command": [
+          "npm",
+          "run",
+          "build:locks"
+        ],
+        "exit_code": 0,
+        "sha256": "668bbaa42960b93d2f1159a01325dca700c10fd4d5dcba01e50be1c3dbb1cc94",
+        "counts": {}
+      },
+      "check-core": {
+        "command": [
+          "npm",
+          "run",
+          "check:core"
+        ],
+        "exit_code": 0,
+        "sha256": "e3806c19fac205c687938315713a76dd23432520806fb09445e7c3857ba48d3c",
+        "counts": {}
+      },
+      "check-storage": {
+        "command": [
+          "npm",
+          "run",
+          "check:storage"
+        ],
+        "exit_code": 0,
+        "sha256": "c751b0b339ee212453e71398dabd9d25b8421f75b50f92729d86c11f9e0c6581",
+        "counts": {}
+      },
+      "coordination": {
+        "command": [
+          "npm",
+          "run",
+          "test:coordination"
+        ],
+        "exit_code": 0,
+        "sha256": "78492aa2e0b43f550fceaebc8d5ee3d784d65081f0c6800c701d824c344ca148",
+        "counts": {
+          "tests": 49,
+          "pass": 49,
+          "fail": 0,
+          "cancelled": 0,
+          "skipped": 0,
+          "todo": 0
+        }
+      },
+      "core": {
+        "command": [
+          "node",
+          "--experimental-strip-types",
+          "--test",
+          "--test-concurrency=1",
+          "--test-reporter=tap",
+          "tests/core/capabilities.test.mjs",
+          "tests/core/config.test.mjs",
+          "tests/core/context-mutations.test.mjs",
+          "tests/core/frame.test.mjs",
+          "tests/core/identity-mutations.test.mjs",
+          "tests/core/identity.test.mjs",
+          "tests/core/job-context-mutations.test.mjs",
+          "tests/core/job-context.test.mjs",
+          "tests/core/manifest-snapshot.test.mjs",
+          "tests/core/manifest.test.mjs",
+          "tests/core/proposal-data.test.mjs",
+          "tests/core/proposal.test.mjs",
+          "tests/core/roots.test.mjs",
+          "tests/core/terminal-profile.test.mjs"
+        ],
+        "exit_code": 0,
+        "sha256": "e7277a64a1bf226be19e2ac524881fcfdd965dc14f2ef8d3a0bc69a0646e2232",
+        "counts": {
+          "tests": 198,
+          "pass": 198,
+          "fail": 0,
+          "cancelled": 0,
+          "skipped": 0,
+          "todo": 0
+        }
+      },
+      "storage": {
+        "command": [
+          "node",
+          "--experimental-strip-types",
+          "--test",
+          "--test-concurrency=1",
+          "--test-reporter=tap",
+          "tests/storage/bootstrap-review.test.mjs",
+          "tests/storage/inspection-snapshot.test.mjs",
+          "tests/storage/job-mutations.test.mjs",
+          "tests/storage/job-processes.test.mjs",
+          "tests/storage/jobs.test.mjs",
+          "tests/storage/retention-budget-mutations.test.mjs",
+          "tests/storage/retention-budget.test.mjs",
+          "tests/storage/root-retention-mutations.test.mjs",
+          "tests/storage/root-retention.test.mjs",
+          "tests/storage/session-store.test.mjs",
+          "tests/storage/storage-mutations.test.mjs"
+        ],
+        "exit_code": 0,
+        "sha256": "b6a5260f450e98b69f43e0913e0a5990261bf466a5ec01bbb99fa0806f8c30a6",
+        "counts": {
+          "tests": 155,
+          "pass": 155,
+          "fail": 0,
+          "cancelled": 0,
+          "skipped": 0,
+          "todo": 0
+        }
+      },
+      "components": {
+        "command": [
+          "node",
+          "--test",
+          "tests/conformance/opencode/test-components.mjs",
+          "tests/conformance/opencode/test-review004.mjs"
+        ],
+        "exit_code": 0,
+        "sha256": "ec5cde7bc3a7447d941447366f84113dc2ff6abdd4f0e9774886c1a25e782713",
+        "counts": {
+          "tests": 25,
+          "pass": 25,
+          "fail": 0,
+          "cancelled": 0,
+          "skipped": 0,
+          "todo": 0
+        }
+      },
+      "witness": {
+        "command": [
+          "python3",
+          "tests/conformance/opencode/test-witness.py"
+        ],
+        "exit_code": 0,
+        "sha256": "41bcbe24a95db774bc8e7124386f3bb0d402faedfda68eeba30a94289bb071f7",
+        "counts": {}
+      },
+      "check-spec": {
+        "command": [
+          "python3",
+          "scripts/check-spec.py"
+        ],
+        "exit_code": 0,
+        "sha256": "064bc4bd30e7aafc9d1d756da94ac1ba71e5d185dcab93a5ae6caa8f099d9267",
+        "counts": {}
+      },
+      "check-reference-model": {
+        "command": [
+          "python3",
+          "scripts/check-reference-model.py"
+        ],
+        "exit_code": 0,
+        "sha256": "58bac4af5568eccccbe2e4aca19f5765e68ecebf9cc27209caf097c41634b82f",
+        "counts": {}
+      },
+      "test-spec-check": {
+        "command": [
+          "python3",
+          "scripts/test-spec-check.py"
+        ],
+        "exit_code": 0,
+        "sha256": "849ef1c84d05854093ab5ae795caa205f162f12d3631613d5f75b20f6314ec14",
+        "counts": {}
+      },
+      "check-canonical": {
+        "command": [
+          "python3",
+          "scripts/check-canonical.py"
+        ],
+        "exit_code": 0,
+        "sha256": "a568bbcf6aae56e3cee6c2935d467169bd8349edf9558827591d1c85f6b099d8",
+        "counts": {}
+      },
+      "check-storage-contracts": {
+        "command": [
+          "python3",
+          "scripts/check-storage-contracts.py"
+        ],
+        "exit_code": 0,
+        "sha256": "76eb03e314fd21a634e4edb458a8ac237f86f2507816e60f22ea4d980d6c960f",
+        "counts": {}
+      }
+    }
+  },
+  "live_inference": false
+}

@@ -26,3 +26,13 @@ job.ref.job_id = 'other';
 attempt.attempt_no = 0;
 // @ts-expect-error Transport facts are supplied as immutable data.
 result.local_stopped = true;
+
+import type { LockResources, OwnerFile } from '../../packages/storage/src/lock-resources.ts';
+declare const resources: LockResources;
+declare const ownerFile: OwnerFile;
+// @ts-expect-error Resource identity cannot be reassigned.
+resources.identity.lock.ino = 'other';
+// @ts-expect-error Descriptors are not public capabilities.
+ownerFile.fd;
+// @ts-expect-error Paths are readonly after admission.
+resources.directory = '/other';
