@@ -20,7 +20,7 @@ export type StorageOwner = Readonly<{
   state: 'active' | 'retired'; created_at: string; identity: FileIdentity;
 }>;
 declare const holdBrand: unique symbol;
-export type WorkspaceHold = Readonly<{ workspace: WorkspaceIdentity; owner_id: string; [holdBrand]: true }>;
+export type WorkspaceHold = Readonly<{ workspace: WorkspaceIdentity; owner_id: string; process_instance: string; [holdBrand]: true }>;
 export type OwnerInspection = Readonly<{ state: 'absent' | 'held' | 'retired'; owner: StorageOwner | null }>;
 const holds = new WeakMap<object, () => void>();
 const equal = (a: unknown, b: unknown): boolean => canonical(a) === canonical(b);
@@ -203,7 +203,7 @@ export class WorkspaceCoordinator {
   withWorkspaceLock<T>(callback: (hold: WorkspaceHold) => T): T {
     synchronous(callback);
     return this.#locked(() => {
-      const hold = Object.freeze({ workspace: this.workspace, owner_id: this.owner_id }) as WorkspaceHold;
+      const hold = Object.freeze({ workspace: this.workspace, owner_id: this.owner_id, process_instance: this.process_instance }) as WorkspaceHold;
       holds.set(hold, () => { if (!this.#busy || this.#closed) throw new StorageError('E_OWNER', 'workspace hold expired'); this.#guard(); });
       try { const value = callback(hold) as T; synchronousResult(value); return value; }
       finally { holds.delete(hold); }
