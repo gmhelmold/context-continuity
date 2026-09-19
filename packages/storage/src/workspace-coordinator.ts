@@ -1,5 +1,5 @@
 /** SPEC-18: synchronous local storage coordination, not execution liveness.
- * No job, reservation cleanup, provider request or session lease is mutated. */
+ * SPEC-21 adds owner-only source pins; no job, provider request or session lease is mutated. */
 import { Buffer } from 'node:buffer';
 import { types } from 'node:util';
 import { canonical, parseJSON } from '../../core/src/canonical.mjs';
@@ -10,6 +10,8 @@ import type { FileIdentity, OwnerFile } from './lock-resources.ts';
 import { connectSQLite, workspaceIdentity } from './sqlite-database.ts';
 import type { SQLiteHandle, WorkspaceIdentity } from './sqlite-database.ts';
 import { StorageError, storageFailure } from './errors.ts';
+import { pinBinding, parseSourcePinRequest, createSourcePin, loadSourcePin, releaseSourcePin } from './source-pins.ts';
+import type { SourcePin } from './source-pins.ts';
 
 const ANCHOR_KEY = 'coordinator.anchor.v1';
 const constructionKey = Symbol('WorkspaceCoordinator construction');
@@ -212,6 +214,24 @@ export class WorkspaceCoordinator {
   readOwner(idInput: unknown): StorageOwner | null {
     const id = entityId(idInput);
     return this.#locked(() => transaction(this.#handle, false, () => readOwner(this.#handle, id), () => this.#guard()));
+  }
+  /** SPEC-21: explicit metadata reservation. This does not read or authenticate source bytes. */
+  pinSource(bindingInput: unknown, requestInput: unknown): SourcePin {
+    const binding = pinBinding(bindingInput, this.workspace), request = parseSourcePinRequest(requestInput);
+    return this.#locked(() => transaction(this.#handle, true,
+      () => createSourcePin(this.#handle.db, binding, request, { owner_id: this.owner_id, process_instance: this.process_instance }),
+      () => this.#guard()));
+  }
+  readSourcePin(bindingInput: unknown, idInput: unknown): SourcePin | null {
+    const binding = pinBinding(bindingInput, this.workspace), id = entityId(idInput);
+    return this.#locked(() => transaction(this.#handle, false,
+      () => loadSourcePin(this.#handle.db, binding, id), () => this.#guard()));
+  }
+  releaseSourcePin(bindingInput: unknown, idInput: unknown): boolean {
+    const binding = pinBinding(bindingInput, this.workspace), id = entityId(idInput);
+    return this.#locked(() => transaction(this.#handle, true,
+      () => releaseSourcePin(this.#handle.db, binding, id, { owner_id: this.owner_id, process_instance: this.process_instance }),
+      () => this.#guard()));
   }
   /** Retirement is only storage-record reconciliation, never permission to clean a job. */
   retireOwner(idInput: unknown): OwnerInspection {

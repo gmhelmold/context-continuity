@@ -103,3 +103,7 @@ SPEC-18 rege workspace-coordinator.ts. Rodar coordination/coordinator-processes/
 ## Supervisor local WP-02/D4
 
 SPEC-19 distingue propriedade da tentativa de liveness comprovada do transporte. Preservar as regressões e mutações de S01/S02: Promise observada não equivale a retorno arbitrário; falha anterior à invocação só se reconcilia com autoridade vigente. Não integrar com falhas. Promise do adaptador inclui todo cleanup; abort não é stopped. Rodar coordenação e todos os testes de storage, pois a reserva/transições têm hold adicional. Recuperação cross-owner permanece separada; nenhuma identidade persistida autoriza liberar quarantine.
+
+## Pins inline WP-02/E1
+
+SPEC-21 rege source-pins.ts e métodos de WorkspaceCoordinator. Reserva/metadado e liberação/tombstone são atômicos; somente owner original libera. Não usar pin como prova de conteúdo, não apagar pins por TTL/retired e não alegar GC implementado. Rodar coordenação (source-pins, source-pin-processes e source-pin-mutations) e matriz anterior somente no Actions.

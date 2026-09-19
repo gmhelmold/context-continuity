@@ -26,6 +26,7 @@
 | [SPEC-18](18-workspace-coordinator.md) | Anchor durável, registro e aposentadoria de owners e seção síncrona revogável. |
 | [SPEC-19](19-local-attempt-supervisor.md) | Supervisão local, vínculo de tentativa, término observado e recuperação conservadora antes de invocação. |
 | [SPEC-20](20-local-completion-receipts.md) | Recibo de término observado pelo supervisor original e reconciliação pelo lease atual, sem replay ou prova de morte por TTL. |
+| [SPEC-21](21-source-pins.md) | Pins de leitura/exportação inline, replay e liberação pelo owner; sem GC ou reader de blobs. |
 | [Work packages](WORK-PACKAGES.md) | Oito pacotes com cinco axiomas e DoDs sem dependências retroativas. |
 | [traceability.json](traceability.json) | Fonte única do mapa requisito/casos/donos/dependências. |
 
