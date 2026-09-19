@@ -19,7 +19,7 @@ import { parseJobContextRef, assertJobContext } from '../../core/src/job-context
 import type { JobContextRef } from '../../core/src/job-context.ts';
 import * as jobs from './job-records.ts';
 import type { StoredJob, AttemptRef } from './job-records.ts';
-import { assertAttemptOwner, bindAttemptOwner, loadAttemptOwnership } from './attempt-owner.ts';
+import { assertAttemptOwner, bindAttemptOwner, loadAttemptOwnership, retainObservedCompletion, reconcileObservedCompletions } from './attempt-owner.ts';
 import type { AttemptOwnership } from './attempt-owner.ts';
 import { assertWorkspaceHold } from './workspace-coordinator.ts';
 export const OWNER_LEASE_MS = 30_000;
@@ -302,8 +302,28 @@ export class SqliteSessionStore {
       return loadAttemptOwnership(this.#db, binding, expected, attempt);
     });
   }
+  /** Preserve an observed fact from the original participant, even after its session lease expires.
+   * This deliberately does not authorize any job/run transition or publish a result. */
+  recordObservedLocalCompletion(leaseInput: unknown, expectedInput: unknown, attemptInput: unknown,
+    observation: unknown, ownerHold: unknown): void {
+    const lease = leaseValue(leaseInput), binding = this.#scope(lease.binding);
+    const expected = parseJobContextRef(expectedInput), attempt = jobs.parseAttemptRef(attemptInput);
+    if (lease.owner_id !== this.owner_id) throw new StorageError('E_OWNER', 'completion requires original store');
+    this.#transaction(true, () => {
+      this.#require(binding);
+      const job = jobs.requireJob(this.#db, binding, expected);
+      const selected = job.attempts.find(a => canonical(a.ref) === canonical(attempt));
+      if (!selected || selected.state === 'reserved' || job.context.snapshot.owner_fence !== lease.owner_fence) {
+        throw new StorageError('E_OWNER', 'completion does not match dispatched generation');
+      }
+      retainObservedCompletion(this.#db, lease, expected, attempt, observation, ownerHold);
+      assertAttemptOwner(this.#db, lease, expected, attempt, ownerHold);
+      this.#guard();
+    });
+  }
   recoverJobs(leaseInput: unknown): readonly StoredJob[] {
-    return this.#jobWrite(leaseInput, (row, now) => jobs.recoverJobs(this.#db, row, now));
+    return this.#jobWrite(leaseInput, (row, now) => Object.freeze(jobs.recoverJobs(this.#db, row, now)
+      .map(job => reconcileObservedCompletions(this.#db, row.binding, job))));
   }
   /** Closing a connection does not assert that an unknown execution stopped remotely. */
   close(): void {
