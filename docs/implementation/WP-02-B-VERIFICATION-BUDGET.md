@@ -22,7 +22,7 @@ Instrumentação dos métodos get/all/iterate de statements que leem sources del
 | 32 | 32 / 524288 | 0 / 0 | 1 / 16384 |
 | 128 | 128 / 2097152 | 0 / 0 | 1 / 16384 |
 
-O antes consta da issue #28 e foi novamente detectado pelas regressões na base: 16 casos, 2 controles aprovados e 14 assertions reprovadas, sem setup failure. Os mesmos 16 passaram após o fix. Três casos adicionais cobrem revisão de fonte, identidades distintas com bytes iguais e mudança de policy; a campanha negativa é o vigésimo teste. As duas primeiras shells de apresentação tentaram atribuir à variável reservada status do zsh e terminaram com erro após os testes; suas contagens vêm dos TAP completos, não do exit dessa shell. A execução dirigida posterior usa rc e terminou corretamente.
+O antes consta da issue #28 e foi novamente detectado pelas regressões na base: 16 casos, 2 controles aprovados e 14 reprovações: 13 ERR_ASSERTION e uma E_SOURCE no caso que exige a nova fronteira estrutural. Esta última era a recusa integral esperada da API antiga, não um novo defeito de hash; nenhum caso falhou por setup. Os mesmos 16 passaram após o fix. Três casos adicionais cobrem revisão de fonte, identidades distintas com bytes iguais e mudança de policy; a campanha negativa é o vigésimo teste. As duas primeiras shells de apresentação tentaram atribuir à variável reservada status do zsh e terminaram com erro após os testes; suas contagens vêm dos TAP completos, não do exit dessa shell. A execução dirigida posterior usa rc e terminou corretamente.
 
 ## Provas e revisão
 
@@ -62,3 +62,7 @@ python3 scripts/check-spec.py
 ```
 
 Tooling local fixado em Node 22.17.1/TypeScript 5.9.3; suítes locais pesadas em série. Os comandos padrão de CI e os pins permanecem intactos. Evidências dirigidas e hashes: [WP-02-B-verification-budget.json](evidence/WP-02-B-verification-budget.json). A matriz completa é registrada separadamente no PR resultante.
+
+## Matriz local concluída
+
+No código do commit 482f000 (mesmos hashes de fonte desta revisão documental), os pins locais passaram: storage **95/95**, núcleo **196/196**, componentes **25/25**, testemunha **4/4**, ambos os typechecks e scripts de documentos/modelos/canonicalização. Storage/core executados em série, sem modificar o comando do CI. O head documental final também precisa de seus próprios workflows; estes resultados não antecipam PASS remoto.

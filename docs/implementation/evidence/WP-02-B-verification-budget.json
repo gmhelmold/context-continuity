@@ -9,7 +9,12 @@
     "tests": 16,
     "pass": 2,
     "fail": 14,
-    "log_sha256": "40e52bf405b6a87024f4e9a83f8d933920f223a97a88375ccd803dc9fbe3812e"
+    "log_sha256": "40e52bf405b6a87024f4e9a83f8d933920f223a97a88375ccd803dc9fbe3812e",
+    "failures_by_code": {
+      "ERR_ASSERTION": 13,
+      "E_SOURCE": 1
+    },
+    "note": "E_SOURCE is the old full-audit behavior in the newly structural-return scenario; not an independent integrity bug."
   },
   "after_same_cases": {
     "tests": 16,
@@ -79,5 +84,38 @@
   "full_ci": "record separately on final-head PR; not inferred from component tests",
   "physical_io_measured": false,
   "live_inference": false,
-  "wp02_complete": false
+  "wp02_complete": false,
+  "full_local": {
+    "source_commit": "482f000a65cf831af694cb145771eab908f4727b",
+    "storage": {
+      "tests": 95,
+      "pass": 95
+    },
+    "core": {
+      "tests": 196,
+      "pass": 196
+    },
+    "components": {
+      "tests": 25,
+      "pass": 25
+    },
+    "witness": {
+      "tests": 4,
+      "pass": 4
+    },
+    "typechecks": "passed",
+    "schedule": "serial local; standard CI commands unchanged",
+    "log_sha256": {
+      "storage-full.tap": "c4103d4f5c4049c2be751e2ab9d9eb6229648076d9ff5ec980093460daf4d150",
+      "core-full.tap": "103069347d82f5c9bd4ce45c397712f9593210f6f5bc154f1de3ba8e9da83b9f",
+      "components.tap": "4d33cd7ad2020ee0ca1be56ff7d082d66d2a00b675d99c9643d7899fddf3b155",
+      "witness.log": "730c21565397d6b41c2aac0cade8466c972481f95bb8c7998d1759ff899a99dc",
+      "check-storage-final.log": "c751b0b339ee212453e71398dabd9d25b8421f75b50f92729d86c11f9e0c6581",
+      "check-core-final.log": "e3806c19fac205c687938315713a76dd23432520806fb09445e7c3857ba48d3c",
+      "reference.log": "a2f49159ce83d2a2647ec007e3c2a1298c500d5467852d5713c09a17b96f3e69",
+      "spec-mutations.log": "849ef1c84d05854093ab5ae795caa205f162f12d3631613d5f75b20f6314ec14",
+      "canonical.log": "a568bbcf6aae56e3cee6c2935d467169bd8349edf9558827591d1c85f6b099d8",
+      "contracts.log": "8935182f246690650cb6bd6662f417806660a75074a4f9fdb3aa9ee70bed1a10"
+    }
+  }
 }
