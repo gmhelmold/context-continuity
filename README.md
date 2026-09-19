@@ -101,3 +101,5 @@ O incremento WP-02/D3 acrescenta coordenação transacional de anchors e partici
 **WP-02/D4 — supervisão local de tentativa:** [associação, término e recuperação anterior à invocação](docs/implementation/WP-02-D-ATTEMPT-SUPERVISOR.md). As regressões de S01/S02 exigem observação de Promise e reconciliação com autoridade vigente. Não libera execuções de outros processos nem homologa transporte; o gate do head final está registrado no PR #36.
 
 **Pins inline de leitura/exportação:** [WP-02/E1](docs/implementation/WP-02-E-SOURCE-PINS.md) implementa o registro durável, não readers, staging ou coleta de lixo. O aceite depende do CI do incremento; não há nova release.
+
+Recuperação de pins inline: [WP-02/E3](docs/implementation/WP-02-E-PIN-RECOVERY.md) acrescenta liberação de uma reserva do participante original sob inspeção de identidade/lock, sem inferir término de jobs ou implementar GC.

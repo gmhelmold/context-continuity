@@ -70,3 +70,10 @@ pin.source_ref.revision = 2;
 pin.state = 'released';
 // @ts-expect-error No filesystem path is accepted in pin options.
 pinRequest.staging_path_key = '/arbitrary';
+
+import type { SourcePinRecovery } from '../../packages/storage/src/index.ts';
+declare const recoveredPin: SourcePinRecovery;
+// @ts-expect-error Recovery result never transfers mutable ownership.
+recoveredPin.pin.owner_id = 'different';
+// @ts-expect-error A recovery result is immutable, not a mutable control flag.
+recoveredPin.state = 'released';

@@ -14,7 +14,7 @@ export { MAX_RETENTION_SOURCE_READ_BYTES, MAX_RETENTION_SOURCE_READS } from './s
 export type { StoredJob, StoredAttempt, AttemptRef, AttemptBudget, AttemptResult } from './job-records.ts';
 
 export { WorkspaceCoordinator, assertWorkspaceHold } from './workspace-coordinator.ts';
-export type { StorageOwner, WorkspaceHold, OwnerInspection } from './workspace-coordinator.ts';
+export type { StorageOwner, WorkspaceHold, OwnerInspection, SourcePinRecovery } from './workspace-coordinator.ts';
 
 export { LocalAttemptSupervisor } from './local-attempt-supervisor.ts';
 export type { LocalAttemptOperation, LocalAttemptOutcome } from './local-attempt-supervisor.ts';

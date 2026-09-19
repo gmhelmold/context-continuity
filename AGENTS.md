@@ -106,4 +106,8 @@ SPEC-19 distingue propriedade da tentativa de liveness comprovada do transporte.
 
 ## Pins inline WP-02/E1
 
-SPEC-21 rege source-pins.ts e métodos de WorkspaceCoordinator. Reserva/metadado e liberação/tombstone são atômicos; somente owner original libera. Não usar pin como prova de conteúdo, não apagar pins por TTL/retired e não alegar GC implementado. Rodar coordenação (source-pins, source-pin-processes e source-pin-mutations) e matriz anterior somente no Actions.
+SPEC-21 rege source-pins.ts e métodos de WorkspaceCoordinator. Reserva/metadado e liberação/tombstone são atômicos; liberação normal exige owner original; recuperação por outro participante segue E3 com identidade e lock originais verificados. Não usar pin como prova de conteúdo, não apagar pins por TTL/retired e não alegar GC implementado. Rodar coordenação (source-pins, source-pin-processes e source-pin-mutations) e matriz anterior somente no Actions.
+
+## Recuperação de pins WP-02/E3
+
+SPEC-21 limita recoverSourcePin a uma reserva inline identificada. Validar pin/owner/inode e adquirir lock sem bloquear; manter inspeção até COMMIT. Não usar TTL, retired ou recibo de job como substitutos; não alterar conteúdo/jobs/staging nem aposentar implicitamente. Rodar pin-recovery e contraprovas com toda a matriz exclusivamente no Actions.
