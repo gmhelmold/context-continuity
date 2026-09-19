@@ -1,6 +1,7 @@
 /** SPEC-19/20 local task lifecycle. No HTTP, tools, retries, or process-death claim. */
 import { types } from 'node:util';
 import { canonical } from '../../core/src/canonical.mjs';
+import { parseSessionBinding } from '../../core/src/identity.ts';
 import { parseJobContextRef } from '../../core/src/job-context.ts';
 import type { JobContextRef } from '../../core/src/job-context.ts';
 import { closedRecord } from '../../core/src/validation.ts';
@@ -19,6 +20,9 @@ type WithoutStopped<T> = T extends unknown ? Omit<T, 'local_stopped'> : never;
 export type LocalAttemptOutcome = WithoutStopped<AttemptResult>;
 export type LocalAttemptOperation = (signal: AbortSignal) => Promise<LocalAttemptOutcome>;
 type Task = { attempt: AttemptRef; controller: AbortController; lease: OwnerLease; expected: JobContextRef; ownership: AttemptOwnership };
+type PendingCompletion = Readonly<{
+  lease: OwnerLease; expected: JobContextRef; attempt: AttemptRef; observation: LocalStopObservation;
+}>;
 const construction = Symbol('LocalAttemptSupervisor');
 function outcome(value: unknown): AttemptResult {
   const fields = ['kind','text','finish','parent_input_tokens','candidate_input_tokens','status','retry_after_ms'];
@@ -34,6 +38,7 @@ export class LocalAttemptSupervisor {
   readonly store: SqliteSessionStore;
   #coordinator: WorkspaceCoordinator;
   #tasks = new Map<string, Task>();
+  #pendingCompletions = new Map<string, PendingCompletion>();
   #closed = false;
   private constructor(store: SqliteSessionStore, coordinator: WorkspaceCoordinator, key: symbol) {
     if (key !== construction) throw new StorageError('E_OWNER', 'supervisor must be opened through its factory');
@@ -51,7 +56,9 @@ export class LocalAttemptSupervisor {
     this.#available(); adapter(operation);
     const expected = parseJobContextRef(expectedInput), budget = parseAttemptBudget(budgetInput);
     const session = this.store.readSession(lease.binding);
-    if (!session || this.#tasks.has(session.binding.session_key)) throw new StorageError('E_CONFLICT', 'local operation already tracked');
+    if (!session || this.#tasks.has(session.binding.session_key) || this.#pendingCompletions.has(session.binding.session_key)) {
+      throw new StorageError('E_CONFLICT', 'local operation or completion already tracked');
+    }
     // Immutable current lease data are copied instead of retaining a caller-mutable object.
     if (session.owner_id !== this.store.owner_id || canonical({ binding: session.binding, owner_id: session.owner_id,
       owner_fence: session.owner_fence, lease_until_ms: session.lease_until_ms }) !== canonical(lease)) {
@@ -96,10 +103,18 @@ export class LocalAttemptSupervisor {
       if (!settled.fulfilled) throw new StorageError('E_CAPABILITY', 'local operation rejected');
       result = outcome(settled.value);
     } catch { result = Object.freeze({ kind: 'aborted' as const, local_stopped: localStopped }); }
+    if (observation !== undefined) {
+      // Retain only the issued fact and its original identity, never the response or adapter.
+      this.#pendingCompletions.set(task.lease.binding.session_key, Object.freeze({
+        lease: task.lease, expected: task.expected, attempt: task.attempt, observation,
+      }));
+    }
     try {
       return this.#coordinator.withWorkspaceLock(hold => {
         // This records only a fact from the original participant, not publication authority.
         if (observation !== undefined) this.store.recordObservedLocalCompletion(task.lease, task.expected, task.attempt, observation, hold);
+        // A storage error must leave the observation available for an explicit receipt retry.
+        if (observation !== undefined) this.#pendingCompletions.delete(task.lease.binding.session_key);
         // Renewal may extend time, but cannot change the admitted generation/owner.
         const session = this.store.readSession(task.lease.binding);
         if (!session || session.owner_id !== task.lease.owner_id || session.owner_fence !== task.lease.owner_fence || session.lease_until_ms === null) {
@@ -119,6 +134,25 @@ export class LocalAttemptSupervisor {
       finally { this.#tasks.delete(task.lease.binding.session_key); }
     }
   }
+  /** Retry only a previously observed receipt. Never invokes an adapter or publishes its result.
+   * False means no fact is pending in this instance, not that the ledger has no receipt. */
+  flushLocalCompletion(bindingInput: unknown, expectedInput: unknown): boolean {
+    this.#available();
+    const binding = parseSessionBinding(bindingInput), expected = parseJobContextRef(expectedInput);
+    if (binding.scope.installation_id !== this.store.workspace.installation_id ||
+        binding.scope.workspace_id !== this.store.workspace.workspace_id) {
+      throw new StorageError('E_SCOPE', 'completion workspace mismatch');
+    }
+    const pending = this.#pendingCompletions.get(binding.session_key);
+    if (pending === undefined) return false;
+    if (canonical(pending.lease.binding) !== canonical(binding)) throw new StorageError('E_SCOPE', 'completion binding mismatch');
+    if (canonical(pending.expected) !== canonical(expected)) throw new StorageError('E_CONFLICT', 'completion generation mismatch');
+    this.#coordinator.withWorkspaceLock(hold => this.store.recordObservedLocalCompletion(
+      pending.lease, pending.expected, pending.attempt, pending.observation, hold));
+    // Only acknowledge after storage and the section's final guards return successfully.
+    this.#pendingCompletions.delete(binding.session_key);
+    return true;
+  }
   /** Commit cancellation before signaling; a pending adapter still owns its execution slot. */
   cancel(lease: OwnerLease, expectedInput: unknown): StoredJob {
     this.#available(); const expected = parseJobContextRef(expectedInput);
@@ -131,6 +165,8 @@ export class LocalAttemptSupervisor {
     if (this.#closed) return;
     if (this.#tasks.size) throw new StorageError('E_CONFLICT', 'local operations have not stopped');
     this.#closed = true;
+    // Explicit close abandons only local retry bookkeeping; it cannot clear durable quarantine.
+    this.#pendingCompletions.clear();
     let failure: unknown;
     try { this.store.close(); } catch (cause) { failure = cause; }
     try { this.#coordinator.close(); } catch (cause) { failure ??= cause; }

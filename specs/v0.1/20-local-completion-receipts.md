@@ -41,3 +41,17 @@ Sem recibo, a execução permanece protegida, inclusive depois de fechar/aposent
 **Definition of Done:** contrato/implementação/testes alinhados, matriz no commit final com logs conferidos, árvore integrada correspondente e rastreabilidade na issue #5. Não encerra WP-02 inteiro.
 
 **Invariants:** recibo não é permissão de publicação ou transporte; nenhum TTL/retired equivale a stopped; nenhum replay/estorno; nenhuma fonte pessoal, descritor ou credencial nos testes.
+
+## Observação pendente após erro de persistência
+
+O supervisor mantém no máximo uma observação pendente por sessão, somente dentro da instância original. O registro em memória contém o handle já emitido, o lease original e as referências da geração/tentativa; não retém a resposta, o callback ou a Promise. O término do acompanhamento da operação não descarta uma observação cuja gravação falhou. O erro original continua sendo reportado; não há backoff, timer ou repetição automática de inferência.
+
+`flushLocalCompletion(binding, expected)` tenta exclusivamente gravar a observação pendente correspondente. Revalida os dados de entrada, o workspace e a associação exata, e reutiliza `recordObservedLocalCompletion` sob um novo hold do participante original. `true` significa que essa gravação retornou com sucesso e a pendência local foi removida. `false` significa que a instância não tinha pendência para a sessão; não é consulta sobre a existência de recibo no banco. Uma referência de geração divergente não pode consumir a pendência de outra geração.
+
+Falha ao adquirir o lock, verificar a associação ou gravar preserva a pendência para outra chamada explícita. Erro percebido depois de um commit pode gerar uma repetição idempotente do mesmo recibo, nunca outra tentativa de modelo. Perda do lease atual não troca a identidade original conservada. A operação não grava resposta/status do job, não sinaliza abort, não altera run ou custos e não chama recovery: o proprietário vigente ainda precisa usar `recoverJobs` conforme o contrato anterior.
+
+`start` recusa uma nova operação na mesma sessão enquanto a instância conserva uma pendência, sem afetar sessões diferentes. Retorno inválido, throw síncrono e thenable não observado não criam pendência. Se o recibo foi gravado e somente a gravação do resultado falhou, não se recria uma pendência de recibo nem se reaplica o resultado.
+
+A política existente de fechamento permanece explícita: `close` recusa operações ainda em execução, mas não tenta persistência implicitamente. Depois da execução, fechar a instância abandona somente a observação em memória; não fabrica recibo nem libera quarentena. O chamador deve solicitar o flush antes de fechar quando pretende conservar esse fato. Crash, conexão inutilizada ou fechamento antes de uma gravação bem-sucedida continuam sujeitos à incerteza durável já documentada. Esta extensão não é um journal durável alternativo nem uma prova de morte de processo.
+
+Registro da implementação e gate: [WP-02/D5 — repetição de persistência](../../docs/implementation/WP-02-D-COMPLETION-RETRY.md).
