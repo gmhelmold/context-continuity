@@ -50,6 +50,10 @@ Falha de ROLLBACK marca a conexão como inutilizável e tenta fechá-la; nenhum 
 
 Não altera sessions, jobs, attempts, aux_runs, View, quotas ou reservas. Não libera quarantine cross-owner; depende da associação futura ao supervisor e seus critérios próprios. Não implementa GC, read/export pins, staging ou migrações/backups. Nenhum lock disponível é tratado como prova geral de morte de processo. Nenhum método faz rede, build ou inferência.
 
+## Diagnóstico de orçamento
+
+`readStorageBudget()` retorna os totais lógicos imutáveis de [SPEC-23](23-storage-budget.md), sob a mesma seção/identidade e uma transação de leitura. Não altera reservas, não fornece licença de escrita/limpeza e não mede espaço físico de disco.
+
 ## Cinco axiomas
 
 **Success Criteria:** anchor e owner são duráveis/consistentes, lock antecede autoridade, inspeção preserva detentor vivo e reservas, handles expiram.

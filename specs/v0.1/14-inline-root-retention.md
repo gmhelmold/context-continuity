@@ -41,3 +41,7 @@ A deduplicação é local à chamada/transação IMMEDIATE, nunca persiste entre
 `readSource` continua verificando os bytes de uma fonte antes de devolvê-los. `readRoot` verifica os bytes de suas fontes, e `readRootCatalog` permanece uma auditoria integral explícita de todas as fontes correntes. Nenhum desses métodos usa a deduplicação de chamadas anteriores. Consumidores de manifesto/snapshot/publicação continuam revalidando suas próprias dependências. O chamador incremental conserva o digest retornado, em vez de realizar uma auditoria integral antes de cada lote.
 
 A otimização limita **conteúdo retornado pelo driver e reprocessado**, não bytes físicos de I/O, tempo total, trabalho de metadados ou tamanho de WAL. O índice/ordenação/CAS e a contagem de quota ainda custam proporcionalmente aos registros; não há promessa de O(1) para retornar o catálogo inteiro. Catálogo continua limitado a 100000 raízes/16 MiB, e o lote a 64 fontes/128 observações. Consultas integrais explícitas não são o caminho incremental de retenção.
+
+## Contabilidade compartilhada — WP-02/F1
+
+[SPEC-23](23-storage-budget.md) torna a quota lógica consultável pelo coordenador e reutiliza o mesmo contador na admissão inline. Cada fonte nova revalida a capacidade na transação IMMEDIATE existente; nenhum relatório anterior autoriza uma escrita. O helper recusa parcelas/totais inválidos e conserva o limite inclusivo e o replay exato sem cobrança duplicada. O diagnóstico não faz auditoria física de blobs ou autoriza limpeza.
