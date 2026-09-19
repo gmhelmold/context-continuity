@@ -47,3 +47,16 @@ registered.identity.ino = '0';
 // @ts-expect-error Plain data cannot manufacture an issued section.
 const fabricated: WorkspaceHold = { workspace: held.workspace, owner_id: held.owner_id };
 void fabricated;
+
+import type { AttemptOwnership, LocalAttemptOutcome } from '../../packages/storage/src/index.ts';
+import { LocalAttemptSupervisor } from '../../packages/storage/src/index.ts';
+declare const ownership: AttemptOwnership;
+declare const outcome: LocalAttemptOutcome;
+// @ts-expect-error Attempt supervisor identity is read-only data, not editable authority.
+ownership.storage_owner_id = 'different';
+// @ts-expect-error Local stop is assigned by supervision, not an output field of the adapter.
+outcome.local_stopped;
+// @ts-expect-error The factory is required even for typed callers.
+new LocalAttemptSupervisor({}, {}, Symbol());
+// @ts-expect-error A process identity cannot be changed on a live issued hold.
+held.process_instance = 'other';

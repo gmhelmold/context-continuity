@@ -19,6 +19,9 @@ import { parseJobContextRef, assertJobContext } from '../../core/src/job-context
 import type { JobContextRef } from '../../core/src/job-context.ts';
 import * as jobs from './job-records.ts';
 import type { StoredJob, AttemptRef } from './job-records.ts';
+import { assertAttemptOwner, bindAttemptOwner, loadAttemptOwnership } from './attempt-owner.ts';
+import type { AttemptOwnership } from './attempt-owner.ts';
+import { assertWorkspaceHold } from './workspace-coordinator.ts';
 export const OWNER_LEASE_MS = 30_000;
 const MAX_TIME = 8_640_000_000_000_000 - OWNER_LEASE_MS;
 export type SessionRecord = Readonly<{
@@ -247,22 +250,33 @@ export class SqliteSessionStore {
       return result;
     });
   }
-  reserveJobAttempt(leaseInput: unknown, expectedInput: unknown, budgetInput: unknown): AttemptRef {
+  reserveJobAttempt(leaseInput: unknown, expectedInput: unknown, budgetInput: unknown, ownerHold?: unknown): AttemptRef {
     const expected = parseJobContextRef(expectedInput), budget = jobs.parseAttemptBudget(budgetInput);
     return this.#jobWrite(leaseInput, (row, now) => {
-      const result = jobs.reserveJobAttempt(this.#db, row, expected, budget, now); this.#jobFresh(row, expected); return result;
+      if (ownerHold !== undefined) assertWorkspaceHold(this.workspace, ownerHold);
+      const result = jobs.reserveJobAttempt(this.#db, row, expected, budget, now);
+      if (ownerHold !== undefined) {
+        bindAttemptOwner(this.#db, leaseValue(leaseInput), expected, result, ownerHold);
+        assertWorkspaceHold(this.workspace, ownerHold);
+      }
+      this.#jobFresh(row, expected); return result;
     });
   }
-  markJobAttemptDispatched(leaseInput: unknown, expectedInput: unknown, attemptInput: unknown): StoredJob {
+  markJobAttemptDispatched(leaseInput: unknown, expectedInput: unknown, attemptInput: unknown, ownerHold?: unknown): StoredJob {
     const expected = parseJobContextRef(expectedInput), attempt = jobs.parseAttemptRef(attemptInput);
     return this.#jobWrite(leaseInput, (row, now) => {
-      const result = jobs.markJobAttemptDispatched(this.#db, row, expected, attempt, now); this.#jobFresh(row, expected); return result;
+      assertAttemptOwner(this.#db, leaseValue(leaseInput), expected, attempt, ownerHold);
+      const result = jobs.markJobAttemptDispatched(this.#db, row, expected, attempt, now);
+      assertAttemptOwner(this.#db, leaseValue(leaseInput), expected, attempt, ownerHold);
+      this.#jobFresh(row, expected); return result;
     });
   }
-  recordJobAttemptResult(leaseInput: unknown, expectedInput: unknown, attemptInput: unknown, resultInput: unknown): StoredJob {
+  recordJobAttemptResult(leaseInput: unknown, expectedInput: unknown, attemptInput: unknown, resultInput: unknown, ownerHold?: unknown): StoredJob {
     const expected = parseJobContextRef(expectedInput), attempt = jobs.parseAttemptRef(attemptInput), result = jobs.parseAttemptResult(resultInput);
     return this.#jobWrite(leaseInput, (row, now) => {
+      assertAttemptOwner(this.#db, leaseValue(leaseInput), expected, attempt, ownerHold);
       const stored = jobs.recordJobAttemptResult(this.#db, row, expected, attempt, result, now);
+      assertAttemptOwner(this.#db, leaseValue(leaseInput), expected, attempt, ownerHold);
       if (jobs.jobIsActive(stored)) this.#jobFresh(row, expected);
       return stored;
     });
@@ -271,9 +285,22 @@ export class SqliteSessionStore {
     const expected = parseJobContextRef(expectedInput);
     return this.#jobWrite(leaseInput, (row, now) => jobs.cancelJob(this.#db, row, expected, now));
   }
-  confirmJobAttemptStopped(leaseInput: unknown, expectedInput: unknown, attemptInput: unknown): StoredJob {
+  confirmJobAttemptStopped(leaseInput: unknown, expectedInput: unknown, attemptInput: unknown, ownerHold?: unknown): StoredJob {
     const expected = parseJobContextRef(expectedInput), attempt = jobs.parseAttemptRef(attemptInput);
-    return this.#jobWrite(leaseInput, row => jobs.confirmJobAttemptStopped(this.#db, row, expected, attempt));
+    return this.#jobWrite(leaseInput, row => {
+      assertAttemptOwner(this.#db, leaseValue(leaseInput), expected, attempt, ownerHold);
+      const result = jobs.confirmJobAttemptStopped(this.#db, row, expected, attempt);
+      assertAttemptOwner(this.#db, leaseValue(leaseInput), expected, attempt, ownerHold);
+      return result;
+    });
+  }
+  /** Diagnostic identity, not authority to resume or declare a task stopped. */
+  readAttemptOwnership(input: unknown, expectedInput: unknown, attemptInput: unknown): AttemptOwnership | null {
+    const binding = this.#scope(input), expected = parseJobContextRef(expectedInput), attempt = jobs.parseAttemptRef(attemptInput);
+    return this.#transaction(false, () => {
+      this.#require(binding); jobs.requireJob(this.#db, binding, expected);
+      return loadAttemptOwnership(this.#db, binding, expected, attempt);
+    });
   }
   recoverJobs(leaseInput: unknown): readonly StoredJob[] {
     return this.#jobWrite(leaseInput, (row, now) => jobs.recoverJobs(this.#db, row, now));
