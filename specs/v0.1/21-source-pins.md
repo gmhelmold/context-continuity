@@ -1,6 +1,6 @@
-# SPEC-21 — pins duráveis de fontes inline (WP-02/E1)
+# SPEC-21 — pins duráveis de fontes inline (WP-02/E1–E2)
 
-Refina SPEC-03/14/18. Registra reservas de leitura/exportação sob o coordenador existente; não implementa leitura assíncrona, blob externo, GC, limpeza cross-owner ou verificação nova dos bytes. O escopo deste corte é o ciclo persistido do pin, não o reader/exportador completo.
+Refina SPEC-03/14/18. E1 registra reservas de leitura/exportação sob o coordenador existente; E2 acrescenta leitura síncrona verificada de uma fonte inline. Não implementa leitura assíncrona, blob externo, GC ou limpeza cross-owner. O ciclo persistido do pin e a cópia de bytes verificada não constituem o reader/exportador completo.
 
 ## API e identidade
 
@@ -22,14 +22,24 @@ Liberação não exige que a fonte continue capturada nem que a sessão ainda ex
 
 Close ou crash do participante não apaga pins. As reservas continuam impedindo sua aposentadoria automática pelo coordenador. Outro participante não libera pins por TTL, idade, lock livre ou recibo de término de job. Reconciliação cross-owner e readers que mantêm handles de conteúdo terão contratos próprios. Os envelopes liberados permanecem como histórico/tombstones pequenos; não há coleta automática deles neste corte.
 
+## Leitura verificada E2
+
+`WorkspaceCoordinator.readPinnedSource(binding,id): RetainedSource` retorna uma cópia própria de uma fonte inline já fixada por pin ativo read/export do MESMO participante. A consulta diagnóstica acima permanece distinta e não concede esse direito. Pin ausente/liberado é E_CONFLICT; participante diferente é E_OWNER. O binding completo, tombstone e política atual da sessão são novamente conferidos antes de materializar conteúdo. Política divergente é E_CONFLICT; sessão ausente, encarnação/epoch diferente ou tombstone é E_SCOPE. O chamador não fornece um SourceRef substituto: os bytes são os da referência persistida no pin.
+
+Ordem: workspace flock -> BEGIN de leitura -> registro/envelope/owner -> política e binding atuais -> `loadSource` canônico -> guardas finais -> COMMIT -> liberação do lock -> retorno. Registro, política e conteúdo pertencem a um único snapshot SQLite. Falha de COMMIT, guarda ou liberação impede o retorno normal do resultado. Não cria reserva nem abre transação de escrita por efeito da leitura. A exclusão cobre participantes que respeitam o protocolo do workspace; não é sandbox contra outro código autorizado a reescrever o banco diretamente.
+
+`loadSource` conserva o limite inclusivo existente de 256 KiB e confere tamanho/representação antes do SELECT de BLOB. Recalcula SHA-256 a cada chamada. Conteúdo indisponível, representação externa ou digest divergente é recusado como E_SOURCE; não reutiliza confiança de leitura anterior. O objeto e metadados são imutáveis; o array de bytes é uma cópia própria mutável pelo consumidor, sem alias para o banco ou outra chamada.
+
+Não encerra nem consome o pin: a liberação permanece explícita. Sucesso/falha não altera fontes, jobs, tentativas, contadores ou reservas. Após retorno, o consumidor possui apenas dados correspondentes àquele snapshot, não um permit de publicação ou garantia sobre mudanças posteriores. Redação/política posterior não pode revogar uma cópia já entregue; reenviar/publicar/exportar exige a validação de sua fronteira própria. Não há stream, callback assíncrono, arquivo exportado, leitor de blobs ou promessa de GC implementado.
+
 ## Cinco axiomas
 
-**Success Criteria:** pin e associação são atômicos, escopo e proprietário não são intercambiáveis, duplicação/retorno incerto não recriam reservas, liberação conserva conteúdo.
+**Success Criteria:** pin e associação são atômicos, escopo e proprietário não são intercambiáveis, duplicação/retorno incerto não recriam reservas, liberação conserva conteúdo. A leitura E2 entrega somente bytes verificados do pin ativo e da política vigente no snapshot.
 
 **Quality Standards:** SQLite/locks/processos reais com fontes sintéticas; testemunha Python; barreiras de commit; mutação com controle positivo e assertion específica; toda compilação e teste no Actions.
 
-**Completeness Criteria:** read/export, replay, capacidade, IDs liberados, tombstones/policy, metadata inválida, proprietário distinto, recusa de blob, erros parciais, disputa e reabertura antes/depois de commit.
+**Completeness Criteria:** read/export, replay, capacidade, IDs liberados, tombstones/policy, metadata inválida, proprietário distinto, recusa de blob, erros parciais, disputa e reabertura antes/depois de commit. E2 acrescenta cópias independentes, digest de mesmo tamanho, ausência de cache, limite inclusivo, aquisição de lock anterior à transação, snapshot único, falha de COMMIT e reabertura sem adoção de pin antigo.
 
-**Definition of Done:** testes e matriz completa nos pins existentes, logs do head conferidos, diff revisado, árvores testada/integrada iguais, issue #5 atualizada sem concluir WP-02 ou GC.
+**Definition of Done:** testes e matriz completa nos pins existentes, logs do head conferidos, diff revisado, árvores testada/integrada iguais, issue #5 atualizada sem concluir WP-02 ou GC. O [registro E2](../../docs/implementation/WP-02-E-PINNED-READ.md) define os cenários e a origem das evidências.
 
-**Invariants:** sem exclusão de conteúdo, sem estorno de tokens, sem inferência, sem liveness por TTL, sem permissões por JSON, sem desbloqueio cross-owner, sem alteração do DDL.
+**Invariants:** sem exclusão de conteúdo, sem estorno de tokens, sem inferência, sem liveness por TTL, sem permissões por JSON, sem desbloqueio cross-owner, sem alteração do DDL. Leitura não consome pin nem fabrica autorização para usos posteriores.
