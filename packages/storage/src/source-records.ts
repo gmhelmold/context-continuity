@@ -31,9 +31,52 @@ export function prepareSource(input: unknown): InlineSource {
   if (hashSource(bytes) !== ref.digest) throw new StorageError('E_SOURCE', 'source bytes do not match reference');
   return Object.freeze({ ref, native_refs: nativeRefs(v.native_refs), media_type: opaqueId(v.media_type, 'source.media_type'), bytes });
 }
+/** A metadata check does not authenticate the content bytes or create a verified manifest. */
+export function sourceMetadata(db: DatabaseSync, binding: SessionBinding, input: SourceRef): Readonly<{ size_bytes: number }> {
+  const ref = parseSourceRef(input);
+  // Project metadata only: never ask the driver to materialize unrelated BLOBs.
+  const row = db.prepare(`SELECT digest,availability,blob_key,size_bytes,native_refs_json,media_type,policy_revision,
+    typeof(inline_bytes) AS storage_type,length(inline_bytes) AS stored_bytes
+    FROM sources WHERE session_key=? AND source_id=? AND revision=?`)
+    .get(binding.session_key, ref.source_id, ref.revision);
+  if (!row || row.availability !== 'captured' || row.digest !== ref.digest || row.blob_key !== null ||
+      row.storage_type !== 'blob' || row.stored_bytes !== row.size_bytes ||
+      typeof row.size_bytes !== 'number' || !Number.isSafeInteger(row.size_bytes) ||
+      row.size_bytes < 0 || row.size_bytes > MAX_INLINE_SOURCE_BYTES) {
+    throw new StorageError('E_SOURCE', 'source metadata or availability mismatch');
+  }
+  if (typeof row.native_refs_json !== 'string') throw new StorageError('E_STORAGE', 'source record invalid');
+  nativeRefs(parseJSON(row.native_refs_json)); opaqueId(row.media_type);
+  integer(row.policy_revision, 0, Number.MAX_SAFE_INTEGER, 'source.policy');
+  return Object.freeze({ size_bytes: row.size_bytes });
+}
+
+export const MAX_RETENTION_SOURCE_READ_BYTES = 4 * 1024 * 1024;
+export const MAX_RETENTION_SOURCE_READS = 256;
+export type SourceReader = (ref: SourceRef) => RetainedSource;
+/** Only used within one IMMEDIATE transaction. No cache survives its return or rollback. */
+export function retentionSourceReader(db: DatabaseSync, binding: SessionBinding): SourceReader {
+  const verified = new Map<string, RetainedSource>();
+  let usedBytes = 0;
+  return (input: SourceRef): RetainedSource => {
+    const ref = parseSourceRef(input), key = canonical(ref), prior = verified.get(key);
+    if (prior) return prior;
+    const metadata = sourceMetadata(db, binding, ref);
+    // Admission precedes the BLOB SELECT, including zero-byte sources.
+    if (verified.size >= MAX_RETENTION_SOURCE_READS || usedBytes + metadata.size_bytes > MAX_RETENTION_SOURCE_READ_BYTES) {
+      throw new StorageError('E_BUDGET', 'retention source verification budget exceeded');
+    }
+    usedBytes += metadata.size_bytes;
+    const value = loadSource(db, binding, ref);
+    verified.set(key, value);
+    return value;
+  };
+}
+
 /** Every returned byte array is an owned copy, not a mutable alias of persisted data. */
 export function loadSource(db: DatabaseSync, binding: SessionBinding, input: SourceRef): RetainedSource {
   const ref = parseSourceRef(input);
+  sourceMetadata(db, binding, ref); // Reject invalid length before copying the BLOB.
   const row = db.prepare('SELECT * FROM sources WHERE session_key=? AND source_id=? AND revision=?')
     .get(binding.session_key, ref.source_id, ref.revision);
   if (!row || row.availability !== 'captured') throw new StorageError('E_SOURCE', 'source unavailable');
@@ -55,12 +98,12 @@ function accountedBytes(db: DatabaseSync): number {
   const count = (value: unknown) => integer(value, 0, Number.MAX_SAFE_INTEGER, 'storage.accounting');
   return count(count(inline) + count(blobs) + count(reservations));
 }
-export function retainSource(db: DatabaseSync, binding: SessionBinding, source: InlineSource, policy: number, created: string): void {
+export function retainSource(db: DatabaseSync, binding: SessionBinding, source: InlineSource, policy: number, created: string, read: SourceReader): void {
   const { ref } = source;
   const existing = db.prepare('SELECT revision FROM sources WHERE session_key=? AND source_id=? AND revision=?')
     .get(binding.session_key, ref.source_id, ref.revision);
   if (existing) {
-    const stored = loadSource(db, binding, ref);
+    const stored = read(ref);
     if (canonical(stored.native_refs) !== canonical(source.native_refs) || stored.media_type !== source.media_type ||
         !Buffer.from(stored.bytes).equals(source.bytes)) throw new StorageError('E_CONFLICT', 'source revision already defined');
     return;

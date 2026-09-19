@@ -5,10 +5,10 @@ import { canonical, parseJSON } from '../../core/src/canonical.mjs';
 import { digestValue, hashPayload, opaqueId } from '../../core/src/identity.ts';
 import type { SessionBinding } from '../../core/src/identity.ts';
 import { MAX_CATALOG_ROOTS, RootIdentityRegistry, parseRootRef, parseRootUnit } from '../../core/src/roots.ts';
-import type { RootCatalog, RootEntry, RootRef, RootUnit, RootObservation } from '../../core/src/roots.ts';
+import type { RootCatalog, RootEntry, RootRef, RootUnit, RootObservation, SourceRef } from '../../core/src/roots.ts';
 import { dataList, distinct, ownJSON } from '../../core/src/contract-data.ts';
 import { closedRecord } from '../../core/src/validation.ts';
-import { loadSource, prepareSource, retainSource } from './source-records.ts';
+import { loadSource, prepareSource, retainSource, sourceMetadata, retentionSourceReader } from './source-records.ts';
 import type { InlineSource } from './source-records.ts';
 import { StorageError } from './errors.ts';
 
@@ -45,14 +45,14 @@ function catalog(binding: SessionBinding, input: readonly RootEntry[]): RootCata
   if (entries.length > MAX_CATALOG_ROOTS || Buffer.byteLength(canonical(body)) > MAX_CATALOG_BYTES) throw new StorageError('E_BUDGET', 'root catalog limit exceeded');
   return new RootIdentityRegistry(binding, { ...body, catalog_digest: hashPayload(body) }).exportState();
 }
-function verifySources(db: DatabaseSync, binding: SessionBinding, unit: RootUnit, seen: Set<string>): void {
+function verifySources(unit: RootUnit, seen: Set<string>, read: (ref: SourceRef) => unknown): void {
   for (const ref of unit.source_refs) {
     const key = canonical(ref);
-    if (!seen.has(key)) { loadSource(db, binding, ref); seen.add(key); }
+    if (!seen.has(key)) { read(ref); seen.add(key); }
   }
 }
 /** The storage catalog is deterministically ordered; it is never prompt chronology. */
-export function loadRootCatalog(db: DatabaseSync, binding: SessionBinding): RootCatalog {
+function loadCatalog(db: DatabaseSync, binding: SessionBinding, read: (ref: SourceRef) => unknown): RootCatalog {
   const statement = db.prepare(`SELECT r.* FROM root_units r JOIN
     (SELECT native_identity,MAX(revision) AS latest FROM root_units WHERE session_key=? AND host_epoch=? GROUP BY native_identity) c
     ON c.native_identity=r.native_identity AND c.latest=r.revision
@@ -63,9 +63,17 @@ export function loadRootCatalog(db: DatabaseSync, binding: SessionBinding): Root
     const entry = decodedRow(row);
     bytes += Buffer.byteLength(canonical(entry));
     if (entries.length >= MAX_CATALOG_ROOTS || bytes > MAX_CATALOG_BYTES) throw new StorageError('E_BUDGET', 'root catalog limit exceeded');
-    verifySources(db, binding, entry.unit, verified); entries.push(entry);
+    verifySources(entry.unit, verified, read); entries.push(entry);
   }
   return catalog(binding, entries);
+}
+/** Explicit full audit: this public read still hashes all referenced content. */
+export function loadRootCatalog(db: DatabaseSync, binding: SessionBinding): RootCatalog {
+  return loadCatalog(db, binding, ref => loadSource(db, binding, ref));
+}
+/** Structural index for CAS, with live metadata checks but no content-byte attestation. */
+function loadRootIndex(db: DatabaseSync, binding: SessionBinding): RootCatalog {
+  return loadCatalog(db, binding, ref => sourceMetadata(db, binding, ref));
 }
 export function loadRoot(db: DatabaseSync, binding: SessionBinding, input: RootRef): RootUnit | null {
   const ref = parseRootRef(input);
@@ -74,18 +82,22 @@ export function loadRoot(db: DatabaseSync, binding: SessionBinding, input: RootR
   if (!row) return null;
   const { unit } = decodedRow(row);
   if (unit.unit_digest !== ref.unit_digest) throw new StorageError('E_SOURCE', 'root reference does not match');
-  verifySources(db, binding, unit, new Set());
+  verifySources(unit, new Set(), ref => loadSource(db, binding, ref));
   return unit;
 }
 /** All inserts and the expected catalog check share the caller's IMMEDIATE transaction. */
 export function retainRootBatch(db: DatabaseSync, binding: SessionBinding, input: RootRetentionBatch, policy: number, created: string): RootCatalog {
-  const before = loadRootCatalog(db, binding);
+  const before = loadRootIndex(db, binding);
   if (before.catalog_digest !== input.expected_catalog_digest) throw new StorageError('E_CONFLICT', 'root catalog changed');
-  for (const source of input.sources) retainSource(db, binding, source, policy, created);
+  const read = retentionSourceReader(db, binding);
+  for (const source of input.sources) {
+    retainSource(db, binding, source, policy, created, read);
+    read(source.ref); // All supplied revisions are verified once, including source-only batches.
+  }
   const registry = new RootIdentityRegistry(binding, before), verified = new Set<string>();
   for (const observation of input.observations) {
     const result = registry.observe(observation), unit = result.unit;
-    verifySources(db, binding, unit, verified);
+    verifySources(unit, verified, read);
     if (result.change === 'unchanged') continue;
     if (result.change === 'metadata') {
       const changed = db.prepare(`UPDATE root_units SET record_json=?

@@ -8,3 +8,5 @@ export { MAX_INLINE_SOURCE_BYTES, WORKSPACE_CONTENT_QUOTA_BYTES } from './source
 export type { InlineSource, RetainedSource } from './source-records.ts';
 export { MAX_RETENTION_BATCH_BYTES } from './root-records.ts';
 export type { RootRetentionBatch } from './root-records.ts';
+
+export { MAX_RETENTION_SOURCE_READ_BYTES, MAX_RETENTION_SOURCE_READS } from './source-records.ts';

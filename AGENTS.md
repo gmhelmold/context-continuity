@@ -75,3 +75,7 @@ Storage é separado do core e segue SPEC-13. Rodar check:storage/test:storage co
 ## Retenção inline WP-02/B
 
 SPEC-14 limita retainRoots a fontes inline e observações explícitas. Rodar testes de retenção, processos e campanha negativa junto à matriz completa de storage. Reusar RootIdentityRegistry; não inferir cronologia da ordem canônica do catálogo. Nenhum resultado de retenção autoriza compactação, publicação, remoção ou bypass de tombstones/fence. Blobs e invalidação de derivados mantêm seus gates próprios.
+
+## Limite de verificação da retenção (#28)
+
+SPEC-14 distingue RootCatalog estrutural retornado por retainRoots de verificação dos bytes. Preservar leitura integral em readSource/readRoot/readRootCatalog, metadados atuais no índice e budget antes do BLOB. O chamador incremental reutiliza o digest retornado, não dispara auditoria integral a cada lote. Rodar retention-budget e suas mutações com toda a matriz; nenhum cache sobrevive à transação. Registro em docs/implementation/WP-02-B-VERIFICATION-BUDGET.md.
