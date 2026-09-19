@@ -30,6 +30,19 @@ export type SourcePinRecovery = Readonly<{ state: 'held' | 'released'; pin: Sour
 const holds = new WeakMap<object, () => void>();
 const equal = (a: unknown, b: unknown): boolean => canonical(a) === canonical(b);
 function capability(): never { throw new StorageError('E_CAPABILITY', 'coordinator identity unavailable or inconsistent'); }
+/** SQL projects at most 8 KiB; one statement also works outside a read transaction.
+ * Existence-only probes must not materialize an unvalidated identity envelope. */
+function identityMetadata(handle: SQLiteHandle, key: string): { value: string } | undefined {
+  if (handle.db.prepare('PRAGMA encoding').get()?.encoding !== 'UTF-8') return capability();
+  const r = handle.db.prepare(`SELECT typeof(value) AS storage_type, octet_length(value) AS size_bytes,
+    CASE WHEN typeof(value)='text' AND octet_length(value) <= 8192 THEN value END AS value
+    FROM meta WHERE key=?`).get(key);
+  if (!r) return undefined;
+  if (r.storage_type !== 'text' || typeof r.size_bytes !== 'number' || !Number.isSafeInteger(r.size_bytes) ||
+      r.size_bytes < 0 || r.size_bytes > 8192 || typeof r.value !== 'string' ||
+      Buffer.byteLength(r.value) !== r.size_bytes) return capability();
+  return { value: r.value };
+}
 function data(text: unknown): unknown {
   if (typeof text !== 'string' || Buffer.byteLength(text) > 8192) return capability();
   try { return parseJSON(text); } catch { return capability(); }
@@ -45,12 +58,12 @@ function anchor(resources: LockResources, workspace: WorkspaceIdentity): unknown
 function checkAnchor(handle: SQLiteHandle, resources: LockResources): void {
   if (poisoned.has(handle)) throw new StorageError('E_STORAGE', 'coordinator connection unusable');
   handle.guard(); resources.guard();
-  const r = handle.db.prepare('SELECT value FROM meta WHERE key=?').get(ANCHOR_KEY);
+  const r = identityMetadata(handle, ANCHOR_KEY);
   if (!r || !equal(data(r.value), anchor(resources, handle.identity))) return capability();
 }
 function readOwner(handle: SQLiteHandle, id: string): StorageOwner | null {
   const r = handle.db.prepare('SELECT * FROM storage_owners WHERE owner_id=?').get(id);
-  const metadata = handle.db.prepare('SELECT value FROM meta WHERE key=?').get(ownerKey(id));
+  const metadata = identityMetadata(handle, ownerKey(id));
   if (!r) { if (metadata) return capability(); return null; }
   if (!metadata) return capability();
   try {
@@ -141,12 +154,12 @@ export class WorkspaceCoordinator {
     let handle: SQLiteHandle | undefined, resources: LockResources | undefined;
     try {
       handle = connectSQLite(directory, workspace, false);
-      const existing = handle.db.prepare('SELECT value FROM meta WHERE key=?').get(ANCHOR_KEY);
+      const existing = handle.db.prepare('SELECT 1 FROM meta WHERE key=?').get(ANCHOR_KEY);
       resources = LockResources.open(directory, !existing);
       resources.acquire();
       const h = handle, r = resources;
       transaction(h, true, () => {
-        const current = h.db.prepare('SELECT value FROM meta WHERE key=?').get(ANCHOR_KEY);
+        const current = h.db.prepare('SELECT 1 FROM meta WHERE key=?').get(ANCHOR_KEY);
         if (current) checkAnchor(h, r);
         else {
           if (h.db.prepare('SELECT 1 FROM storage_owners LIMIT 1').get() ||
