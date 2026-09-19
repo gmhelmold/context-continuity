@@ -115,7 +115,9 @@ export function assertWorkspaceHold(workspaceInput: unknown, input: unknown): Wo
   if (input === null || typeof input !== 'object' || !holds.has(input)) throw new StorageError('E_OWNER', 'workspace hold expired or unissued');
   const hold = input as WorkspaceHold;
   if (!equal(hold.workspace, workspace)) throw new StorageError('E_SCOPE', 'workspace hold scope mismatch');
-  holds.get(input)!(); return hold;
+  // A caller may catch this failure before the enclosing section can sanitize it.
+  try { holds.get(input)!(); } catch (cause) { return storageFailure(cause); }
+  return hold;
 }
 function synchronous(callback: unknown): asserts callback is (hold: WorkspaceHold) => unknown {
   if (typeof callback !== 'function' || Object.getPrototypeOf(callback) !== Function.prototype || types.isAsyncFunction(callback) || types.isGeneratorFunction(callback)) {
