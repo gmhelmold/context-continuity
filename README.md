@@ -91,3 +91,7 @@ A sonda atual tem 16 checks de host e 12 testes de componentes, incluindo regra 
 **Jobs duráveis:** [WP-02/C](docs/implementation/WP-02-C.md) registra admissão, tentativas, resultados e recuperação explícita sem replay. Perfil inicial: raízes/fontes inline. Não publica View, não emite permit de rede e não libera quarentena cross-owner sem prova de liveness.
 
 **Locks de SO — primeiro corte:** [primitiva nativa isolada](docs/implementation/WP-02-D-LOCK-PRIMITIVE.md). Build e testes explícitos; ainda não é gerenciador de workspace/liveness nem liberação de jobs.
+
+O [desenho do gerenciador de owners](docs/designs/storage/WORKSPACE-COORDINATOR.md) permanece pré-implementação. As [observações de fronteira](docs/implementation/WP-02-D-OWNER-BOUNDARIES.md) testam a ponte existente, sem homologar recuperação de jobs.
+
+Recursos privados de lock: [WP-02/D2](docs/implementation/WP-02-D-LOCK-RESOURCES.md). A camada de filesystem é distinta do registro transacional de owners ainda pendente.

@@ -1,0 +1,104 @@
+{
+  "schema_version": 1,
+  "base_commit": "c5d94ac62cf2ef3e1beb16b86b6209fa8b8beae9",
+  "scope": "raw-primitive boundary observations and pre-implementation design; NOT coordinator implementation",
+  "product_implementation_changed": false,
+  "manager_write_executed": false,
+  "new_cases": 3,
+  "historical_runs": {
+    "owner-boundaries.tap": {
+      "sha256": "49cdf1f1d103d3b20a2b78dd194d11264ea4ea4352e5586af7f2f21294608885",
+      "counts": {
+        "tests": 3,
+        "pass": 2,
+        "fail": 1,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0
+      }
+    },
+    "owner-boundaries-fixed.tap": {
+      "sha256": "231f93c875ca982c6d7f03f61a7b357bbcc244cccf417d4a983be442ef55a7f0",
+      "counts": {
+        "tests": 3,
+        "pass": 3,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0
+      }
+    }
+  },
+  "note": "Initial 2/3 is a fixture child SyntaxError, not a kernel failure. Fixed 3/3 precedes the final locator refinement. Final validation recorded after completion.",
+  "source_sha256": {
+    "tests/coordination/owner-boundaries.test.mjs": "68231a24d5eac7fde9718af75960410d8bfeb78c63e3fc6cc61fd41e1fdfdf84",
+    "packages/storage/native/locks.c": "5e807fef2b5f5279f68685b0fef184cb15aa0207de35d916a5426b166aa12fd2",
+    "scripts/build-locks.mjs": "f5bdac7df279df18c283a1802a8c9022debaea665d732348c30d905712f17362"
+  },
+  "final_validation": {
+    "status": "passed",
+    "results": {
+      "coordination": {
+        "command": [
+          "npm",
+          "run",
+          "test:coordination"
+        ],
+        "exit_code": 0,
+        "counts": {
+          "tests": 20,
+          "pass": 20,
+          "fail": 0,
+          "cancelled": 0,
+          "skipped": 0,
+          "todo": 0
+        },
+        "sha256": "fb28cd48cc035678e1dce63f94ada4209203fe5c2567532344a853fd89e5363e"
+      },
+      "check-core": {
+        "command": [
+          "npm",
+          "run",
+          "check:core"
+        ],
+        "exit_code": 0,
+        "counts": {},
+        "sha256": "e3806c19fac205c687938315713a76dd23432520806fb09445e7c3857ba48d3c"
+      },
+      "check-storage": {
+        "command": [
+          "npm",
+          "run",
+          "check:storage"
+        ],
+        "exit_code": 0,
+        "counts": {},
+        "sha256": "c751b0b339ee212453e71398dabd9d25b8421f75b50f92729d86c11f9e0c6581"
+      }
+    },
+    "documents": {
+      "check-spec": {
+        "exit_code": 0,
+        "sha256": "f46b7fa70d487198915fee9065f28fc2a4e268e219b66fd2c8894c148d88fa09"
+      },
+      "check-reference-model": {
+        "exit_code": 0,
+        "sha256": "6bacd02af20319d9cec0c278f9694d88fbf5cae48c9a6716262bdbf952c9d0f6"
+      },
+      "test-spec-check": {
+        "exit_code": 0,
+        "sha256": "849ef1c84d05854093ab5ae795caa205f162f12d3631613d5f75b20f6314ec14"
+      },
+      "check-canonical": {
+        "exit_code": 0,
+        "sha256": "a568bbcf6aae56e3cee6c2935d467169bd8349edf9558827591d1c85f6b099d8"
+      },
+      "check-storage-contracts": {
+        "exit_code": 0,
+        "sha256": "f617785664462d0d92f301bddbe5840c9c9a2b1ae64e957c630ace3cc6dc5dc5"
+      }
+    },
+    "note": "Results of the preceding boundary-only execution. Not manager implementation or current full-matrix evidence."
+  },
+  "live_inference": false
+}
