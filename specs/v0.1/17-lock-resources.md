@@ -10,7 +10,7 @@ Refinamento de SPEC-16. Implementação interna `packages/storage/src/lock-resou
 
 `identity` conserva dev/ino de diretório, owners e workspace.lock como strings decimais de stats BigInt, profundamente imutáveis. `guard` verifica descritor e caminho contra as identidades capturadas e os atributos esperados. Um novo open pode observar nova identidade após substituição: somente o futuro anchor durável pode recusar adoção entre instâncias. Esta camada não lê nem grava esse anchor.
 
-`acquire` tenta flock uma vez; ocupado e reentrância são E_CONFLICT. Guarda os caminhos antes e depois da tentativa. `release` e `close` são idempotentes, sem remover arquivos. Close revoga os recursos antes do fechamento e tenta fechar todos mesmo após uma falha individual. Não repete close de um número de descritor que já possa ter sido reutilizado. Falha de recurso/perfil é E_CAPABILITY sanitizado.
+`acquire` tenta flock uma vez; ocupado e reentrância são E_CONFLICT. Guarda os caminhos antes e depois da tentativa. `release` e `close` são idempotentes, sem remover arquivos. Close revoga os recursos antes do fechamento e tenta fechar todos mesmo após uma falha individual. Não repete close de um número de descritor que já possa ter sido reutilizado. Falha de recurso/perfil é E_CAPABILITY sanitizado. Isso inclui close direto do owner e cleanup de uma construção recusada; a falha original não escapa. Revogação e remoção do handle ocorrem mesmo na falha, sem repetir close.
 
 `owner(uuid, create)` exige UUID em formato fechado e booleano, sem coerção de objetos. Criação usa O_EXCL; não reutiliza UUID existente. O resultado interno oferece identidade, guard/sync/tryLock/unlock/close, mas nunca o número do fd. Não representa um owner registrado nem exige implicitamente um lease de sessão.
 
@@ -28,7 +28,7 @@ Nenhum método altera SQLite, storage_owners, reservas, sessões, jobs ou rede. 
 
 **Success Criteria:** uma instância não segue caminhos substituídos; exclusão é observada fora do componente; fechamento libera exatamente os recursos pertencentes à instância.
 
-**Quality Standards:** arquivos e processos reais privados; Python/fcntl como testemunha; testes positivos e seis implementações incorretas com falha por assertion. Timeout, compilação ou ausência do teste nunca são prova.
+**Quality Standards:** arquivos e processos reais privados; Python/fcntl como testemunha; testes positivos e oito implementações incorretas com falha por assertion. Timeout, compilação ou ausência do teste nunca são prova.
 
 **Completeness Criteria:** bootstrap/reopen, falta de binário, dados inválidos, identidade exata, disputa/reentrância, symlink/hardlink/modos, parent/child lifetime, substituições e encerramento de filho da fixture.
 

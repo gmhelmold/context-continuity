@@ -262,14 +262,8 @@
     "note": "Historical passing matrix on e565702 sources, before LR05 tests. The latest coordination run is 50/51, not approved."
   },
   "live_inference": false,
-  "status": "changes_required",
-  "blocking_regressions": [
-    {
-      "id": "LR05",
-      "issue": 33,
-      "corrective_edit_executed": false
-    }
-  ],
+  "status": "local_pass_ci_pending",
+  "blocking_regressions": [],
   "prior_validated_head": "e56570240ca53eb9a714e4e493878cca40317b2d",
   "prior_ci": {
     "head": "e56570240ca53eb9a714e4e493878cca40317b2d",
@@ -366,8 +360,252 @@
     "tests/coordination/resource-mutations.test.mjs": "852ec76496d25200efa01d4f42688835c957d4905dc74ccfe68fcddfa7689828"
   },
   "current_source_sha256": {
-    "packages/storage/src/lock-resources.ts": "2b0f3995c594c128b6e15c3e8bd8e37fae22b7605134cfbc7b179a49710395cc",
-    "tests/coordination/lock-resources.test.mjs": "d9c192797a226cbbfe6cdd44a95a3b0ea80d18c56934207e2c2bcdf7022b469d",
-    "tests/coordination/resource-mutations.test.mjs": "852ec76496d25200efa01d4f42688835c957d4905dc74ccfe68fcddfa7689828"
+    "packages/storage/src/lock-resources.ts": "09ad6f5e8ad629e443ddfcfeca00ec28a4a5f4b35e0ca4fb54e7918e46e50805",
+    "tests/coordination/lock-resources.test.mjs": "119a8da93c6d7ba25ac055316a630c2f09d6fc42be3519d34cb4fd6758895578",
+    "tests/coordination/resource-mutations.test.mjs": "0c81143b8e2710435cd285ac76e329af348d1859817f1f54743cb7a342c1cc9e",
+    "specs/v0.1/17-lock-resources.md": "2a75f38e6265f5c0410c9e0245bf40819f2ebcdc05d583a352f00aa91a89ad25"
+  },
+  "lr05_resolution": {
+    "parent_head": "2fc80a61017a9f9bea7879d944e97f6973e145a5",
+    "corrective_edit_executed": true,
+    "resolved": [
+      "LR05 direct close classification",
+      "failed-construction cleanup classification"
+    ],
+    "new_regressions": 2,
+    "resource_mutation_pairs": 8,
+    "native_mutation_pairs": 5,
+    "logs": {
+      "before.tap": {
+        "sha256": "41acc18bdbdc1129a21be1fc55891185215b60bf38195d6b99e30eb0be080921",
+        "counts": {
+          "tests": 2,
+          "pass": 1,
+          "fail": 1,
+          "cancelled": 0,
+          "skipped": 0,
+          "todo": 0
+        }
+      },
+      "after.tap": {
+        "sha256": "fb69e73f8bbd3526928bc2c7c6ef26a05da5ca5e4f36f115ca1d7b094fad21d8",
+        "counts": {
+          "tests": 2,
+          "pass": 2,
+          "fail": 0,
+          "cancelled": 0,
+          "skipped": 0,
+          "todo": 0
+        }
+      },
+      "cleanup-before.tap": {
+        "sha256": "5bf64afdc64f54766eca88f177eff11c59063109cbca11b6137a1a72b90e49df",
+        "counts": {
+          "tests": 2,
+          "pass": 1,
+          "fail": 1,
+          "cancelled": 0,
+          "skipped": 0,
+          "todo": 0
+        }
+      },
+      "directed.tap": {
+        "sha256": "74885cac0f5cb817e83e105e7abf3eee6322d7d302171bdcdc1fb158283d1e38",
+        "counts": {
+          "tests": 33,
+          "pass": 33,
+          "fail": 0,
+          "cancelled": 0,
+          "skipped": 0,
+          "todo": 0
+        }
+      }
+    },
+    "full_local_matrix": {
+      "build-locks": {
+        "command": [
+          "npm",
+          "run",
+          "build:locks"
+        ],
+        "exit_code": 0,
+        "sha256": "668bbaa42960b93d2f1159a01325dca700c10fd4d5dcba01e50be1c3dbb1cc94",
+        "counts": {}
+      },
+      "check-core": {
+        "command": [
+          "npm",
+          "run",
+          "check:core"
+        ],
+        "exit_code": 0,
+        "sha256": "e3806c19fac205c687938315713a76dd23432520806fb09445e7c3857ba48d3c",
+        "counts": {}
+      },
+      "check-storage": {
+        "command": [
+          "npm",
+          "run",
+          "check:storage"
+        ],
+        "exit_code": 0,
+        "sha256": "c751b0b339ee212453e71398dabd9d25b8421f75b50f92729d86c11f9e0c6581",
+        "counts": {}
+      },
+      "coordination": {
+        "command": [
+          "npm",
+          "run",
+          "test:coordination"
+        ],
+        "exit_code": 0,
+        "sha256": "913219bfc708110e3bf8cf5d4655235befdd90651e837d5d3078cf1b4be4eac4",
+        "counts": {
+          "tests": 53,
+          "pass": 53,
+          "fail": 0,
+          "cancelled": 0,
+          "skipped": 0,
+          "todo": 0
+        }
+      },
+      "core": {
+        "command": [
+          "node",
+          "--experimental-strip-types",
+          "--test",
+          "--test-concurrency=1",
+          "--test-reporter=tap",
+          "tests/core/capabilities.test.mjs",
+          "tests/core/config.test.mjs",
+          "tests/core/context-mutations.test.mjs",
+          "tests/core/frame.test.mjs",
+          "tests/core/identity-mutations.test.mjs",
+          "tests/core/identity.test.mjs",
+          "tests/core/job-context-mutations.test.mjs",
+          "tests/core/job-context.test.mjs",
+          "tests/core/manifest-snapshot.test.mjs",
+          "tests/core/manifest.test.mjs",
+          "tests/core/proposal-data.test.mjs",
+          "tests/core/proposal.test.mjs",
+          "tests/core/roots.test.mjs",
+          "tests/core/terminal-profile.test.mjs"
+        ],
+        "exit_code": 0,
+        "sha256": "ba377e88f9e895250cd79cce98e3e7431e5739971b1b03726dba6d04493c6a97",
+        "counts": {
+          "tests": 198,
+          "pass": 198,
+          "fail": 0,
+          "cancelled": 0,
+          "skipped": 0,
+          "todo": 0
+        }
+      },
+      "storage": {
+        "command": [
+          "node",
+          "--experimental-strip-types",
+          "--test",
+          "--test-concurrency=1",
+          "--test-reporter=tap",
+          "tests/storage/bootstrap-review.test.mjs",
+          "tests/storage/inspection-snapshot.test.mjs",
+          "tests/storage/job-mutations.test.mjs",
+          "tests/storage/job-processes.test.mjs",
+          "tests/storage/jobs.test.mjs",
+          "tests/storage/retention-budget-mutations.test.mjs",
+          "tests/storage/retention-budget.test.mjs",
+          "tests/storage/root-retention-mutations.test.mjs",
+          "tests/storage/root-retention.test.mjs",
+          "tests/storage/session-store.test.mjs",
+          "tests/storage/storage-mutations.test.mjs"
+        ],
+        "exit_code": 0,
+        "sha256": "73b962cc091bbdfecbd9bed37d4a2bc33d6b1cdaf21f3731c58818c00ef0f27f",
+        "counts": {
+          "tests": 155,
+          "pass": 155,
+          "fail": 0,
+          "cancelled": 0,
+          "skipped": 0,
+          "todo": 0
+        }
+      },
+      "components": {
+        "command": [
+          "node",
+          "--test",
+          "tests/conformance/opencode/test-components.mjs",
+          "tests/conformance/opencode/test-review004.mjs"
+        ],
+        "exit_code": 0,
+        "sha256": "d375aec793666e4c7f43656a07e9adb1939a8d8fe0049b13818d7a1ff2a2d5ea",
+        "counts": {
+          "tests": 25,
+          "pass": 25,
+          "fail": 0,
+          "cancelled": 0,
+          "skipped": 0,
+          "todo": 0
+        }
+      },
+      "witness": {
+        "command": [
+          "python3",
+          "tests/conformance/opencode/test-witness.py"
+        ],
+        "exit_code": 0,
+        "sha256": "25c7a559974d929db8de6fa7d5deec106203c884cf02bfd7c94cd6f2c4754582",
+        "counts": {}
+      },
+      "check-spec": {
+        "command": [
+          "python3",
+          "scripts/check-spec.py"
+        ],
+        "exit_code": 0,
+        "sha256": "064bc4bd30e7aafc9d1d756da94ac1ba71e5d185dcab93a5ae6caa8f099d9267",
+        "counts": {}
+      },
+      "check-reference-model": {
+        "command": [
+          "python3",
+          "scripts/check-reference-model.py"
+        ],
+        "exit_code": 0,
+        "sha256": "2c4ee6b2548b1515ed4854d253914abd4764b6e85438215d06ff6dd6c83c3d27",
+        "counts": {}
+      },
+      "test-spec-check": {
+        "command": [
+          "python3",
+          "scripts/test-spec-check.py"
+        ],
+        "exit_code": 0,
+        "sha256": "849ef1c84d05854093ab5ae795caa205f162f12d3631613d5f75b20f6314ec14",
+        "counts": {}
+      },
+      "check-canonical": {
+        "command": [
+          "python3",
+          "scripts/check-canonical.py"
+        ],
+        "exit_code": 0,
+        "sha256": "a568bbcf6aae56e3cee6c2935d467169bd8349edf9558827591d1c85f6b099d8",
+        "counts": {}
+      },
+      "check-storage-contracts": {
+        "command": [
+          "python3",
+          "scripts/check-storage-contracts.py"
+        ],
+        "exit_code": 0,
+        "sha256": "79974fb4df4de22ad4d2fbd8ae03a2512640dac59bd51d04f274f98072b3b3c7",
+        "counts": {}
+      }
+    },
+    "remote_ci": "requires exact final head; recorded in PR before merge",
+    "limits": "synthetic post-close EIO, not observed hardware failure; no coordinator, SQL owner registry, quarantine release or inference"
   }
 }

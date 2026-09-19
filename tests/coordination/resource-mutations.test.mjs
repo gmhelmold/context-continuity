@@ -14,8 +14,10 @@ const cases=[
  ['init-data', "typeof initialize !== 'boolean' || ", '', 'Resources review: initialization flag must be explicitly boolean'],
  ['owner-data', "typeof ownerId !== 'string' || ", '', 'Resources review: owner identifiers are strict data without coercion'],
  ['final-path', String.raw`input.replace(/\/+$/, '') || '/'`, 'input', 'Resources review: trailing slash must not hide a symlink workspace'],
+ ['close-error', 'try { closeSync(fd); } catch { fail(); } finally { this.#onClose(); }', 'try { closeSync(fd); } finally { this.#onClose(); }', 'Resources review: an owner close failure is sanitized and its handle stays revoked'],
+ ['cleanup-error', 'if (fd !== undefined) { try { closeSync(fd); } catch { return fail(); } }', 'if (fd !== undefined) closeSync(fd);', 'Resources review: failed owner construction sanitizes cleanup close errors'],
 ];
-test('Resources proof: six positive controls reject six incorrect resource implementations',{timeout:180000},()=>{
+test('Resources proof: eight positive controls reject eight incorrect resource implementations',{timeout:180000},()=>{
  for(const [name,from,to,expected] of cases)for(const mutate of [false,true]){
   const directory=mkdtempSync(join(tmpdir(),'cc-resource-mut-'));
   try{

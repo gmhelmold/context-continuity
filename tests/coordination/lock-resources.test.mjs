@@ -174,3 +174,18 @@ test('Resources: one close failure does not prevent closing other owned locks',(
  for(const path of [f.lock,join(f.owners,id(1)+'.lock'),join(f.owners,id(2)+'.lock')])assert.equal(pythonTry(path),'acquired');
  reject(()=>a.guard());reject(()=>b.guard());reject(()=>r.guard());
 }));
+
+test('Resources review: failed owner construction sanitizes cleanup close errors',()=>fixture(f=>{
+ const r=f.open(),path=join(f.owners,id(1)+'.lock');writeFileSync(path,'',{mode:0o640});
+ const stat=lstatSync(path,{bigint:true}),identity={dev:stat.dev.toString(),ino:stat.ino.toString()};
+ closeFault(identity,()=>assert.throws(()=>r.owner(id(1),false),e=>e.code==='E_CAPABILITY'&&!e.message.includes('private fixture')));
+ chmodSync(path,0o600);r.guard();const owner=r.owner(id(1),false);
+ assert.equal(owner.tryLock(),true);owner.close();assert.equal(pythonTry(path),'acquired');
+}));
+test('Resources: a close error never retries a revoked descriptor',()=>fixture(f=>{
+ const r=f.open(),owner=r.owner(id(1),true),path=join(f.owners,id(1)+'.lock');owner.tryLock();
+ closeFault(owner.identity,()=>{
+  reject(()=>owner.close());owner.close();owner.unlock();reject(()=>owner.guard());r.close();
+ });
+ assert.equal(pythonTry(path),'acquired');reject(()=>r.guard());
+}));

@@ -48,7 +48,7 @@ class PrivateDescriptor {
       fd = openSync(path, flags | (create ? constants.O_CREAT | constants.O_EXCL : 0), 0o600);
       return new PrivateDescriptor(path, fd, directory, parentGuard, onClose);
     } catch (cause) {
-      if (fd !== undefined) closeSync(fd);
+      if (fd !== undefined) { try { closeSync(fd); } catch { return fail(); } }
       if (cause instanceof StorageError) throw cause;
       return fail();
     }
@@ -86,7 +86,9 @@ class PrivateDescriptor {
   close(): void {
     const fd = this.#fd; this.#fd = null; this.#held = false;
     if (fd !== null) {
-      try { closeSync(fd); } finally { this.#onClose(); } // Never retry a potentially reused descriptor number.
+      // Revoke before close, sanitize failure, and always remove the child handle.
+      // Never retry a potentially reused descriptor number.
+      try { closeSync(fd); } catch { fail(); } finally { this.#onClose(); }
     }
   }
 }
