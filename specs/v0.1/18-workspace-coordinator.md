@@ -32,6 +32,8 @@ O teto cobre somente esses dois tipos de envelope em meta, não os demais campos
 
 `withWorkspaceLock(callback)` adquire uma vez e entrega WorkspaceHold imutável ligado à instância, workspace e seção. `assertWorkspaceHold(workspace,hold)` aceita somente handle local emitido e ainda ativo, revalidando recursos e owner. Cópia/JSON, outro workspace, uso após retorno/erro e reentrância são recusados. A seção não expõe banco/path/fd e não é AttemptPermit.
 
+A própria fronteira pública de `assertWorkspaceHold` sanitiza falhas inesperadas da guarda com `storageFailure`, mesmo quando o callback captura o erro antes do catch externo da seção. Erros de contrato já classificados são preservados; exceções cruas do driver não são expostas. A chamada que falha não devolve autoridade nem libera o lock da seção. Após falha transitória, outra chamada explícita precisa executar a validação completa; não há retry automático, adoção de identidade ou renovação do hold, que continua expirando ao sair da seção.
+
 Callbacks precisam do protótipo Function local ordinário; async/generator, inclusive bound, são recusados antes de invocar. Funções de outro realm não são presumidas compatíveis. Promise/thenable retornado é recusado sem aguardar; accessors then não são invocados. Handle é revogado em finally antes da liberação. Callbacks são código interno autorizado, não sandbox: a API não desfaz efeitos externos nem impede trabalho arbitrário que o chamador tenha iniciado. Ela não mantém transação SQLite durante callback; serviços futuros podem iniciar sua própria transação sob o hold. close durante seção é recusado sem revogar a seção vigente.
 
 ## Diagnóstico e aposentadoria
