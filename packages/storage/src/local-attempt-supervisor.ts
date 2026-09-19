@@ -1,4 +1,4 @@
-/** SPEC-19 local task lifecycle. No HTTP, tools, retries, or cross-process stop claim. */
+/** SPEC-19/20 local task lifecycle. No HTTP, tools, retries, or process-death claim. */
 import { types } from 'node:util';
 import { canonical } from '../../core/src/canonical.mjs';
 import { parseJobContextRef } from '../../core/src/job-context.ts';
@@ -9,13 +9,16 @@ import type { AttemptResult, StoredJob, AttemptRef } from './job-records.ts';
 import { SqliteSessionStore } from './session-store.ts';
 import type { OwnerLease } from './session-store.ts';
 import { WorkspaceCoordinator } from './workspace-coordinator.ts';
+import type { AttemptOwnership } from './attempt-owner.ts';
+import { observeLocalCompletion } from './local-completion.ts';
+import type { LocalStopObservation } from './local-completion.ts';
 import { StorageError, storageFailure } from './errors.ts';
 
 // The adapter's Promise must include cleanup; resolving it is its local completion contract.
 type WithoutStopped<T> = T extends unknown ? Omit<T, 'local_stopped'> : never;
 export type LocalAttemptOutcome = WithoutStopped<AttemptResult>;
 export type LocalAttemptOperation = (signal: AbortSignal) => Promise<LocalAttemptOutcome>;
-type Task = { attempt: AttemptRef; controller: AbortController; lease: OwnerLease; expected: JobContextRef };
+type Task = { attempt: AttemptRef; controller: AbortController; lease: OwnerLease; expected: JobContextRef; ownership: AttemptOwnership };
 const construction = Symbol('LocalAttemptSupervisor');
 function outcome(value: unknown): AttemptResult {
   const fields = ['kind','text','finish','parent_input_tokens','candidate_input_tokens','status','retry_after_ms'];
@@ -57,7 +60,11 @@ export class LocalAttemptSupervisor {
     const owned = Object.freeze({ binding: session.binding, owner_id: session.owner_id,
       owner_fence: session.owner_fence, lease_until_ms: session.lease_until_ms! });
     const attempt = this.#coordinator.withWorkspaceLock(hold => this.store.reserveJobAttempt(owned, expected, budget, hold));
-    const task: Task = { attempt, lease: owned, expected, controller: new AbortController() };
+    // The same identity was bound atomically with the reservation. Storage rechecks it on receipt.
+    const ownership: AttemptOwnership = Object.freeze({ schema_version: 1, binding: owned.binding, job: expected, attempt,
+      session_owner_id: owned.owner_id, owner_fence: owned.owner_fence,
+      storage_owner_id: this.#coordinator.owner_id, process_instance: this.#coordinator.process_instance });
+    const task: Task = { attempt, lease: owned, expected, ownership, controller: new AbortController() };
     this.#tasks.set(session.binding.session_key, task);
     try {
       this.#coordinator.withWorkspaceLock(hold => this.store.markJobAttemptDispatched(owned, expected, attempt, hold));
@@ -79,22 +86,20 @@ export class LocalAttemptSupervisor {
   }
   async #perform(task: Task, operation: LocalAttemptOperation): Promise<StoredJob> {
     let result: AttemptResult, localStopped = false;
+    let observation: LocalStopObservation | undefined;
     try {
       const pending = operation(task.controller.signal);
       if (!types.isPromise(pending)) throw new StorageError('E_CAPABILITY', 'local operation must return a Promise');
-      // Observe the native Promise, not an arbitrary thenable or overridden then.
-      // Wrap its value so observation itself does not assimilate another value.
-      const settled = await new Promise<{ fulfilled: boolean; value: unknown }>(resolve => {
-        Promise.prototype.then.call(pending,
-          (value: unknown) => resolve({ fulfilled: true, value }),
-          () => resolve({ fulfilled: false, value: undefined }));
-      });
+      const settled = await observeLocalCompletion(task.ownership, pending);
       localStopped = true;
+      observation = settled.observation;
       if (!settled.fulfilled) throw new StorageError('E_CAPABILITY', 'local operation rejected');
       result = outcome(settled.value);
     } catch { result = Object.freeze({ kind: 'aborted' as const, local_stopped: localStopped }); }
     try {
       return this.#coordinator.withWorkspaceLock(hold => {
+        // This records only a fact from the original participant, not publication authority.
+        if (observation !== undefined) this.store.recordObservedLocalCompletion(task.lease, task.expected, task.attempt, observation, hold);
         // Renewal may extend time, but cannot change the admitted generation/owner.
         const session = this.store.readSession(task.lease.binding);
         if (!session || session.owner_id !== task.lease.owner_id || session.owner_fence !== task.lease.owner_fence || session.lease_until_ms === null) {
