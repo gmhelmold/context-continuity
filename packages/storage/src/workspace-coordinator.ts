@@ -25,6 +25,7 @@ export type StorageOwner = Readonly<{
 declare const holdBrand: unique symbol;
 export type WorkspaceHold = Readonly<{ workspace: WorkspaceIdentity; owner_id: string; process_instance: string; [holdBrand]: true }>;
 export type OwnerInspection = Readonly<{ state: 'absent' | 'held' | 'retired'; owner: StorageOwner | null }>;
+export type SourcePinRecovery = Readonly<{ state: 'held' | 'released'; pin: SourcePin }>;
 const holds = new WeakMap<object, () => void>();
 const equal = (a: unknown, b: unknown): boolean => canonical(a) === canonical(b);
 function capability(): never { throw new StorageError('E_CAPABILITY', 'coordinator identity unavailable or inconsistent'); }
@@ -240,6 +241,32 @@ export class WorkspaceCoordinator {
     return this.#locked(() => transaction(this.#handle, true,
       () => releaseSourcePin(this.#handle.db, binding, id, { owner_id: this.owner_id, process_instance: this.process_instance }),
       () => this.#guard()));
+  }
+  /** Reconcile one inline pin only after inspecting its original storage owner.
+   * No process-death claim, owner retirement, job transition or content deletion. */
+  recoverSourcePin(bindingInput: unknown, idInput: unknown): SourcePinRecovery {
+    const binding = pinBinding(bindingInput, this.workspace), id = entityId(idInput);
+    return this.#locked(() => {
+      let recoveryFile: OwnerFile | undefined;
+      try {
+        return transaction(this.#handle, true, () => {
+          const pin = loadSourcePin(this.#handle.db, binding, id);
+          if (!pin) throw new StorageError('E_CONFLICT', 'source pin not found');
+          const original = readOwner(this.#handle, pin.owner_id);
+          if (!original || original.process_instance !== pin.process_instance) return capability();
+          if (pin.state === 'released') return Object.freeze({ state: 'released' as const, pin });
+          if (original.state !== 'active') throw new StorageError('E_STORAGE', 'active pin has retired owner');
+          // The current participant owns a live handle; never inspect it reentrantly.
+          if (original.owner_id === this.owner_id) return Object.freeze({ state: 'held' as const, pin });
+          recoveryFile = this.#resources.owner(original.owner_id, false);
+          if (!sameFile(recoveryFile.identity, original.identity)) return capability();
+          if (!recoveryFile.tryLock()) return Object.freeze({ state: 'held' as const, pin });
+          // Reuse the exact owner-scoped release; the recoveryFile lock lasts through COMMIT.
+          releaseSourcePin(this.#handle.db, binding, id, original);
+          return Object.freeze({ state: 'released' as const, pin: loadSourcePin(this.#handle.db, binding, id)! });
+        }, () => { this.#guard(); recoveryFile?.guard(); });
+      } finally { recoveryFile?.close(); }
+    });
   }
   /** Retirement is only storage-record reconciliation, never permission to clean a job. */
   retireOwner(idInput: unknown): OwnerInspection {

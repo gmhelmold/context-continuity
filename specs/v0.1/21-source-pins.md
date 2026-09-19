@@ -1,6 +1,6 @@
-# SPEC-21 — pins duráveis de fontes inline (WP-02/E1–E2)
+# SPEC-21 — pins duráveis de fontes inline (WP-02/E1–E3)
 
-Refina SPEC-03/14/18. E1 registra reservas de leitura/exportação sob o coordenador existente; E2 acrescenta leitura síncrona verificada de uma fonte inline. Não implementa leitura assíncrona, blob externo, GC ou limpeza cross-owner. O ciclo persistido do pin e a cópia de bytes verificada não constituem o reader/exportador completo.
+Refina SPEC-03/14/18. E1 registra reservas de leitura/exportação sob o coordenador existente; E2 acrescenta leitura síncrona verificada de uma fonte inline. E3 acrescenta recuperação explícita de um pin cujo participante original não detém mais seu lock verificado. Não implementa leitura assíncrona, blob externo ou GC. O ciclo persistido do pin e a cópia de bytes verificada não constituem o reader/exportador completo.
 
 ## API e identidade
 
@@ -20,7 +20,7 @@ Limite deste perfil: 4096 reservas read/export ativas por workspace, incluindo r
 
 Liberação não exige que a fonte continue capturada nem que a sessão ainda exista/tenha a política antiga: limpeza do próprio pin continua possível após exclusão ou mudança de política, usando o binding que foi fixado na admissão. Isso não autoriza retornar dados antigos. Novo pin ou replay ativo continua recusando tombstone ou política divergente.
 
-Close ou crash do participante não apaga pins. As reservas continuam impedindo sua aposentadoria automática pelo coordenador. Outro participante não libera pins por TTL, idade, lock livre ou recibo de término de job. Reconciliação cross-owner e readers que mantêm handles de conteúdo terão contratos próprios. Os envelopes liberados permanecem como histórico/tombstones pequenos; não há coleta automática deles neste corte.
+Close ou crash do participante não apaga pins. As reservas continuam impedindo sua aposentadoria automática pelo coordenador. Outro participante não libera pins por TTL, idade, lock livre sem identidade verificada ou recibo de término de job. A exceção de recuperação segue integralmente o protocolo E3 abaixo; readers que mantêm handles de conteúdo terão contratos próprios. Os envelopes liberados permanecem como histórico/tombstones pequenos; não há coleta automática deles neste corte.
 
 ## Leitura verificada E2
 
@@ -42,4 +42,18 @@ Não encerra nem consome o pin: a liberação permanece explícita. Sucesso/falh
 
 **Definition of Done:** testes e matriz completa nos pins existentes, logs do head conferidos, diff revisado, árvores testada/integrada iguais, issue #5 atualizada sem concluir WP-02 ou GC. O [registro E2](../../docs/implementation/WP-02-E-PINNED-READ.md) define os cenários e a origem das evidências.
 
-**Invariants:** sem exclusão de conteúdo, sem estorno de tokens, sem inferência, sem liveness por TTL, sem permissões por JSON, sem desbloqueio cross-owner, sem alteração do DDL. Leitura não consome pin nem fabrica autorização para usos posteriores.
+**Invariants:** sem exclusão de conteúdo, sem estorno de tokens, sem inferência, sem liveness por TTL, sem permissões por JSON, sem liberação cross-owner fora do protocolo E3, sem alteração do DDL. Leitura não consome pin nem fabrica autorização para usos posteriores.
+
+## Recuperação explícita E3
+
+`WorkspaceCoordinator.recoverSourcePin(binding,id): SourcePinRecovery` opera sobre exatamente um pin inline read/export já identificado. Retorna `{state:"held"|"released",pin}` imutável. Pin desconhecido é E_CONFLICT; binding divergente é E_SCOPE; registro/reserva inválidos são E_STORAGE. Não enumera o histórico nem varre BLOBs. A liberação normal pelo emissor continua em `releaseSourcePin`.
+
+Ordem: workspace flock -> BEGIN IMMEDIATE -> validar pin/reserva/owner e identidade persistida -> abrir SEM criar o arquivo original -> comparar dev/ino -> tentar flock exclusivo SEM esperar -> liberação da reserva + tombstone released -> guardas de ambos os participantes/paths -> COMMIT -> fechar somente o descritor de inspeção -> liberar workspace. Self ou lock ocupado retorna held sem alterar reserva. Falha de inspeção/identidade é recusa, nunca autorização baseada em tempo. Active pin associado a owner retired é inconsistência, não prova para limpeza.
+
+A aquisição do lock original tem significado somente no protocolo do participante de storage: ele não reutiliza identidade e conserva o lock enquanto pode acessar seus recursos. Não prova morte geral do processo nem término de um job. Um participante fechado pode continuar existindo no processo, mas seu handle foi revogado. Não recuperar subprocessos/handles externos que não participem desse protocolo.
+
+Somente o pin solicitado passa a released. Outros pins, reservas de staging, owners, conteúdo, arquivos, jobs, runs, recibos, políticas e custos permanecem intactos. O owner original não é aposentado automaticamente; `retireOwner` continua separado e recusa qualquer reserva restante. Não há reutilização do UUID liberado. Repetição de pin já released é diagnóstico idempotente e não exige tocar arquivo de owner que não concede mais proteção àquela reserva.
+
+Como na liberação normal, a fonte pode ter sido excluída, a política alterada ou a sessão removida: usa-se o binding original para remover proteção obsoleta, sem ler/restaurar os dados. A evidência não é um permit de conteúdo. Um erro antes de COMMIT reverte linha/envelope; erro percebido depois pode ser resolvido pela repetição idempotente. O lock inspecionado permanece retido até concluir a transação. Falha de cleanup não reverte commit já confirmado e deve ser reportada.
+
+**Aceite E3:** lock ocupado e próprio preservados; identidade ausente/substituída recusada; metadados/owner inconsistentes não liberam; uma reserva por chamada; repetição e fronteiras de COMMIT; nenhuma releitura de conteúdo, aposentadoria implícita, alteração de job ou estorno. Testes reais e contraprovas são executados somente no Actions. Registro: [WP-02/E3](../../docs/implementation/WP-02-E-PIN-RECOVERY.md).
