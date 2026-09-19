@@ -287,5 +287,298 @@
   "new_supervisor_process_and_transport_tests": "not_run",
   "live_inference": false,
   "cross_process_stop_reconciliation": false,
-  "remote_ci": "not_run_in_this_local_record"
+  "remote_ci": "not_run_in_this_local_record",
+  "acceptance_review": {
+    "base_head": "a7d3717903d4ba2ab60835a184fdc2d904401bd4",
+    "status": "CHANGES_REQUIRED",
+    "production_changed": false,
+    "fixes_applied": false,
+    "node": "22.17.1",
+    "typescript": "5.9.3",
+    "new_cases": 17,
+    "new_behavior_cases": 8,
+    "new_process_cases": 4,
+    "new_mutation_cases": 5,
+    "failures": [
+      "Supervisor review: a non-Promise adapter cannot publish a successful result",
+      "Supervisor review: failed dispatch reconciles the unused reservation without invoking adapter",
+      "Supervisor review: invalid return leaves local completion unknown",
+      "Supervisor review: synchronous adapter throw cannot prove local cleanup",
+      "Supervisor review: a foreign thenable is not assimilated as a completion signal"
+    ],
+    "historical_runs": {
+      "s01-s02-current-before.tap": {
+        "sha256": "5342f91b248a8dd79d7cdb6c0f7bd80ccc96ce714732b5804a11d80d3dd20d43",
+        "counts": {
+          "tests": 2,
+          "pass": 0,
+          "fail": 2,
+          "cancelled": 0,
+          "skipped": 0,
+          "todo": 0
+        }
+      },
+      "supervisor-expanded-before.tap": {
+        "sha256": "98b24a06b34b44c3a3c42a6c234d6ee9e3d6450257b03e2636678332e1810828",
+        "counts": {
+          "tests": 30,
+          "pass": 24,
+          "fail": 6,
+          "cancelled": 0,
+          "skipped": 0,
+          "todo": 0
+        }
+      },
+      "supervisor-two-sessions.tap": {
+        "sha256": "8a27115459ecf8e69d10f34b24668a4ee1e3e26c6a63ab7b2bbd035c09f02d0f",
+        "counts": {
+          "tests": 1,
+          "pass": 1,
+          "fail": 0,
+          "cancelled": 0,
+          "skipped": 0,
+          "todo": 0
+        }
+      },
+      "supervisor-processes-first.tap": {
+        "sha256": "3c080c4e080c7f7f326424f68dcf8bf9b2b26fea25be1d2e704228189b77d54d",
+        "counts": {
+          "tests": 4,
+          "pass": 4,
+          "fail": 0,
+          "cancelled": 0,
+          "skipped": 0,
+          "todo": 0
+        }
+      },
+      "supervisor-mutations-first.tap": {
+        "sha256": "99b21fc03edd1cd19bb5b161b4736dcbd878de85d68144c128640c537b5943ac",
+        "counts": {
+          "tests": 5,
+          "pass": 4,
+          "fail": 1,
+          "cancelled": 0,
+          "skipped": 0,
+          "todo": 0
+        }
+      },
+      "supervisor-mutations-final.tap": {
+        "sha256": "12e04a886d6fc2aa94cbd0aa2b476644c450e128f144f1e9c81b52eacb9c9972",
+        "counts": {
+          "tests": 5,
+          "pass": 5,
+          "fail": 0,
+          "cancelled": 0,
+          "skipped": 0,
+          "todo": 0
+        }
+      }
+    },
+    "local_validation": {
+      "check-core": {
+        "command": [
+          "npm",
+          "run",
+          "check:core"
+        ],
+        "exit_code": 0,
+        "counts": {},
+        "sha256": "e3806c19fac205c687938315713a76dd23432520806fb09445e7c3857ba48d3c"
+      },
+      "check-storage": {
+        "command": [
+          "npm",
+          "run",
+          "check:storage"
+        ],
+        "exit_code": 0,
+        "counts": {},
+        "sha256": "c751b0b339ee212453e71398dabd9d25b8421f75b50f92729d86c11f9e0c6581"
+      },
+      "build": {
+        "command": [
+          "npm",
+          "run",
+          "build:locks"
+        ],
+        "exit_code": 0,
+        "counts": {},
+        "sha256": "668bbaa42960b93d2f1159a01325dca700c10fd4d5dcba01e50be1c3dbb1cc94"
+      },
+      "coordination": {
+        "command": [
+          "node",
+          "--experimental-strip-types",
+          "--test",
+          "--test-concurrency=1",
+          "--test-reporter=tap",
+          "tests/coordination/attempt-supervisor.test.mjs",
+          "tests/coordination/coordinator-mutations.test.mjs",
+          "tests/coordination/coordinator-processes.test.mjs",
+          "tests/coordination/lock-resources.test.mjs",
+          "tests/coordination/native-locks.test.mjs",
+          "tests/coordination/native-mutations.test.mjs",
+          "tests/coordination/owner-boundaries.test.mjs",
+          "tests/coordination/resource-mutations.test.mjs",
+          "tests/coordination/supervisor-mutations.test.mjs",
+          "tests/coordination/supervisor-processes.test.mjs",
+          "tests/coordination/workspace-coordinator.test.mjs"
+        ],
+        "exit_code": 1,
+        "counts": {
+          "tests": 140,
+          "pass": 135,
+          "fail": 5,
+          "cancelled": 0,
+          "skipped": 0,
+          "todo": 0
+        },
+        "sha256": "866b5c1d2ea91b80d98bff0010369410e7567f09e8613a2af89ae0188a1601a8"
+      },
+      "storage": {
+        "command": [
+          "node",
+          "--experimental-strip-types",
+          "--test",
+          "--test-concurrency=1",
+          "--test-reporter=tap",
+          "tests/storage/bootstrap-review.test.mjs",
+          "tests/storage/inspection-snapshot.test.mjs",
+          "tests/storage/job-mutations.test.mjs",
+          "tests/storage/job-processes.test.mjs",
+          "tests/storage/jobs.test.mjs",
+          "tests/storage/retention-budget-mutations.test.mjs",
+          "tests/storage/retention-budget.test.mjs",
+          "tests/storage/root-retention-mutations.test.mjs",
+          "tests/storage/root-retention.test.mjs",
+          "tests/storage/session-store.test.mjs",
+          "tests/storage/storage-mutations.test.mjs"
+        ],
+        "exit_code": 0,
+        "counts": {
+          "tests": 155,
+          "pass": 155,
+          "fail": 0,
+          "cancelled": 0,
+          "skipped": 0,
+          "todo": 0
+        },
+        "sha256": "99dc46d7b1fa7b50861b2eb5e48a9ab6da793f03e72177d0482da0bd2c8715c4"
+      },
+      "core": {
+        "command": [
+          "node",
+          "--experimental-strip-types",
+          "--test",
+          "--test-concurrency=1",
+          "--test-reporter=tap",
+          "tests/core/capabilities.test.mjs",
+          "tests/core/config.test.mjs",
+          "tests/core/context-mutations.test.mjs",
+          "tests/core/frame.test.mjs",
+          "tests/core/identity-mutations.test.mjs",
+          "tests/core/identity.test.mjs",
+          "tests/core/job-context-mutations.test.mjs",
+          "tests/core/job-context.test.mjs",
+          "tests/core/manifest-snapshot.test.mjs",
+          "tests/core/manifest.test.mjs",
+          "tests/core/proposal-data.test.mjs",
+          "tests/core/proposal.test.mjs",
+          "tests/core/roots.test.mjs",
+          "tests/core/terminal-profile.test.mjs"
+        ],
+        "exit_code": 0,
+        "counts": {
+          "tests": 198,
+          "pass": 198,
+          "fail": 0,
+          "cancelled": 0,
+          "skipped": 0,
+          "todo": 0
+        },
+        "sha256": "00526472ff5e5fbe9c1e4abf954156a78c9d271d8fc604e8d9285635db0601f7"
+      },
+      "components": {
+        "command": [
+          "node",
+          "--test",
+          "tests/conformance/opencode/test-components.mjs",
+          "tests/conformance/opencode/test-review004.mjs"
+        ],
+        "exit_code": 0,
+        "counts": {
+          "tests": 25,
+          "pass": 25,
+          "fail": 0,
+          "cancelled": 0,
+          "skipped": 0,
+          "todo": 0
+        },
+        "sha256": "8ffa322063b247722c757b24a0fc3afaa43d2c1aca4ffc173fbb16d099f53cf4"
+      },
+      "witness": {
+        "command": [
+          "python3",
+          "tests/conformance/opencode/test-witness.py"
+        ],
+        "exit_code": 0,
+        "counts": {},
+        "sha256": "822ac7d087221fc1b947406e26db9c55f8a002203755bd7e5a2cc62d74cf66b3"
+      },
+      "check-spec": {
+        "command": [
+          "python3",
+          "scripts/check-spec.py"
+        ],
+        "exit_code": 0,
+        "counts": {},
+        "sha256": "c15f2c08d1030c2555df25623da0388d209518599f85dca873803438898ae1de"
+      },
+      "check-reference-model": {
+        "command": [
+          "python3",
+          "scripts/check-reference-model.py"
+        ],
+        "exit_code": 0,
+        "counts": {},
+        "sha256": "0f7ddb596f75ca39486ac8f870dd32f01e6c9b337f60def01068e9b37c867e80"
+      },
+      "test-spec-check": {
+        "command": [
+          "python3",
+          "scripts/test-spec-check.py"
+        ],
+        "exit_code": 0,
+        "counts": {},
+        "sha256": "849ef1c84d05854093ab5ae795caa205f162f12d3631613d5f75b20f6314ec14"
+      },
+      "check-canonical": {
+        "command": [
+          "python3",
+          "scripts/check-canonical.py"
+        ],
+        "exit_code": 0,
+        "counts": {},
+        "sha256": "a568bbcf6aae56e3cee6c2935d467169bd8349edf9558827591d1c85f6b099d8"
+      },
+      "check-storage-contracts": {
+        "command": [
+          "python3",
+          "scripts/check-storage-contracts.py"
+        ],
+        "exit_code": 0,
+        "counts": {},
+        "sha256": "c1f7d41f8d458f8ac91fb18c2e34654ab36f7369ddb48fe26a1ba5ffd9948818"
+      }
+    },
+    "remote_ci": "not represented by local validation",
+    "source_sha256": {
+      "packages/storage/src/local-attempt-supervisor.ts": "861a0562556406fbf4e86a94927a92d2ad5e5d1f40955531143b3b05d5170e5c",
+      "packages/storage/src/attempt-owner.ts": "04b933921ed209a2d965986c62702c4a0cfcc48411a67af733d2b5d00af80348",
+      "packages/storage/src/session-store.ts": "e5cd6857e528f37721b795e921e32fb12723fad924a0f29ae78193403d730c48",
+      "tests/coordination/attempt-supervisor.test.mjs": "684a2623f5b3b67e1ec0012a817f61ee3c0185dd39ad671036e194d0de8929bd",
+      "tests/coordination/supervisor-processes.test.mjs": "0c1de343d151972d8b03a9d453f4c56e2a36d54013fde651d4dd9ebb4057813e",
+      "tests/coordination/supervisor-mutations.test.mjs": "e4a9fe9b3ac9d56e2c5249fb0c63f01e71a7e27ac21590332b10977176112aaf"
+    }
+  }
 }

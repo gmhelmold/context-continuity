@@ -49,3 +49,10 @@ Os dois casos são testes normais, sem skip ou expected failure. A gravação co
 Fontes primárias: [AbortController na versão fixada de Node](https://nodejs.org/download/release/v22.17.1/docs/api/globals.html#class-abortcontroller), [transações SQLite](https://www.sqlite.org/lang_transaction.html). AbortSignal notifica cancelamento; não certifica fechamento de recursos.
 
 Rastreamento do bloqueio de integração: [issue #35](https://github.com/gmhelmold/context-continuity/issues/35), vinculada à [WP-02 / #5](https://github.com/gmhelmold/context-continuity/issues/5).
+
+
+## Refinamento do aceite de S01/S02
+
+O aceite exige testar status E_PROTOCOL/failed separadamente de prova local: retorno não-Promise, thenable arbitrário e throw síncrono não podem declarar `local_stopped=true`. Rejeição de uma Promise real só pode representar encerramento pelo protocolo do adaptador confiável, cuja vida inclui cleanup. Testar explicitamente ausência de execução de getter then em retornos fora do protocolo. Ver [util.types.isPromise no runtime fixado](https://nodejs.org/download/release/v22.17.1/docs/api/util.html#utiltypesispromisevalue). Essas verificações de contrato não tornam código arbitrário seguro nem comprovam encerramento remoto.
+
+Os quatro ensaios de processo e os cinco pares controle/mutante da continuação verificam o componente real atual. Não substituir os controles negativos específicos dos fixes ausentes por essas campanhas. Após corrigir S01/S02, repetir também as regressões ampliadas e criar as contraprovas de remoção de cada correção, mantendo todos os limites e o estado de implementação explícitos.

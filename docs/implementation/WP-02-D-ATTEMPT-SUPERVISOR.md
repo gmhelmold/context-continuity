@@ -46,3 +46,29 @@ Rastreamento do bloqueio de integração: [issue #35](https://github.com/gmhelmo
 macOS Intel / Node 22.17.1 / TypeScript 5.9.3. Coordenação: **121/123**, exatamente S01/S02 reprovados. Os 99 casos anteriores passaram; os 24 novos terminaram 22/24. Storage e core, componentes, testemunha e verificadores documentais têm códigos/contagens no JSON; não transformar contagem parcial ou timeout em aprovação. Typecheck de storage foi repetido depois de acrescentar os testes de tipos. Nenhum CI remoto é alegado por este registro local.
 
 O estágio permanece **CHANGES REQUIRED**, incluindo campanhas negativas novas e testes de processo/transporte ainda não executados para o supervisor. As campanhas anteriores permanecem testes das camadas que lhes correspondem, não prova de supervisão completa.
+
+
+## Continuação de verificação de S01/S02
+
+A continuação partiu do head `a7d3717903d4ba2ab60835a184fdc2d904401bd4` do PR #36. A edição de produção foi novamente bloqueada antes de executar, inclusive em repetição idêntica; o módulo foi conferido igual ao head. Esta rodada modifica somente testes e seus registros, sem implementação alternativa ou patch de correção aplicado por outro caminho. S01/S02 continuam **CHANGES REQUIRED**.
+
+A regressão original de S01 verificava status/proposta, mas não a ausência de prova de parada. Três casos adicionais exigem `local_stopped=false` para retorno sem Promise e exceção síncrona, e recusam assimilação de thenable arbitrário. São três falhas adicionais do mesmo limite S01, não três novas issues. Uma Promise rejeitada, depois de seu cleanup controlado terminar, continua sendo um controle positivo distinto. O teste de lease expirado durante falha de dispatch conserva a reserva e exige recuperação explícita; não finge que todo erro é cancelável.
+
+Dois casos de controle completam separação de sessões e observação da ordem de cancelamento. Outro examina a associação durável ANTES da admissão de dispatch. Nenhuma assertion dos 24 casos publicados anteriormente foi removida ou relaxada.
+
+`supervisor-processes.test.mjs` acrescenta quatro ensaios com SQLite e filhos próprios: antes/depois do commit de reserva, cancelamento com operação ainda pendente e resultado confirmado. O processo pai observa a barreira antes de encerrar somente seu filho. A reabertura conserva registros, contadores e número de invocações. A recuperação é explícita, não refaz rede, mantém quarantine para execução desconhecida e não cria capítulos. Estes testes NÃO implementam nem homologam liberação de quarentena cross-owner, transporte HTTP ou queda de energia.
+
+`supervisor-mutations.test.mjs` contém cinco pares controle/mutante em cópias descartáveis: associação ausente, digest ignorado, metadado inválido tratado como legado, sinal anterior ao cancelamento persistido e confirmação de parada prematura. Todos exigem um teste selecionado e ERR_ASSERTION; erro de preparação ou timeout não é detecção. Não são ainda contraprovas da remoção dos fixes S01/S02, pois esses fixes continuam ausentes.
+
+**Erros das fixtures preservados:** o primeiro controle de duas sessões passou campos gerados a createJobContext; a fixture foi corrigida para passar somente SnapshotFields. Na primeira campanha, a associação omitida era recusada pelo dispatch antes de alcançar uma assertion. Um novo teste observa a associação antes do dispatch, sem relaxar a classificação das falhas da campanha. O controle correto e a cópia incorreta agora divergem na assertion prevista.
+
+Resultados e hashes da continuação ficam no campo `acceptance_review` do JSON de evidências. Os resultados anteriores 18/18 e 121/123 são históricos, não a contagem ampliada. O gate não é aprovado por acrescentar provas: os defeitos de produção permanecem.
+
+
+### Resultado consolidado da continuação
+
+Mac Intel / Node 22.17.1 / TypeScript 5.9.3: **135/140 em coordenação**, com cinco assertions vermelhas (quatro sobre S01 e uma sobre S02); **155/155 storage**, **198/198 core**, **25/25 componentes**, **4/4 testemunha**, build, typechecks e cinco verificadores documentais aprovados. Fonte de produção não foi alterada. Os 17 casos acrescentados são oito comportamentos/regressões, quatro processos e cinco pares de controle/mutante (cada par é um teste, não dois). Sem skip/todo/cancelled. Os 24 testes publicados antes desta continuação continuam byte a byte como prefixo do arquivo ampliado.
+
+As três regressões novas do S01 não elevam o número de issues: detalham o mesmo defeito de validação/término. A campanha nova exige cinco controles corretos e cinco cópias incorretas falhando na assertion esperada. As cópias descartáveis não alteram o checkout. Não foram executados transporte HTTP real, provider pago ou recuperação cross-process que libere quarentena. A fase 121/123 acima é histórica e esta matriz não é aprovação do incremento.
+
+Continuidade obrigatória: corrigir S01/S02 no PR #36, demonstrar que nenhuma ausência de Promise vira stopped, testar reconciliação autorizada/recusada e acrescentar os mutantes da remoção dos fixes. Não encerrar #35/#5 nem integrar enquanto as regressões permanecerem vermelhas.

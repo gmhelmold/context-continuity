@@ -200,3 +200,96 @@ test('Supervisor: an invalid ownership envelope is refused rather than treated a
   reject(()=>f.store.readAttemptOwnership(f.b,f.job.ref,a.ref),'E_STORAGE');
  }
 }));
+
+// S01 acceptance must include the absence of a local-completion observation.
+test('Supervisor review: invalid return leaves local completion unknown',()=>supervised(async f=>{
+ let signal;const job=await f.supervisor.start(f.lease,f.job.ref,amount,s=>{signal=s;return result();});
+ assert.equal(job.attempts[0].local_stopped,false);
+ assert.equal(job.attempts[0].local_state,'quarantine');assert.equal(job.attempts[0].remote_state,'unknown');
+ assert.equal(signal.aborted,true);assert.equal(job.proposal,null);
+ assert.equal(job.attempts[0].input_reserved,amount.input_tokens);
+}));
+test('Supervisor review: synchronous adapter throw cannot prove local cleanup',()=>supervised(async f=>{
+ const job=await f.supervisor.start(f.lease,f.job.ref,amount,()=>{throw Error('private synchronous fixture');});
+ assert.equal(job.status,'failed');assert.equal(job.attempts[0].local_stopped,false);
+ assert.equal(job.attempts[0].local_state,'quarantine');assert.equal(job.retry,null);
+ assert.equal(JSON.stringify(job).includes('private synchronous fixture'),false);
+}));
+test('Supervisor review: a foreign thenable is not assimilated as a completion signal',()=>supervised(async f=>{
+ let reads=0;
+ const job=await f.supervisor.start(f.lease,f.job.ref,amount,()=>({get then(){reads++;return resolve=>resolve(result());}}));
+ assert.equal(reads,0,'a non-Promise then accessor must not be executed');
+ assert.equal(job.status,'failed');assert.equal(job.attempts[0].local_stopped,false);assert.equal(job.proposal,null);
+}));
+test('Supervisor: rejected Promise records stop only after its cleanup has settled',()=>supervised(async f=>{
+ const d=deferred();let observed=false;
+ const done=f.supervisor.start(f.lease,f.job.ref,amount,async()=>{try{return await d.promise;}finally{observed=true;}});
+ try{
+  const cancelled=f.supervisor.cancel(f.lease,f.job.ref);assert.equal(observed,false);
+  assert.equal(cancelled.attempts[0].local_stopped,false);reject(()=>f.supervisor.close(),'E_CONFLICT');
+ }finally{d.reject(Error('private pending cleanup'));}
+ const job=await done;assert.equal(observed,true);assert.equal(job.status,'cancelled');
+ assert.equal(job.attempts[0].local_stopped,true);assert.equal(job.attempts[0].remote_state,'unknown');
+}));
+test('Supervisor: failed dispatch with an expired lease preserves its reservation without invocation',()=>supervised(async f=>{
+ const old=DatabaseSync.prototype.prepare;let injected=0,calls=0;
+ DatabaseSync.prototype.prepare=function(q){
+  const st=old.call(this,q);
+  if(q==='UPDATE attempts SET state=? WHERE session_key=? AND attempt_id=? AND state=?'){
+   const run=st.run;st.run=function(...args){if(args[0]==='dispatched'){injected++;f.advance(30001);throw Error('synthetic write failure after lease expiry');}return run.apply(this,args);};
+  }return st;
+ };
+ try{await rejects(f.supervisor.start(f.lease,f.job.ref,amount,async()=>{calls++;return result();}),'E_STORAGE');}
+ finally{DatabaseSync.prototype.prepare=old;}
+ assert.equal(injected,1);assert.equal(calls,0);const job=f.store.readJob(f.b,f.job.ref);
+ assert.equal(job.status,'running');assert.equal(job.attempts[0].state,'reserved');assert.equal(job.attempts[0].input_reserved,amount.input_tokens);
+ const next=f.open(),lease=next.acquireLease(f.b);next.recoverJobs(lease);
+ const recovered=next.readJob(f.b,f.job.ref);assert.equal(recovered.attempts[0].state,'cancelled');
+ assert.equal(recovered.attempts.length,1);assert.equal(calls,0);
+}));
+test('Supervisor: independent sessions keep separate pending operations and cancellation',()=>supervised(async f=>{
+ const b={...f.b,scope:{...f.b.scope,host_session_id:'B'}};
+ // Use the core to derive a different canonical binding rather than editing a key.
+ const {createSessionBinding,createManifest,createJobContext,hashPayload,hashSource}=await import('../../packages/core/src/index.ts');
+ const binding=createSessionBinding(b.scope,b.incarnation,b.host_epoch);
+ f.store.createSession(binding,f.cfg);const lease=f.store.acquireLease(binding);
+ const old=f.store.readRootCatalog(binding),catalog=f.store.retainRoots(lease,{expected_catalog_digest:old.catalog_digest,sources:[f.source],observations:[f.observation]});
+ const entity={kind:'source',ref:f.source.ref},bytes=f.source.bytes;
+ const manifest=createManifest(binding,[{entity,authority:'agent',range:{start_byte:0,end_byte:bytes.length},excerpt_digest:hashSource(bytes),presented_as:'full',locator:'s1'}],()=>({binding,entity,authority:'agent',bytes}));
+ const roots=catalog.entries.map(e=>e.unit.root_coverage[0]);
+ const {snapshot_id,schema_version,session_key,incarnation,host_epoch,manifest_id,manifest_digest,...snapshot}=f.job.record.snapshot;
+ const context=createJobContext(binding,{...snapshot,owner_fence:lease.owner_fence,root_coverage:roots,logical_coverage:roots.map(x=>x.unit_id),coverage_digest:hashPayload(roots)},manifest,'Maintain the second synthetic session.');
+ f.store.admitJob(lease,context,context.ref);
+ const a=deferred(),c=deferred();let sa,sb;
+ const pa=f.supervisor.start(f.lease,f.job.ref,amount,s=>{sa=s;return a.promise;});
+ const pb=f.supervisor.start(lease,context.ref,amount,s=>{sb=s;return c.promise;});
+ try{f.supervisor.cancel(f.lease,f.job.ref);assert.equal(sa.aborted,true);assert.equal(sb.aborted,false);}
+ finally{a.resolve(result());c.resolve(result());}
+ assert.equal((await pa).status,'cancelled');assert.equal((await pb).status,'ready');
+}));
+
+test('Supervisor: cancel ordering is observed outside the adapter and before settlement',()=>supervised(async f=>{
+ const d=deferred();let observed=null,signals=0;
+ const done=f.supervisor.start(f.lease,f.job.ref,amount,signal=>{
+  signal.addEventListener('abort',()=>{signals++;observed=f.store.readJob(f.b,f.job.ref);},{once:true});
+  return d.promise;
+ });
+ const cancelled=f.supervisor.cancel(f.lease,f.job.ref),pending=f.store.readJob(f.b,f.job.ref);
+ d.resolve(result());const completed=await done;
+ assert.equal(signals,1);assert.equal(observed.status,'cancelled');
+ assert.equal(observed.attempts[0].local_state,'quarantine');
+ assert.equal(cancelled.attempts[0].local_stopped,false);assert.equal(pending.attempts[0].local_stopped,false);
+ assert.equal(completed.status,'cancelled');assert.equal(completed.attempts[0].local_stopped,true);
+ assert.equal(completed.attempts[0].remote_state,'unknown');
+}));
+
+test('Supervisor: reservation ownership is observable before dispatch admission',()=>supervised(async f=>{
+ const coordinator=WorkspaceCoordinator.open(f.directory,workspace);
+ try{
+  const ref=coordinator.withWorkspaceLock(hold=>f.store.reserveJobAttempt(f.lease,f.job.ref,amount,hold));
+  const ownership=f.store.readAttemptOwnership(f.b,f.job.ref,ref);
+  assert.notEqual(ownership,null,'the reservation must already carry its ownership');
+  assert.equal(ownership.storage_owner_id,coordinator.owner_id);assert.deepEqual(ownership.attempt,ref);
+  assert.equal(f.store.readJob(f.b,f.job.ref).attempts[0].state,'reserved');
+ }finally{f.store.cancelJob(f.lease,f.job.ref);coordinator.close();}
+}));
