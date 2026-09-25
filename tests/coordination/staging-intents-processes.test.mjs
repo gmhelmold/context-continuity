@@ -87,8 +87,9 @@ test('Staging process: restart reads history but never adopts, replays, or cance
     assert.equal(other.readOwner(fixtureOwner).state, 'retired');
     assert.equal(other.readOwner(original.owner_id).state, 'active');
     assert.throws(() => other.retireOwner(original.owner_id), error => error.code === 'E_CAPABILITY');
-    assert.deepEqual(sql(f, 'SELECT owner_id FROM storage_reservations WHERE reservation_id=?', f.request.reservation_id),
-      [{ owner_id: original.owner_id }]);
+    const reservations = sql(f, 'SELECT owner_id FROM storage_reservations WHERE reservation_id=?', f.request.reservation_id);
+    assert.equal(reservations.length, 1);
+    assert.equal(reservations[0].owner_id, original.owner_id);
   } finally { other.close(); }
 }));
 
