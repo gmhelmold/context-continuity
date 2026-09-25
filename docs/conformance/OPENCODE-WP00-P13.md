@@ -18,13 +18,15 @@ node --test tests/conformance/opencode/test-admission-mutations.mjs
 
 Historical results: five static commands passed; isolated P13 component test passed `1/1`; four guard-mutation controls passed. Defects failed named assertions: local-secret check -> `P13_ASSERT_rejected:wrong-local`; capture-activity check -> `P13_ASSERT_rejected:revoked-during-read`; model/messages profile check -> `P13_ASSERT_rejected:wrong-model`; 1 MiB body limit -> `P13_ASSERT_rejected:oversized-body`.
 
-Checkpoint/trace assertions added after that execution, and behavioral rejection-state assertions added in current increment, are execution-pending until commands above run against their containing commit.
+## Final added checks
+
+Source tree later recorded as commit `37a005d`. The two Node commands above passed after checkpoint/trace and behavioral rejection-state checks were added: selected P13 component `1/1`; mutation control `1/1`. Existing four guard mutants still failed their named assertions. Separate in-memory session-state mutant failed `P13_ASSERT_behavior:wrong-model` after changing only in-memory epoch/view before rejection.
 
 ## Component scope
 
 Matrix exercises existing gateway guards only: wrong method, path, origin, host; wrong/absent local secret; absent/revoked capture; oversized raw body; malformed UTF-8/JSON; wrong model; non-array messages; changed retry body. The oversize input is valid JSON with trailing whitespace, so it isolates raw 1 MiB admission from later synthetic primary-budget handling.
 
-Each rejected request begins with fresh valid correlation when that guard needs one. Historical evidence proves non-2xx, zero incremental upstream forwards, and no new `aux-start`, `attempt-permit`, or `tool-effect` trace event. Trace and checkpoint fixture artifacts contain neither local secret nor capture-token values. Final trace/checkpoint and behavioral rejection-state checks remain execution-pending. This component has no stock-host export artifact.
+Each rejected request begins with fresh valid correlation when that guard needs one. Historical evidence proves non-2xx, zero incremental upstream forwards, and no new `aux-start`, `attempt-permit`, or `tool-effect` trace event. Final execution additionally proves rejection trace delta contains only `request-rejected`/`capture-retention`, checkpoint bytes are unchanged, and paired normal/native fresh primaries match no-rejection control behavior for view and epoch. Trace and checkpoint fixture artifacts contain neither local secret nor capture-token values. This component has no stock-host export artifact.
 
 Mutation runs copy only required gateway/test/canonical files into new private temporary directories. Control and every mutant report a normal process exit path: no import failure, timeout, or signal is accepted as mutation evidence.
 
