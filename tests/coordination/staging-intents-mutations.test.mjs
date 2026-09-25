@@ -9,18 +9,22 @@ import { spawnSync } from 'node:child_process';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
 const cases = [
-  ['quota', 'assertStorageCapacity(db, request.max_bytes);', 'void db;',
+  ['quota', 'staging-intents.ts', 'assertStorageCapacity(db, request.max_bytes);', 'void db;',
     'Staging intents: shared quota competes with inline retention in both directions and sessions', 'STAGING_QUOTA_GATE'],
-  ['owner', 'if (intent.owner_id !== owner.owner_id || intent.process_instance !== owner.process_instance) {', 'if (false) {',
+  ['owner', 'staging-intents.ts', 'if (intent.owner_id !== owner.owner_id || intent.process_instance !== owner.process_instance) {', 'if (false) {',
     'Staging intents: original active owner alone can replay or cancel', 'STAGING_OWNER_GATE'],
-  ['replay-policy', 'if (request.expected_policy_revision !== policy || existing.policy_revision !== policy) {', 'if (false) {',
+  ['replay-policy', 'staging-intents.ts', 'if (request.expected_policy_revision !== policy || existing.policy_revision !== policy) {', 'if (false) {',
     'Staging intents: exact replay preserves timestamp and charge, changed input or cancellation cannot replay', 'STAGING_REPLAY_POLICY'],
-  ['managed-file', "if (db.prepare('SELECT 1 FROM managed_files WHERE operation_id=? LIMIT 1').get(operationId)) {", 'if (false) {',
+  ['managed-file', 'staging-intents.ts', "if (db.prepare('SELECT 1 FROM managed_files WHERE operation_id=? LIMIT 1').get(operationId)) {", 'if (false) {',
     'Staging intents: staging managed file blocks pre-file cancellation', 'STAGING_MANAGED_FILE_FENCE'],
-  ['source-pin-history', 'if (hasSourcePinHistory(db, request.reservation_id))', 'if (false)',
-    'Staging intents: active source-pin history blocks same reservation ID', 'STAGING_CROSS_KIND_FENCE'],
+  ['source-pin-history', 'staging-intents.ts', 'if (hasSourcePinHistory(db, request.reservation_id))', 'if (false)',
+    'Staging intents: active source-pin history blocks same reservation ID', 'STAGING_FOREIGN_META_SCALAR'],
+  ['scope-bound', 'staging-intents.ts', "CASE WHEN typeof(scope_json)='text' AND octet_length(scope_json) <= 16384 THEN scope_json END AS scope_json,", 'scope_json AS scope_json,',
+    'Staging intents: oversized JSON session scope is refused before text materialization', 'STAGING_SCOPE_PREMATERIALIZATION'],
+  ['foreign-materialization', 'reservation-metadata.ts', 'SELECT 1 FROM meta WHERE key=? LIMIT 1', 'SELECT value FROM meta WHERE key=? LIMIT 1',
+    'Staging intents: reserved history blocks source-pin admission without reading foreign payload', 'STAGING_FOREIGN_META_SCALAR'],
 ];
-for (const [name, from, to, selected, marker] of cases) {
+for (const [name, file, from, to, selected, marker] of cases) {
   test(`Staging intent mutation: ${name} rejects its named regression`, { timeout: 90000 }, () => {
     for (const mutant of [false, true]) {
       const directory = mkdtempSync(join(tmpdir(), 'cc-staging-mutation-'));
@@ -35,7 +39,7 @@ for (const [name, from, to, selected, marker] of cases) {
         }
         cpSync(join(root, 'tests/storage/job-fixtures.mjs'), join(directory, 'tests/storage/job-fixtures.mjs'));
         writeFileSync(join(directory, 'package.json'), '{"type":"module"}');
-        const path = join(directory, 'packages/storage/src/staging-intents.ts'), source = readFileSync(path, 'utf8');
+        const path = join(directory, 'packages/storage/src', file), source = readFileSync(path, 'utf8');
         assert.equal(source.split(from).length - 1, 1, name + ': mutation anchor must be unique');
         if (mutant) writeFileSync(path, source.replace(from, to));
         const env = { ...process.env }; delete env.NODE_TEST_CONTEXT;

@@ -15,6 +15,28 @@ const stage = (f, n = 101, patch = {}) => f.coordinator.reserveStaging(f.b, {
 const snapshot = f => Object.fromEntries(['storage_reservations', 'meta', 'storage_owners', 'sources', 'blobs',
   'sessions', 'jobs', 'attempts', 'aux_runs', 'chapters', 'managed_files', 'views']
   .map(table => [table, sql(f, `SELECT * FROM ${table} ORDER BY rowid`)]));
+function foreignHistoryOnly(key, action) {
+  const prepare = DatabaseSync.prototype.prepare; let scalar = 0, values = 0;
+  DatabaseSync.prototype.prepare = function(query) {
+    const statement = prepare.call(this, query);
+    if (query === 'SELECT 1 FROM meta WHERE key=? LIMIT 1') {
+      const get = statement.get;
+      statement.get = function(...args) { if (args[0] === key) scalar++; return get.apply(this, args); };
+    }
+    if (/^SELECT value FROM meta WHERE key=\?/.test(query)) {
+      const get = statement.get;
+      statement.get = function(...args) {
+        if (args[0] === key) { values++; throw Error('foreign staging metadata value transfer'); }
+        return get.apply(this, args);
+      };
+    }
+    return statement;
+  };
+  try { action(); }
+  finally { DatabaseSync.prototype.prepare = prepare; }
+  assert.equal(scalar, 1, 'STAGING_FOREIGN_META_SCALAR');
+  assert.equal(values, 0, 'STAGING_FOREIGN_META_VALUE');
+}
 function fillTo(f, remaining) {
   const used = f.coordinator.readStorageBudget().used_bytes, bytes = QUOTA - used - remaining;
   assert.ok(bytes >= 0);
@@ -156,6 +178,27 @@ test('Staging intents: oversized metadata is refused before value materializatio
   assert.equal(scalar, 1); assert.equal(values, 0, 'STAGING_METADATA_PREMATERIALIZATION');
 }));
 
+test('Staging intents: oversized JSON session scope is refused before text materialization', () => stagingFixture(f => {
+  const scope = JSON.stringify({ ...f.b.scope, padding: 'x'.repeat(17000) });
+  assert.ok(Buffer.byteLength(scope) > 16384);
+  sql(f, 'UPDATE sessions SET scope_json=? WHERE session_key=?', scope, f.b.session_key);
+  const prepare = DatabaseSync.prototype.prepare; let values = 0;
+  try {
+    DatabaseSync.prototype.prepare = function(query) {
+      const statement = prepare.call(this, query);
+      if (query.includes('scope_storage_type')) {
+        const get = statement.get;
+        statement.get = function(...args) {
+          const row = get.apply(this, args); if (typeof row?.scope_json === 'string') values++; return row;
+        };
+      }
+      return statement;
+    };
+    fails(() => f.coordinator.reserveStaging(f.b, f.request), 'E_STORAGE', 'STAGING_SCOPE_PREMATERIALIZATION');
+  } finally { DatabaseSync.prototype.prepare = prepare; }
+  assert.equal(values, 0, 'STAGING_SCOPE_PREMATERIALIZATION');
+}));
+
 for (const state of ['staging', 'complete', 'cleanup_pending']) {
   test(`Staging intents: ${state} managed file blocks pre-file cancellation`, () => stagingFixture(f => {
     const intent = stage(f);
@@ -245,7 +288,9 @@ for (const state of ['reserved', 'cancelled']) {
   test(`Staging intents: ${state} history blocks source-pin admission without reading foreign payload`, () => stagingFixture(f => {
     const intent = stage(f); if (state === 'cancelled') assert.equal(f.coordinator.cancelStaging(f.b, intent.reservation_id), true);
     const before = snapshot(f);
-    fails(() => f.coordinator.pinSource(f.b, { reservation_id: intent.reservation_id, operation_id: id(700), kind: 'read_pin', source_ref: f.source.ref }), 'E_CONFLICT', 'STAGING_CROSS_KIND_FENCE');
+    foreignHistoryOnly(metadataKey(intent.reservation_id), () => fails(() => f.coordinator.pinSource(f.b,
+      { reservation_id: intent.reservation_id, operation_id: id(700), kind: 'read_pin', source_ref: f.source.ref }),
+    'E_CONFLICT', 'STAGING_FOREIGN_META_SCALAR'));
     assert.deepEqual(snapshot(f), before);
   }));
 }
@@ -254,7 +299,8 @@ for (const state of ['active', 'released']) {
     const pin = f.coordinator.pinSource(f.b, { reservation_id: f.request.reservation_id, operation_id: id(701), kind: 'read_pin', source_ref: f.source.ref });
     if (state === 'released') assert.equal(f.coordinator.releaseSourcePin(f.b, pin.reservation_id), true);
     const before = snapshot(f);
-    fails(() => f.coordinator.reserveStaging(f.b, f.request), 'E_CONFLICT', 'STAGING_CROSS_KIND_FENCE');
+    foreignHistoryOnly(`storage.source-pin.v1:${pin.reservation_id}`, () => fails(() => f.coordinator.reserveStaging(f.b, f.request),
+      'E_CONFLICT', 'STAGING_FOREIGN_META_SCALAR'));
     assert.deepEqual(snapshot(f), before);
   }));
 }

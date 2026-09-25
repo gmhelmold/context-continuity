@@ -2,6 +2,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn, spawnSync } from 'node:child_process';
+import { once } from 'node:events';
 import { WORKSPACE_CONTENT_QUOTA_BYTES as QUOTA } from '../../packages/storage/src/index.ts';
 import { stagingFixture, workspace, sql } from './staging-intents-fixtures.mjs';
 
@@ -81,20 +82,53 @@ test('Staging process: restart reads history but never adopts, replays, or cance
   } finally { other.close(); }
 }));
 
-test('Staging process: fresh owners contest final shared capacity without a cached budget', { timeout: 30000 }, () => stagingFixture(f => {
+async function deadline(promise, label) {
+  let timer;
+  try { return await Promise.race([promise, new Promise((_, reject) => { timer = setTimeout(() => reject(Error(label + ' was not reached')), 15000); })]); }
+  finally { clearTimeout(timer); }
+}
+function contender(f, request) {
+  const params = { directory: f.directory, workspace, binding: f.b, request };
+  const program = `import {WorkspaceCoordinator} from ${JSON.stringify(moduleURL)};
+    const p=${JSON.stringify(params)};
+    process.once('message',()=>{let c,result;try{c=WorkspaceCoordinator.open(p.directory,p.workspace);c.reserveStaging(p.binding,p.request);result='committed'}catch(error){result=error.code}finally{try{c?.close()}catch(error){if(error.code!=='E_CAPABILITY')result=error.code}process.send({phase:'result',result},()=>process.disconnect())}});
+    process.send({phase:'ready'});`;
+  const child = spawn(process.execPath, ['--experimental-strip-types', '--input-type=module', '-e', program],
+    { env: environment(), stdio: ['ignore', 'ignore', 'pipe', 'ipc'] });
+  let stderr = '', spawnError;
+  child.stderr.on('data', chunk => { stderr = (stderr + chunk).slice(-8192); });
+  child.on('error', error => { spawnError = error; });
+  const exit = new Promise(resolve => {
+    child.once('exit', (code, signal) => resolve({ code, signal }));
+    child.once('error', () => resolve({ code: null, signal: null }));
+  });
+  const ready = Promise.race([once(child, 'message').then(([message]) => message),
+    exit.then(() => { throw Error('staging contender exited before barrier: ' + stderr); })]);
+  ready.catch(() => {});
+  return { child, ready, exit, details: () => ({ stderr, spawnError }) };
+}
+
+test('Staging process: two live owners contest final shared capacity after one IPC start', { timeout: 45000 }, () => stagingFixture(async f => {
   const used = f.coordinator.readStorageBudget().used_bytes;
   sql(f, "INSERT INTO blobs(digest,size_bytes,created_at) VALUES (?,?,?)", 'e'.repeat(64), QUOTA - used - 1, '2026-01-01T00:00:00.000Z');
-  const reserve = request => {
-    const params = { directory: f.directory, workspace, binding: f.b, request };
-    const program = `import {WorkspaceCoordinator} from ${JSON.stringify(moduleURL)};
-      const p=${JSON.stringify(params)},c=WorkspaceCoordinator.open(p.directory,p.workspace);let result;
-      try{c.reserveStaging(p.binding,p.request);result='committed'}catch(error){result=error.code}
-      try{c.close()}catch(error){if(error.code!=='E_CAPABILITY')throw error}console.log(result);`;
-    return spawnSync(process.execPath, ['--experimental-strip-types', '--input-type=module', '-e', program],
-      { env: environment(), encoding: 'utf8', timeout: 15000, maxBuffer: 1024 * 1024 });
-  };
-  const first = reserve(f.request), second = reserve({ ...f.request, reservation_id: '00000000-0000-4000-8000-000000009999', operation_id: '00000000-0000-4000-8000-000000009998' });
-  for (const run of [first, second]) { assert.equal(run.error, undefined); assert.equal(run.signal, null); assert.equal(run.status, 0, run.stderr); }
-  assert.equal(first.stdout.trim(), 'committed'); assert.equal(second.stdout.trim(), 'E_BUDGET');
-  assert.equal(f.coordinator.readStorageBudget().used_bytes, QUOTA);
+  const participants = [contender(f, f.request), contender(f, { ...f.request,
+    reservation_id: '00000000-0000-4000-8000-000000009999', operation_id: '00000000-0000-4000-8000-000000009998' })];
+  try {
+    const ready = await deadline(Promise.all(participants.map(participant => participant.ready)), 'staging contender readiness');
+    assert.ok(ready.every(message => message.phase === 'ready'));
+    const results = participants.map(participant => Promise.race([once(participant.child, 'message').then(([message]) => message),
+      participant.exit.then(() => { throw Error('staging contender exited without result: ' + participant.details().stderr); })]));
+    for (const participant of participants) participant.child.send('go');
+    const values = await deadline(Promise.all(results), 'staging contender results');
+    const exits = await deadline(Promise.all(participants.map(participant => participant.exit)), 'staging contender exits');
+    for (let index = 0; index < participants.length; index++) {
+      assert.equal(participants[index].details().spawnError, undefined);
+      assert.deepEqual(exits[index], { code: 0, signal: null }, participants[index].details().stderr);
+    }
+    assert.deepEqual(values.map(value => value.result).sort(), ['E_BUDGET', 'committed']);
+    assert.equal(f.coordinator.readStorageBudget().used_bytes, QUOTA);
+  } finally {
+    for (const participant of participants) if (participant.child.exitCode === null && participant.child.signalCode === null) participant.child.kill('SIGKILL');
+    await Promise.all(participants.map(participant => participant.exit));
+  }
 }));

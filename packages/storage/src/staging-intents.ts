@@ -103,12 +103,23 @@ function currentPolicy(db: DatabaseSync, binding: SessionBinding): number {
   if (db.prepare('SELECT 1 FROM tombstones WHERE scope_hash=? LIMIT 1').get(binding.session_key)) {
     throw new StorageError('E_SCOPE', 'staging intent session has retained tombstone');
   }
-  const row = db.prepare('SELECT scope_json,incarnation,host_epoch,policy_revision FROM sessions WHERE session_key=?').get(binding.session_key);
-  if (!row || typeof row.scope_json !== 'string' ||
-      !equal(createSessionBinding(parseJSON(row.scope_json), row.incarnation, row.host_epoch), binding)) {
-    throw new StorageError('E_SCOPE', 'staging intent session absent or superseded');
+  if (db.prepare('PRAGMA encoding').get()?.encoding !== 'UTF-8') return invalid();
+  const row = db.prepare(`SELECT typeof(scope_json) AS scope_storage_type, octet_length(scope_json) AS scope_size_bytes,
+    CASE WHEN typeof(scope_json)='text' AND octet_length(scope_json) <= 16384 THEN scope_json END AS scope_json,
+    incarnation,host_epoch,policy_revision FROM sessions WHERE session_key=?`).get(binding.session_key);
+  if (!row) throw new StorageError('E_SCOPE', 'staging intent session absent or superseded');
+  try {
+    if (row.scope_storage_type !== 'text' || typeof row.scope_size_bytes !== 'number' ||
+        !Number.isSafeInteger(row.scope_size_bytes) || row.scope_size_bytes < 0 || row.scope_size_bytes > 16384 ||
+        typeof row.scope_json !== 'string' || Buffer.byteLength(row.scope_json) !== row.scope_size_bytes) return invalid();
+    if (!equal(createSessionBinding(parseJSON(row.scope_json), row.incarnation, row.host_epoch), binding)) {
+      throw new StorageError('E_SCOPE', 'staging intent session absent or superseded');
+    }
+    return integer(row.policy_revision, 0, Number.MAX_SAFE_INTEGER, 'staging_intent.policy');
+  } catch (cause) {
+    if (cause instanceof StorageError) throw cause;
+    return invalid();
   }
-  return integer(row.policy_revision, 0, Number.MAX_SAFE_INTEGER, 'staging_intent.policy');
 }
 
 function owns(intent: StagingIntent, owner: StagingOwner): void {
