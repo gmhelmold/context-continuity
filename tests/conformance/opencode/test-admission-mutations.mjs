@@ -13,7 +13,8 @@ const mutants=[
   {name:'local-secret-check',anchor:'if(!safeEqual(req.headers["x-cc-local"],secret))throw error("E_LOCAL_AUTH");',replacement:'if(false)throw error("E_LOCAL_AUTH");',assertion:'P13_ASSERT_rejected:wrong-local'},
   {name:'capture-activity-check',anchor:'captures.assertActive(token,capture);',replacement:'void 0;',assertion:'P13_ASSERT_rejected:revoked-during-read'},
   {name:'model-messages-profile-check',anchor:'if(body.model!=="probe"||!Array.isArray(body.messages))throw error("E_PROFILE");',replacement:'if(false)throw error("E_PROFILE");',assertion:'P13_ASSERT_rejected:wrong-model'},
-  {name:'one-mib-body-limit',anchor:'if(size>1024*1024)throw error("E_BODY_LIMIT");',replacement:'if(false)throw error("E_BODY_LIMIT");',assertion:'P13_ASSERT_rejected:oversized-body'}
+  {name:'one-mib-body-limit',anchor:'if(size>1024*1024)throw error("E_BODY_LIMIT");',replacement:'if(false)throw error("E_BODY_LIMIT");',assertion:'P13_ASSERT_rejected:oversized-body'},
+  {name:'in-memory-session-state',anchor:'if(body.model!=="probe"||!Array.isArray(body.messages))throw error("E_PROFILE");',replacement:'state(capture.session).epoch++;state(capture.session).view=[{config:"in-memory-mutation"}];if(body.model!=="probe"||!Array.isArray(body.messages))throw error("E_PROFILE");',assertion:'P13_ASSERT_behavior:wrong-model'}
 ];
 function copyRequired(directory) {
   mkdirSync(join(directory,'tests/conformance/opencode'),{recursive:true});mkdirSync(join(directory,'scripts'),{recursive:true});mkdirSync(join(directory,'packages/core/src'),{recursive:true});
