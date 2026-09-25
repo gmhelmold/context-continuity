@@ -242,7 +242,8 @@ test('Staging intents: shared quota competes with inline retention in both direc
   fillTo(f, 1); const first = stage(f);
   fails(() => retainByte(f, second, lease, 601), 'E_BUDGET', 'STAGING_QUOTA_GATE');
   assert.equal(f.coordinator.cancelStaging(f.b, first.reservation_id), true);
-  assert.equal(retainByte(f, second, lease, 601).entries.length, 1);
+  assert.doesNotThrow(() => retainByte(f, second, lease, 601), 'STAGING_QUOTA_GATE');
+  assert.equal(f.coordinator.readStorageBudget().used_bytes, QUOTA);
   fails(() => stage(f, 602), 'E_BUDGET', 'STAGING_QUOTA_GATE');
 }));
 

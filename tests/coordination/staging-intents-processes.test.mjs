@@ -3,7 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn, spawnSync } from 'node:child_process';
 import { once } from 'node:events';
-import { WORKSPACE_CONTENT_QUOTA_BYTES as QUOTA } from '../../packages/storage/src/index.ts';
+import { WorkspaceCoordinator, WORKSPACE_CONTENT_QUOTA_BYTES as QUOTA } from '../../packages/storage/src/index.ts';
 import { stagingFixture, workspace, sql } from './staging-intents-fixtures.mjs';
 
 const moduleURL = new URL('../../packages/storage/src/index.ts', import.meta.url).href;
