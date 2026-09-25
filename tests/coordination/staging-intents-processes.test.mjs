@@ -66,19 +66,29 @@ for (const operation of ['reserve', 'cancel']) for (const boundary of ['before',
 }
 
 test('Staging process: restart reads history but never adopts, replays, or cancels another owner intent', { timeout: 30000 }, () => stagingFixture(f => {
+  const fixtureOwner = f.coordinator.owner_id;
+  f.coordinator.close();
   const params = { directory: f.directory, workspace, binding: f.b, request: f.request };
   const program = `import {WorkspaceCoordinator} from ${JSON.stringify(moduleURL)};
     const p=${JSON.stringify(params)}, c=WorkspaceCoordinator.open(p.directory,p.workspace);
-    c.reserveStaging(p.binding,p.request);try{c.close()}catch(error){if(error.code!=='E_CAPABILITY')throw error;}`;
+    c.reserveStaging(p.binding,p.request);let close_code;
+    try{c.close()}catch(error){if(error.code!=='E_CAPABILITY')throw error;close_code=error.code;}
+    console.log(JSON.stringify({owner_id:c.owner_id,close_code}));`;
   const child = spawnSync(process.execPath, ['--experimental-strip-types', '--input-type=module', '-e', program],
     { env: environment(), encoding: 'utf8', timeout: 15000, maxBuffer: 1024 * 1024 });
   assert.equal(child.error, undefined); assert.equal(child.signal, null); assert.equal(child.status, 0, child.stderr);
+  const original = JSON.parse(child.stdout);
+  assert.equal(original.close_code, 'E_CAPABILITY');
   const other = WorkspaceCoordinator.open(f.directory, workspace);
   try {
     assert.equal(other.readStaging(f.b, f.request.reservation_id).state, 'reserved');
     assert.throws(() => other.reserveStaging(f.b, f.request), error => error.code === 'E_OWNER');
     assert.throws(() => other.cancelStaging(f.b, f.request.reservation_id), error => error.code === 'E_OWNER');
-    assert.equal(sql(f, 'SELECT count(*) AS n FROM storage_reservations')[0].n, 1);
+    assert.equal(other.readOwner(fixtureOwner).state, 'retired');
+    assert.equal(other.readOwner(original.owner_id).state, 'active');
+    assert.throws(() => other.retireOwner(original.owner_id), error => error.code === 'E_CAPABILITY');
+    assert.deepEqual(sql(f, 'SELECT owner_id FROM storage_reservations WHERE reservation_id=?', f.request.reservation_id),
+      [{ owner_id: original.owner_id }]);
   } finally { other.close(); }
 }));
 
