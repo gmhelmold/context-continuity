@@ -22,9 +22,9 @@ Historical results: five static commands passed; isolated P13 component test pas
 
 Source tree later recorded as commit `37a005d`. The two Node commands above passed after checkpoint/trace and behavioral rejection-state checks were added: selected P13 component `1/1`; mutation control `1/1`. Existing four guard mutants still failed their named assertions. Separate in-memory session-state mutant failed `P13_ASSERT_behavior:wrong-model` after changing only in-memory epoch/view before rejection.
 
-## Current branch evidence
+## Evidence boundary
 
-Commit `da3f623` records documentation only. No selected P13 or mutation command ran at that SHA. CI evidence for `da3f623` is pending/unexecuted; do not attribute `37a005d` results to it.
+Only `37a005d` has recorded command evidence for final added checks. Later commits never inherit that result. For current-head evidence, use PR and CI records attached to that head; absent such a record, execution is unproven.
 
 ## Component scope
 
