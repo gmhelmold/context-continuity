@@ -13,6 +13,8 @@ const cases=[
  ['checksum','e.digest !== hashPayload(pin)','false','Source pins: metadata checksum detects a changed source digest'],
  ['resurrection',"existing.state !== 'active' || ",'','Source pins: release is idempotent but its identifier cannot be resurrected'],
  ['limit','>= MAX_ACTIVE_SOURCE_PINS','> MAX_ACTIVE_SOURCE_PINS','Source pins: active limit is inclusive and replay consumes no extra slot'],
+  ['staging-history','if (hasStagingIntentHistory(db, request.reservation_id))','if (false)',
+    'Source pins: reserved staging history blocks the same reservation ID'],
 ];
 for(const [name,from,to,title]of cases)test(`Source pin proof: ${name} distinguishes control and incorrect implementation`,{timeout:90000},()=>{
   for(const mutate of [false,true]){
