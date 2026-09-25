@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { createServer, request } from 'node:http';
 import { connect } from 'node:net';
 import { once } from 'node:events';
-import { mkdtempSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { canonical, parseJSON, hash } from '../../../scripts/canonical-json.mjs';
@@ -193,6 +193,7 @@ test('P13 synthetic component admission guard matrix',async()=>{
   let plugin,serial=0,originalAcquire;
   const events=()=>readFileSync(trace,'utf8').trim().split('\n').filter(Boolean).map(JSON.parse);
   const bytes=value=>Buffer.from(JSON.stringify(value));
+  const sessionSnapshot=()=>existsSync(checkpoint)?readFileSync(checkpoint):null;
   const send=({method='POST',path='/v1/chat/completions',headers={},body=Buffer.alloc(0)})=>new Promise((resolve,reject)=>{
     const raw=Buffer.isBuffer(body)?body:Buffer.from(body);
     const req=request({hostname:'127.0.0.1',port,method,path,headers:{host:`127.0.0.1:${port}`,...headers,'content-length':String(raw.byteLength)}},res=>{
@@ -209,11 +210,16 @@ test('P13 synthetic component admission guard matrix',async()=>{
     const out={headers:{}};await plugin['chat.headers']({sessionID:session,agent:'build'},out);
     tokens.push(out.headers['x-cc-capture']);return {session,headers:out.headers};
   };
-  const rejected=async(name,requestOptions)=>{
-    const forwards=records.length,at=events().length,response=await send(requestOptions);
+  const assertRejected=async(name,before,response)=>{
     assert.ok(response.status<200||response.status>=300,`P13_ASSERT_rejected:${name}`);
-    assert.equal(records.length,forwards,`P13_ASSERT_no_forward:${name}`);
-    assert.equal(events().slice(at).some(x=>['aux-start','attempt-permit','tool-effect'].includes(x.kind)),false,`P13_ASSERT_no_dispatch:${name}`);
+    assert.equal(records.length,before.forwards,`P13_ASSERT_no_forward:${name}`);
+    assert.ok(events().slice(before.at).every(x=>['request-rejected','capture-retention'].includes(x.kind)),`P13_ASSERT_no_session_mutation:${name}`);
+    assert.deepEqual(sessionSnapshot(),before.session,`P13_ASSERT_checkpoint_unchanged:${name}`);
+    assert.equal([secret,...tokens].some(value=>readFileSync(trace,'utf8').includes(value)),false,`P13_ASSERT_no_secret_trace:${name}`);
+  };
+  const rejected=async(name,requestOptions)=>{
+    const before={forwards:records.length,at:events().length,session:sessionSnapshot()};
+    await assertRejected(name,before,await send(requestOptions));
   };
   try {
     plugin=await gatewayPlugin({directory});
@@ -235,17 +241,17 @@ test('P13 synthetic component admission guard matrix',async()=>{
     const duringRead=await correlate('revoked-during-read'),raw=bytes(body);let acquired=false;
     originalAcquire=Captures.prototype.acquire;
     Captures.prototype.acquire=function(...args){const capture=originalAcquire.apply(this,args);acquired=true;return capture;};
+    let req;
     const response=new Promise((resolve,reject)=>{
-      const req=request({hostname:'127.0.0.1',port,path:'/v1/chat/completions',method:'POST',headers:{host:`127.0.0.1:${port}`,...duringRead.headers,'content-length':String(raw.byteLength)}},res=>{
+      req=request({hostname:'127.0.0.1',port,path:'/v1/chat/completions',method:'POST',headers:{host:`127.0.0.1:${port}`,...duringRead.headers,'content-length':String(raw.byteLength)}},res=>{
         res.resume();res.on('end',()=>resolve({status:res.statusCode}));res.on('error',reject);
       });
       req.on('error',reject);req.write(raw.subarray(0,1));
-      (async()=>{try{await until(()=>acquired);Captures.prototype.acquire=originalAcquire;await plugin['chat.message']({sessionID:duringRead.session});req.end(raw.subarray(1));}catch(error){Captures.prototype.acquire=originalAcquire;req.destroy(error);}})();
     });
-    const forwards=records.length,at=events().length,duringReadResponse=await response;
-    assert.ok(duringReadResponse.status<200||duringReadResponse.status>=300,'P13_ASSERT_rejected:revoked-during-read');
-    assert.equal(records.length,forwards,'P13_ASSERT_no_forward:revoked-during-read');
-    assert.equal(events().slice(at).some(x=>['aux-start','attempt-permit','tool-effect'].includes(x.kind)),false,'P13_ASSERT_no_dispatch:revoked-during-read');
+    await until(()=>acquired);Captures.prototype.acquire=originalAcquire;
+    await plugin['chat.message']({sessionID:duringRead.session});
+    const before={forwards:records.length,at:events().length,session:sessionSnapshot()};
+    req.end(raw.subarray(1));await assertRejected('revoked-during-read',before,await response);
     for(const [name,payload] of [
       ['oversized-body',Buffer.concat([bytes(body),Buffer.alloc(1024*1024,0x20)])],
       ['malformed-utf8',Buffer.from([0xff])],
