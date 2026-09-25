@@ -50,6 +50,13 @@ python3 tests/conformance/opencode/run.py --binary /caminho/opencode --out /tmp/
 python3 tests/conformance/opencode/test-oracle-mutations.py --binary /caminho/opencode --out /tmp/cc-mutations-novo
 ```
 
+### Matriz P13 somente componente
+
+```sh
+node --test --test-name-pattern='^P13 synthetic component admission guard matrix$' tests/conformance/opencode/test-components.mjs
+node --test tests/conformance/opencode/test-admission-mutations.mjs
+```
+
 Os diretórios de saída precisam ser novos. A campanha roda um controle correto e seis cópias incorretas contra o mesmo host. Sucesso é controle aprovado e cada mutação rejeitada pelo oráculo, não simplesmente qualquer erro. `--only` no runner existe para ensaios dirigidos; não equivale a aprovação da suíte integral.
 
 Checkpoints gerados antes de 0.1.2 não são dados de usuário nem formato migrável do produto. Ao retomar uma fixture antiga, config desconhecida invalida conservadoramente overlays. A própria sonda é só ensaio, não um pacote para instalar em trabalho real.

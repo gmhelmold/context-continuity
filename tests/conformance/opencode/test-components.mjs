@@ -1,7 +1,7 @@
 /** Executable probe regressions; NOT product conformance certification. */
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createServer } from 'node:http';
+import { createServer, request } from 'node:http';
 import { connect } from 'node:net';
 import { once } from 'node:events';
 import { mkdtempSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
@@ -176,4 +176,95 @@ test('C06 real gateway recovers native 200 error/truncation; old view remains us
     assert.equal(records.at(-1).messages[0].content,'CC_COMPONENT_SUMMARY');
     assert.ok(events().filter(x=>x.kind==='native-failed').length>=3);
   } finally {if(plugin)await plugin.dispose();await close(up);for(const key of Object.keys(process.env))if(!(key in saved))delete process.env[key];Object.assign(process.env,saved);rmSync(directory,{recursive:true,force:true});}
+});
+
+test('P13 synthetic component admission guard matrix',async()=>{
+  const directory=mkdtempSync(join(tmpdir(),'cc-p13-')),saved={...process.env},records=[],tokens=[];
+  const up=await listen(async(req,res)=>{
+    const chunks=[];for await(const chunk of req)chunks.push(chunk);
+    records.push({body:JSON.parse(Buffer.concat(chunks)),headers:req.headers});
+    res.writeHead(200,{'content-type':'text/event-stream'});res.end(stream('ok'));
+  });
+  const reserved=await listen((_q,r)=>r.end()),port=reserved.address().port;await close(reserved);
+  const trace=join(directory,'events.jsonl'),control=join(directory,'control.json'),checkpoint=join(directory,'state.json');
+  writeFileSync(control,'{}');
+  Object.assign(process.env,{CC_FIXTURE_UPSTREAM:url(up),CC_LOCAL_SECRET:'p13-local-secret',CC_TRACE:trace,CC_CONTROL:control,CC_CHECKPOINT:checkpoint,CC_GATEWAY_PORT:String(port)});
+  const secret=process.env.CC_LOCAL_SECRET,body={model:'probe',stream:true,messages:[{role:'user',content:'seed'},{role:'assistant',content:'done'},{role:'user',content:'current'}]};
+  let plugin,serial=0,originalAcquire;
+  const events=()=>readFileSync(trace,'utf8').trim().split('\n').filter(Boolean).map(JSON.parse);
+  const bytes=value=>Buffer.from(JSON.stringify(value));
+  const send=({method='POST',path='/v1/chat/completions',headers={},body=Buffer.alloc(0)})=>new Promise((resolve,reject)=>{
+    const raw=Buffer.isBuffer(body)?body:Buffer.from(body);
+    const req=request({hostname:'127.0.0.1',port,method,path,headers:{host:`127.0.0.1:${port}`,...headers,'content-length':String(raw.byteLength)}},res=>{
+      res.resume();res.on('end',()=>resolve({status:res.statusCode}));res.on('error',reject);
+    });
+    req.on('error',reject);req.end(raw);
+  });
+  const correlate=async label=>{
+    const session=`p13-${++serial}-${label}`;
+    const sources=[{info:{id:`${session}-u1`,sessionID:session,role:'user'},parts:[{type:'text',text:'seed'}]},
+      {info:{id:`${session}-a1`,sessionID:session,role:'assistant'},parts:[{type:'text',text:'done'}]},
+      {info:{id:`${session}-u2`,sessionID:session,role:'user'},parts:[{type:'text',text:'current'}]}];
+    await plugin['experimental.chat.messages.transform']({}, {messages:sources});
+    const out={headers:{}};await plugin['chat.headers']({sessionID:session,agent:'build'},out);
+    tokens.push(out.headers['x-cc-capture']);return {session,headers:out.headers};
+  };
+  const rejected=async(name,requestOptions)=>{
+    const forwards=records.length,at=events().length,response=await send(requestOptions);
+    assert.ok(response.status<200||response.status>=300,`P13_ASSERT_rejected:${name}`);
+    assert.equal(records.length,forwards,`P13_ASSERT_no_forward:${name}`);
+    assert.equal(events().slice(at).some(x=>['aux-start','attempt-permit','tool-effect'].includes(x.kind)),false,`P13_ASSERT_no_dispatch:${name}`);
+  };
+  try {
+    plugin=await gatewayPlugin({directory});
+    for(const [name,options] of [
+      ['wrong-method',{method:'GET'}],
+      ['wrong-path',{path:'/v1/not-chat'}],
+      ['wrong-origin',{headers:{origin:'https://fixture.invalid'}}],
+      ['wrong-host',{headers:{host:`localhost:${port}`}}],
+      ['wrong-local',{headers:{'x-cc-local':'not-p13-local-secret'}}],
+      ['absent-local',{headers:{'x-cc-local':undefined}}],
+      ['absent-capture',{headers:{'x-cc-capture':undefined}}]
+    ]) {
+      const correlation=await correlate(name),headers={...correlation.headers,...options.headers};
+      for(const key of Object.keys(headers))if(headers[key]===undefined)delete headers[key];
+      await rejected(name,{...options,headers,body:bytes(body)});
+    }
+    const revoked=await correlate('revoked-before-admission');await plugin['chat.message']({sessionID:revoked.session});
+    await rejected('revoked-before-admission',{headers:revoked.headers,body:bytes(body)});
+    const duringRead=await correlate('revoked-during-read'),raw=bytes(body);let acquired=false;
+    originalAcquire=Captures.prototype.acquire;
+    Captures.prototype.acquire=function(...args){const capture=originalAcquire.apply(this,args);acquired=true;return capture;};
+    const response=new Promise((resolve,reject)=>{
+      const req=request({hostname:'127.0.0.1',port,path:'/v1/chat/completions',method:'POST',headers:{host:`127.0.0.1:${port}`,...duringRead.headers,'content-length':String(raw.byteLength)}},res=>{
+        res.resume();res.on('end',()=>resolve({status:res.statusCode}));res.on('error',reject);
+      });
+      req.on('error',reject);req.write(raw.subarray(0,1));
+      (async()=>{try{await until(()=>acquired);Captures.prototype.acquire=originalAcquire;await plugin['chat.message']({sessionID:duringRead.session});req.end(raw.subarray(1));}catch(error){Captures.prototype.acquire=originalAcquire;req.destroy(error);}})();
+    });
+    const forwards=records.length,at=events().length,duringReadResponse=await response;
+    assert.ok(duringReadResponse.status<200||duringReadResponse.status>=300,'P13_ASSERT_rejected:revoked-during-read');
+    assert.equal(records.length,forwards,'P13_ASSERT_no_forward:revoked-during-read');
+    assert.equal(events().slice(at).some(x=>['aux-start','attempt-permit','tool-effect'].includes(x.kind)),false,'P13_ASSERT_no_dispatch:revoked-during-read');
+    for(const [name,payload] of [
+      ['oversized-body',{...body,padding:'x'.repeat(1024*1024)}],
+      ['malformed-utf8',Buffer.from([0xff])],
+      ['malformed-json',Buffer.from('{"model":"probe","messages":[')],
+      ['wrong-model',{...body,model:'not-probe'}],
+      ['messages-not-array',{...body,messages:{}}]
+    ]) {
+      const correlation=await correlate(name);
+      await rejected(name,{headers:correlation.headers,body:Buffer.isBuffer(payload)?payload:bytes(payload)});
+    }
+    const retry=await correlate('changed-retry'),first=await send({headers:retry.headers,body:bytes(body)});
+    assert.ok(first.status>=200&&first.status<300,'P13_ASSERT_control:changed-retry-initial');
+    await rejected('changed-retry',{headers:retry.headers,body:bytes({...body,messages:[...body.messages.slice(0,-1),{role:'user',content:'changed'}]})});
+    const artifacts=[readFileSync(trace,'utf8'),readFileSync(checkpoint,'utf8')];
+    for(const value of [secret,...tokens])assert.equal(artifacts.some(text=>text.includes(value)),false,'P13_ASSERT_no_secret_export');
+  } finally {
+    if(originalAcquire)Captures.prototype.acquire=originalAcquire;
+    if(plugin)await plugin.dispose();await close(up);
+    for(const key of Object.keys(process.env))if(!(key in saved))delete process.env[key];Object.assign(process.env,saved);
+    rmSync(directory,{recursive:true,force:true});
+  }
 });
