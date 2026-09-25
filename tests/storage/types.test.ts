@@ -100,3 +100,11 @@ budgetCoordinator.readStorageBudget({ quota_bytes: 1 });
 // @ts-expect-error Budget inspection does not return a workspace hold.
 const budgetHold: WorkspaceHold = budget;
 void budgetHold;
+
+import type { StagingIntent, StagingIntentRequest } from '../../packages/storage/src/index.ts';
+declare const stagingIntent: StagingIntent;
+declare const stagingRequest: StagingIntentRequest;
+// @ts-expect-error Staging intent capacity is fixed at reservation time.
+stagingIntent.max_bytes = 0;
+// @ts-expect-error Caller cannot attach a filesystem path to a pre-file intent.
+stagingRequest.staging_path_key = 'arbitrary';

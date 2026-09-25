@@ -11,6 +11,7 @@ import { sourceMetadata, loadSource } from './source-records.ts';
 import type { RetainedSource } from './source-records.ts';
 import type { WorkspaceIdentity } from './sqlite-database.ts';
 import { StorageError } from './errors.ts';
+import { hasStagingIntentHistory, sourcePinMetaKey } from './reservation-metadata.ts';
 
 export const MAX_ACTIVE_SOURCE_PINS = 4096;
 export const MAX_SOURCE_PIN_PAGE_SIZE = 64;
@@ -24,7 +25,6 @@ export type SourcePin = SourcePinRequest & Readonly<{
 export type SourcePinPageRequest = Readonly<{ limit: number; after?: string }>;
 export type SourcePinPage = Readonly<{ pins: readonly SourcePin[]; next_after: string | null }>;
 type PinOwner = Readonly<{ owner_id: string; process_instance: string }>;
-const key = (id: string): string => `storage.source-pin.v1:${id}`;
 const equal = (a: unknown, b: unknown): boolean => canonical(a) === canonical(b);
 const envelope = (value: SourcePin): string => canonical({ value, digest: hashPayload(value) });
 function invalid(): never { throw new StorageError('E_STORAGE', 'source pin records inconsistent'); }
@@ -65,12 +65,12 @@ function parsePin(input: unknown): SourcePin {
 function readSourcePinRecord(db: DatabaseSync, id: string): SourcePin | null {
   // Only scalar metadata crosses into Node before the stored envelope is bounded.
   // octet_length counts bytes including NUL; length(TEXT) counts code points instead.
-  const size = db.prepare('SELECT typeof(value) AS storage_type, octet_length(value) AS size_bytes FROM meta WHERE key=?').get(key(id));
+  const size = db.prepare('SELECT typeof(value) AS storage_type, octet_length(value) AS size_bytes FROM meta WHERE key=?').get(sourcePinMetaKey(id));
   if (size && (size.storage_type !== 'text' || typeof size.size_bytes !== 'number' ||
       !Number.isSafeInteger(size.size_bytes) || size.size_bytes < 0 || size.size_bytes > 16384)) return invalid();
   // The contract counts UTF-8 bytes, not the potentially smaller UTF-16 storage size.
   if (size && db.prepare('PRAGMA encoding').get()?.encoding !== 'UTF-8') return invalid();
-  const metadata = db.prepare('SELECT value FROM meta WHERE key=?').get(key(id));
+  const metadata = db.prepare('SELECT value FROM meta WHERE key=?').get(sourcePinMetaKey(id));
   const row = db.prepare('SELECT * FROM storage_reservations WHERE reservation_id=?').get(id);
   if (!metadata) { if (row) return invalid(); return null; }
   let pin: SourcePin;
@@ -138,6 +138,7 @@ function owns(pin: SourcePin, owner: PinOwner): void {
 }
 /** Caller holds workspace flock and one SQLite transaction, with owner guard before COMMIT. */
 export function createSourcePin(db: DatabaseSync, binding: SessionBinding, request: SourcePinRequest, owner: PinOwner): SourcePin {
+  if (hasStagingIntentHistory(db, request.reservation_id)) throw new StorageError('E_CONFLICT', 'reservation identifier belongs to staging intent history');
   const existing = loadSourcePin(db, binding, request.reservation_id);
   if (existing) {
     owns(existing, owner);
@@ -158,7 +159,7 @@ export function createSourcePin(db: DatabaseSync, binding: SessionBinding, reque
     policy_revision: policy, state: 'active', created_at: new Date().toISOString() });
   db.prepare(`INSERT INTO storage_reservations(reservation_id,owner_id,operation_id,kind,session_key,incarnation,size_bytes,created_at)
     VALUES (?,?,?,?,?,?,0,?)`).run(pin.reservation_id, pin.owner_id, pin.operation_id, pin.kind, binding.session_key, binding.incarnation, pin.created_at);
-  db.prepare('INSERT INTO meta(key,value) VALUES (?,?)').run(key(pin.reservation_id), envelope(pin));
+  db.prepare('INSERT INTO meta(key,value) VALUES (?,?)').run(sourcePinMetaKey(pin.reservation_id), envelope(pin));
   return loadSourcePin(db, binding, pin.reservation_id)!;
 }
 /** Explicit owner-only release. No content, byte quota, job or filesystem is modified. */
@@ -170,7 +171,7 @@ export function releaseSourcePin(db: DatabaseSync, binding: SessionBinding, id: 
   const deleted = db.prepare('DELETE FROM storage_reservations WHERE reservation_id=? AND owner_id=?')
     .run(id, owner.owner_id);
   const updated = db.prepare('UPDATE meta SET value=? WHERE key=? AND value=?')
-    .run(envelope(Object.freeze({ ...pin, state: 'released' })), key(id), envelope(pin));
+    .run(envelope(Object.freeze({ ...pin, state: 'released' })), sourcePinMetaKey(id), envelope(pin));
   if (deleted.changes !== 1 || updated.changes !== 1) throw new StorageError('E_CONFLICT', 'source pin release changed');
   return true;
 }

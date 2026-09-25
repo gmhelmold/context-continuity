@@ -23,6 +23,13 @@ test('Source pins: exact admission replay keeps one reservation and timestamp',(
   const first=f.coordinator.pinSource(f.b,f.request), second=f.coordinator.pinSource(f.b,f.request);
   assert.deepEqual(first,second); assert.equal(sql(f,'SELECT count(*) AS n FROM storage_reservations')[0].n,1);
 }));
+for(const state of ['reserved','cancelled'])test(`Source pins: ${state} staging history blocks the same reservation ID`,()=>pinFixture(f=>{
+  const staging={reservation_id:f.request.reservation_id,operation_id:id(901),max_bytes:1,expected_policy_revision:0};
+  f.coordinator.reserveStaging(f.b,staging);
+  if(state==='cancelled')assert.equal(f.coordinator.cancelStaging(f.b,staging.reservation_id),true);
+  fails(()=>f.coordinator.pinSource(f.b,f.request),'E_CONFLICT');
+  assert.equal(sql(f,'SELECT count(*) AS n FROM storage_reservations WHERE kind IN (\'read_pin\',\'export_pin\')')[0].n,0);
+}));
 test('Source pins: release is idempotent but its identifier cannot be resurrected',()=>pinFixture(f=>{
   f.coordinator.pinSource(f.b,f.request);
   assert.equal(f.coordinator.releaseSourcePin(f.b,f.request.reservation_id),true);
