@@ -1,10 +1,10 @@
 /** Executable probe regressions; NOT product conformance certification. */
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createServer } from 'node:http';
+import { createServer, request } from 'node:http';
 import { connect } from 'node:net';
 import { once } from 'node:events';
-import { mkdtempSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { canonical, parseJSON, hash } from '../../../scripts/canonical-json.mjs';
@@ -176,4 +176,116 @@ test('C06 real gateway recovers native 200 error/truncation; old view remains us
     assert.equal(records.at(-1).messages[0].content,'CC_COMPONENT_SUMMARY');
     assert.ok(events().filter(x=>x.kind==='native-failed').length>=3);
   } finally {if(plugin)await plugin.dispose();await close(up);for(const key of Object.keys(process.env))if(!(key in saved))delete process.env[key];Object.assign(process.env,saved);rmSync(directory,{recursive:true,force:true});}
+});
+
+test('P13 synthetic component admission guard matrix',async()=>{
+  const directory=mkdtempSync(join(tmpdir(),'cc-p13-')),saved={...process.env},records=[],tokens=[];
+  const up=await listen(async(req,res)=>{
+    const chunks=[];for await(const chunk of req)chunks.push(chunk);
+    records.push({body:JSON.parse(Buffer.concat(chunks)),headers:req.headers});
+    res.writeHead(200,{'content-type':'text/event-stream'});res.end(stream('ok'));
+  });
+  const reserved=await listen((_q,r)=>r.end()),port=reserved.address().port;await close(reserved);
+  const trace=join(directory,'events.jsonl'),control=join(directory,'control.json'),checkpoint=join(directory,'state.json');
+  writeFileSync(control,'{}');
+  Object.assign(process.env,{CC_FIXTURE_UPSTREAM:url(up),CC_LOCAL_SECRET:'p13-local-secret',CC_TRACE:trace,CC_CONTROL:control,CC_CHECKPOINT:checkpoint,CC_GATEWAY_PORT:String(port)});
+  const secret=process.env.CC_LOCAL_SECRET,body={model:'probe',stream:true,messages:[{role:'user',content:'seed'},{role:'assistant',content:'done'},{role:'user',content:'current'}]};
+  let plugin,serial=0,originalAcquire;
+  const events=()=>readFileSync(trace,'utf8').trim().split('\n').filter(Boolean).map(JSON.parse);
+  const bytes=value=>Buffer.from(JSON.stringify(value));
+  const sessionSnapshot=()=>existsSync(checkpoint)?readFileSync(checkpoint):null;
+  const send=({method='POST',path='/v1/chat/completions',headers={},body=Buffer.alloc(0)})=>new Promise((resolve,reject)=>{
+    const raw=Buffer.isBuffer(body)?body:Buffer.from(body);
+    const req=request({hostname:'127.0.0.1',port,method,path,headers:{host:`127.0.0.1:${port}`,...headers,'content-length':String(raw.byteLength)}},res=>{
+      res.resume();res.on('end',()=>resolve({status:res.statusCode}));res.on('error',reject);
+    });
+    req.on('error',reject);req.end(raw);
+  });
+  const correlate=async(label,{session=`p13-${++serial}-${label}`,native=false}={})=>{
+    const sources=[{info:{id:`${session}-u1`,sessionID:session,role:'user'},parts:[{type:'text',text:'seed'}]},
+      {info:{id:`${session}-a1`,sessionID:session,role:'assistant',summary:native,finish:native?'stop':undefined},parts:[{type:'text',text:'done'}]},
+      {info:{id:`${session}-u2`,sessionID:session,role:'user'},parts:[{type:'text',text:'current'}]}];
+    await plugin['experimental.chat.messages.transform']({}, {messages:sources});
+    const out={headers:{}};await plugin['chat.headers']({sessionID:session,agent:'build'},out);
+    tokens.push(out.headers['x-cc-capture']);return {session,headers:out.headers};
+  };
+  const behaviorPrimary=async(label,session,native)=>{
+    const correlation=await correlate(label,{session,native}),at=events().length,forwards=records.length;
+    const response=await send({headers:correlation.headers,body:bytes(body)});
+    assert.ok(response.status>=200&&response.status<300,`P13_ASSERT_behavior_response:${label}`);
+    assert.equal(records.length,forwards+1,`P13_ASSERT_behavior_forward:${label}`);
+    assert.deepEqual(records.at(-1).body,body,`P13_ASSERT_behavior_body:${label}`);
+    return events().slice(at);
+  };
+  const behavior=async(name,session)=>{
+    const control=`p13-${++serial}-${name}-control`;
+    const actual={normal:await behaviorPrimary(`${name}-normal`,session,false),native:await behaviorPrimary(`${name}-native`,session,true)};
+    const expected={normal:await behaviorPrimary(`${name}-control-normal`,control,false),native:await behaviorPrimary(`${name}-control-native`,control,true)};
+    const normalize=rows=>rows.map(x=>x.kind==='native-base-observed'?{kind:x.kind,epoch:x.epoch}:{kind:x.kind});
+    assert.deepEqual({normal:normalize(actual.normal),native:normalize(actual.native)},{normal:normalize(expected.normal),native:normalize(expected.native)},`P13_ASSERT_behavior:${name}`);
+  };
+  const assertRejected=async(name,before,response)=>{
+    assert.ok(response.status<200||response.status>=300,`P13_ASSERT_rejected:${name}`);
+    assert.equal(records.length,before.forwards,`P13_ASSERT_no_forward:${name}`);
+    assert.ok(events().slice(before.at).every(x=>['request-rejected','capture-retention'].includes(x.kind)),`P13_ASSERT_no_session_mutation:${name}`);
+    assert.deepEqual(sessionSnapshot(),before.session,`P13_ASSERT_checkpoint_unchanged:${name}`);
+    assert.equal([secret,...tokens].some(value=>readFileSync(trace,'utf8').includes(value)),false,`P13_ASSERT_no_secret_trace:${name}`);
+  };
+  const rejected=async(name,session,requestOptions)=>{
+    const before={forwards:records.length,at:events().length,session:sessionSnapshot()};
+    await assertRejected(name,before,await send(requestOptions));
+    await behavior(name,session);
+  };
+  try {
+    plugin=await gatewayPlugin({directory});
+    for(const [name,options] of [
+      ['wrong-method',{method:'GET'}],
+      ['wrong-path',{path:'/v1/not-chat'}],
+      ['wrong-origin',{headers:{origin:'https://fixture.invalid'}}],
+      ['wrong-host',{headers:{host:`localhost:${port}`}}],
+      ['wrong-local',{headers:{'x-cc-local':'not-p13-local-secret'}}],
+      ['absent-local',{headers:{'x-cc-local':undefined}}],
+      ['absent-capture',{headers:{'x-cc-capture':undefined}}]
+    ]) {
+      const correlation=await correlate(name),headers={...correlation.headers,...options.headers};
+      for(const key of Object.keys(headers))if(headers[key]===undefined)delete headers[key];
+      await rejected(name,correlation.session,{...options,headers,body:bytes(body)});
+    }
+    const revoked=await correlate('revoked-before-admission');await plugin['chat.message']({sessionID:revoked.session});
+    await rejected('revoked-before-admission',revoked.session,{headers:revoked.headers,body:bytes(body)});
+    const duringRead=await correlate('revoked-during-read'),raw=bytes(body);let acquired=false;
+    originalAcquire=Captures.prototype.acquire;
+    Captures.prototype.acquire=function(...args){const capture=originalAcquire.apply(this,args);acquired=true;return capture;};
+    let req;
+    const response=new Promise((resolve,reject)=>{
+      req=request({hostname:'127.0.0.1',port,path:'/v1/chat/completions',method:'POST',headers:{host:`127.0.0.1:${port}`,...duringRead.headers,'content-length':String(raw.byteLength)}},res=>{
+        res.resume();res.on('end',()=>resolve({status:res.statusCode}));res.on('error',reject);
+      });
+      req.on('error',reject);req.write(raw.subarray(0,1));
+    });
+    await until(()=>acquired);Captures.prototype.acquire=originalAcquire;
+    await plugin['chat.message']({sessionID:duringRead.session});
+    const before={forwards:records.length,at:events().length,session:sessionSnapshot()};
+    req.end(raw.subarray(1));await assertRejected('revoked-during-read',before,await response);await behavior('revoked-during-read',duringRead.session);
+    for(const [name,payload] of [
+      ['oversized-body',Buffer.concat([bytes(body),Buffer.alloc(1024*1024,0x20)])],
+      ['malformed-utf8',Buffer.from([0xff])],
+      ['malformed-json',Buffer.from('{"model":"probe","messages":[')],
+      ['wrong-model',{...body,model:'not-probe'}],
+      ['messages-not-array',{...body,messages:{}}]
+    ]) {
+      const correlation=await correlate(name);
+      await rejected(name,correlation.session,{headers:correlation.headers,body:Buffer.isBuffer(payload)?payload:bytes(payload)});
+    }
+    const retry=await correlate('changed-retry'),first=await send({headers:retry.headers,body:bytes(body)});
+    assert.ok(first.status>=200&&first.status<300,'P13_ASSERT_control:changed-retry-initial');
+    await rejected('changed-retry',retry.session,{headers:retry.headers,body:bytes({...body,messages:[...body.messages.slice(0,-1),{role:'user',content:'changed'}]})});
+    const artifacts=[readFileSync(trace,'utf8'),readFileSync(checkpoint,'utf8')];
+    for(const value of [secret,...tokens])assert.equal(artifacts.some(text=>text.includes(value)),false,'P13_ASSERT_no_secret_export');
+  } finally {
+    if(originalAcquire)Captures.prototype.acquire=originalAcquire;
+    if(plugin)await plugin.dispose();await close(up);
+    for(const key of Object.keys(process.env))if(!(key in saved))delete process.env[key];Object.assign(process.env,saved);
+    rmSync(directory,{recursive:true,force:true});
+  }
 });
