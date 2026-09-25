@@ -1,6 +1,6 @@
 # SPEC-25 — recuperação identificada de intenção pré-arquivo (WP-02/F3)
 
-**Contrato futuro; nenhuma API F3 está habilitada por este documento.** Refina [SPEC-03 §3](03-ledger.md#3-blobs-quota-e-exclusão-mútua-de-workspace), [§8](03-ledger.md#8-recibos-e-reconciliação-de-reservas-c09c11), [SPEC-18 §§1, 3 e 4](18-workspace-coordinator.md#inicialização-e-identidade-durável) e [SPEC-24 §§3--5](24-staging-intents.md#3-registro-e-identidade). F3 é recuperação identificada de uma intenção *pré-arquivo*; não é staging físico, writer, GC, descoberta/listagem/scan nem recuperação geral de owner morto.
+**Contrato futuro; nenhuma API F3 está habilitada por este documento nem há evidência runtime.** Refina [SPEC-03 §3](03-ledger.md#3-blobs-quota-e-exclusão-mútua-de-workspace), [§8](03-ledger.md#8-recibos-e-reconciliação-de-reservas-c09c11), [SPEC-18 §§1, 3 e 4](18-workspace-coordinator.md#inicialização-e-identidade-durável) e [SPEC-24 §§3--5](24-staging-intents.md#3-registro-e-identidade). F3 é recuperação identificada de uma intenção *pré-arquivo*; não é staging físico, writer, GC, descoberta/listagem/scan nem recuperação geral de owner morto. Nenhuma limpeza física existe em F3.
 
 ## 1. API e fronteira
 
@@ -20,17 +20,19 @@ Recusar recuperação se houver qualquer `managed_files` para `operation_id`; se
 
 ## 3. Ordem e liveness identificado
 
-Ordem obrigatória: workspace flock -> `BEGIN IMMEDIATE` -> revalidações -> inspeção de owner -> CAS/remoção -> guardas finais -> `COMMIT` -> fechar descritor de inspeção -> liberar workspace flock. Segue ordem de [SPEC-03 §3, parágrafo 223](03-ledger.md#3-blobs-quota-e-exclusão-mútua-de-workspace) e guards de [SPEC-24 §4, parágrafos 35--37](24-staging-intents.md#4-admissão-replay-e-quota). Falha de rollback inutiliza conexão conforme [SPEC-18 §4, parágrafo 47](18-workspace-coordinator.md#diagnóstico-e-aposentadoria).
+Ordem obrigatória: workspace flock -> `BEGIN IMMEDIATE` -> revalidações -> inspeção de owner -> CAS/remoção -> guardas finais -> `COMMIT` -> fechar descritor de inspeção -> liberar workspace flock. Segue ordem de [SPEC-03 §3, parágrafo 223](03-ledger.md#3-blobs-quota-e-exclusão-mútua-de-workspace) e guards de [SPEC-24 §4, parágrafos 35--37](24-staging-intents.md#4-admissão-replay-e-quota). Falha de rollback inutiliza conexão conforme [SPEC-18 §4, parágrafo 49](18-workspace-coordinator.md#diagnóstico-e-aposentadoria).
 
 Para owner atual, retornar `held` sem alterar reserva, envelope ou cobrança. Para owner estrangeiro `active`, abrir sem criar `owners/<owner_id>.lock`, exigir identidade `{dev,ino}` persistida exata e tentar lock exclusivo sem bloquear. Lock ocupado devolve `held`, preservando tudo. Manter lock de inspeção até `COMMIT`. Ausência de lock, identidade divergente, arquivo substituído ou erro de inspeção devolve `E_CAPABILITY`, preservando reserva/cobrança.
 
-Só owner estrangeiro `active`, identidade exata e lock de inspeção adquirido prova sem detentor para esta intenção identificada. Não é prova geral de morte, não autoriza aposentadoria e não libera outra reserva. Esta leitura restrita aplica [SPEC-03 §8, parágrafos 271--277](03-ledger.md#8-recibos-e-reconciliação-de-reservas-c09c11) sem executar reconciliação geral, e preserva limites de [SPEC-18 §4, parágrafos 41--45](18-workspace-coordinator.md#diagnóstico-e-aposentadoria).
+Só owner estrangeiro `active`, identidade exata e lock de inspeção adquirido prova sem detentor para esta intenção identificada. Não é prova geral de morte, não autoriza aposentadoria e não libera outra reserva. Esta leitura restrita aplica [SPEC-03 §8, parágrafos 271--277](03-ledger.md#8-recibos-e-reconciliação-de-reservas-c09c11) sem executar reconciliação geral, e preserva limites de [SPEC-18 §4, parágrafos 41--49](18-workspace-coordinator.md#diagnóstico-e-aposentadoria).
 
 ## 4. Transição e repetição
 
+Guardas finais, ainda sob ambos locks e antes de `COMMIT`, revalidam recovery participant active e seu arquivo/identidade `{dev,ino}`/process_instance/lock originais; revalidam owner original inspecionado active e seu arquivo/identidade/process_instance/lock de inspeção; e comparam binding, workspace, sessão/incarnation/host_epoch, reserva e envelope. CAS exato inclui reservation_id, owner_id, process_instance e identidade persistida de ambos owners, além de estado `reserved`, kind `staging`, path/digest null e checksum. Zero-row CAS é conflito/rollback, nunca autorização.
+
 Após prova de owner estrangeiro sem lock, somente intenção `reserved` pré-arquivo ainda revalidada pode, na mesma transação, remover sua reserva e fazer CAS de envelope `reserved` para `cancelled`. Retorno é `{state: 'cancelled', intent}` com intenção original imutável. Remoção e CAS são atômicos; quota libera exatamente uma vez.
 
-Falha antes de `COMMIT` preserva reserva, envelope e cobrança. Erro percebido após `COMMIT` pode deixar `cancelled`; repetição com mesmo binding e UUID devolve `cancelled` idempotente, sem inspecionar owner e sem nova liberação. Um registro `cancelled` íntegro não reabre, não readmite e não vira `held`.
+Falha antes de `COMMIT`, inclusive guarda final/CAS/rollback, preserva reserva, envelope e cobrança; rollback falho também inutiliza conexão. Erro percebido após `COMMIT` pode deixar histórico `cancelled`; repetição com mesmo binding e UUID devolve `cancelled` idempotente, sem inspecionar owner e sem nova liberação. Um registro `cancelled` íntegro não reabre, não readmite e não vira `held`.
 
 ## 5. Provas e limites
 
@@ -44,7 +46,7 @@ Falha antes de `COMMIT` preserva reserva, envelope e cobrança. Erro percebido a
 | Processos | SQLite, flock e subprocessos reais em diretórios sintéticos; barreiras de kill antes/depois de commit; lock de inspeção persiste até commit. |
 | Contraprovas | Controle nomeado e mutantes para owner lock/identidade, owner match, fence pré-arquivo e CAS atômico, cada qual reprovado pela assertion correspondente. |
 
-Não contar setup/import/timeout/sinal como detecção. Executar matriz herdada completa somente no Actions. Verde documental não aprova API, recuperação física, staging nem WP-02 completo.
+Vínculo normativo: F3 pertence ao [WP-02](WORK-PACKAGES.md#wp-02--ledger-e-persistência-transacional) e cobre somente fronteira pré-arquivo da rastreabilidade existente R19 / [T19.storage](06-acceptance.md#t19--fonte-antes-da-poda). Não cria R/T, não altera seus donos/status `not_run` e não declara execução. Não contar setup/import/timeout/sinal como detecção. Executar matriz herdada completa somente no Actions. Verde documental não aprova API, recuperação física, staging nem WP-02 completo.
 
 ## 6. Cinco axiomas
 
