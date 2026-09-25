@@ -247,7 +247,7 @@ test('P13 synthetic component admission guard matrix',async()=>{
     assert.equal(records.length,forwards,'P13_ASSERT_no_forward:revoked-during-read');
     assert.equal(events().slice(at).some(x=>['aux-start','attempt-permit','tool-effect'].includes(x.kind)),false,'P13_ASSERT_no_dispatch:revoked-during-read');
     for(const [name,payload] of [
-      ['oversized-body',{...body,padding:'x'.repeat(1024*1024)}],
+      ['oversized-body',Buffer.concat([bytes(body),Buffer.alloc(1024*1024,0x20)])],
       ['malformed-utf8',Buffer.from([0xff])],
       ['malformed-json',Buffer.from('{"model":"probe","messages":[')],
       ['wrong-model',{...body,model:'not-probe'}],
