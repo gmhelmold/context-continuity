@@ -1,38 +1,22 @@
 # WP-00 - P13 synthetic component admission guard matrix
 
-**Status: component-only evidence. P13 remains partial. No stock-host COMPLETE/PASS claim.**
+**Status: component-only scope. P13 remains partial. No stock-host COMPLETE/PASS claim.**
 
-## Executed locally
+## Commands
 
-Historical source tree later recorded as commit `a29f252`. The component starts real gateway HTTP plus a synthetic loopback upstream recorder. It uses fresh private temporary directories. No OpenCode binary, live inference, credentials, personal HOME/XDG, or user data participate.
-
-```sh
-python3 scripts/check-spec.py
-python3 scripts/check-reference-model.py
-python3 scripts/test-spec-check.py
-python3 scripts/check-canonical.py
-python3 scripts/check-storage-contracts.py
-node --test --test-name-pattern='^P13 synthetic component admission guard matrix$' tests/conformance/opencode/test-components.mjs
-node --test tests/conformance/opencode/test-admission-mutations.mjs
-```
-
-Historical results: five static commands passed; isolated P13 component test passed `1/1`; four guard-mutation controls passed. Defects failed named assertions: local-secret check -> `P13_ASSERT_rejected:wrong-local`; capture-activity check -> `P13_ASSERT_rejected:revoked-during-read`; model/messages profile check -> `P13_ASSERT_rejected:wrong-model`; 1 MiB body limit -> `P13_ASSERT_rejected:oversized-body`.
-
-## Final added checks
-
-Source tree later recorded as commit `37a005d`. The two Node commands above passed after checkpoint/trace and behavioral rejection-state checks were added: selected P13 component `1/1`; mutation control `1/1`. Existing four guard mutants still failed their named assertions. Separate in-memory session-state mutant failed `P13_ASSERT_behavior:wrong-model` after changing only in-memory epoch/view before rejection.
+P13 commands are defined in [the probe README](../../tests/conformance/opencode/README.md). This note records scope and limits, not an execution result.
 
 ## Evidence boundary
 
-Only `37a005d` has recorded command evidence for final added checks. Later commits never inherit that result. For current-head evidence, use PR and CI records attached to that head; absent such a record, execution is unproven.
+Executable P13 evidence must be attached to PR and CI records for tested head. Later commits never inherit results. Without a record attached to current head, execution is unproven.
 
 ## Component scope
 
 Matrix exercises existing gateway guards only: wrong method, path, origin, host; wrong/absent local secret; absent/revoked capture; oversized raw body; malformed UTF-8/JSON; wrong model; non-array messages; changed retry body. The oversize input is valid JSON with trailing whitespace, so it isolates raw 1 MiB admission from later synthetic primary-budget handling.
 
-Each rejected request begins with fresh valid correlation when that guard needs one. Historical evidence proves non-2xx, zero incremental upstream forwards, and no new `aux-start`, `attempt-permit`, or `tool-effect` trace event. Final execution additionally proves rejection trace delta contains only `request-rejected`/`capture-retention`, checkpoint bytes are unchanged, and paired normal/native fresh primaries match no-rejection control behavior for view and epoch. Trace and checkpoint fixture artifacts contain neither local secret nor capture-token values. This component has no stock-host export artifact.
+Each rejected request begins with fresh valid correlation when that guard needs one. P13 assertions require non-2xx, zero incremental upstream forwards, rejection trace delta limited to `request-rejected`/`capture-retention`, unchanged checkpoint bytes, and paired normal/native fresh primaries matching no-rejection control behavior for view and epoch. Trace and checkpoint fixture artifacts are checked for local-secret and capture-token values. This component has no stock-host export artifact.
 
-Mutation runs copy only required gateway/test/canonical files into new private temporary directories. Control and every mutant report a normal process exit path: no import failure, timeout, or signal is accepted as mutation evidence.
+Mutation harness uses only required gateway/test/canonical files in new private temporary directories. Its control and mutant assertions reject import failure, timeout, and signal as evidence.
 
 ## Limits
 
