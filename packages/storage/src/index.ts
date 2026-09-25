@@ -23,4 +23,7 @@ export type { AttemptOwnership } from './attempt-owner.ts';
 export { MAX_ACTIVE_SOURCE_PINS, MAX_SOURCE_PIN_PAGE_SIZE } from './source-pins.ts';
 export type { SourcePin, SourcePinRequest, SourcePinPageRequest, SourcePinPage } from './source-pins.ts';
 
+export { MAX_ACTIVE_STAGING_INTENTS, MAX_STAGING_INTENT_BYTES } from './staging-intents.ts';
+export type { StagingIntentRequest, StagingIntent } from './staging-intents.ts';
+
 export type { StorageBudget } from './storage-budget.ts';

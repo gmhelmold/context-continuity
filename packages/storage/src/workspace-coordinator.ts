@@ -16,6 +16,8 @@ import { pinBinding, parseSourcePinRequest, createSourcePin, loadSourcePin, rele
   parseSourcePinPageRequest, listSourcePins as listActiveSourcePins } from './source-pins.ts';
 import type { SourcePin, SourcePinPage } from './source-pins.ts';
 import type { RetainedSource } from './source-records.ts';
+import { stagingBinding, parseStagingIntentRequest, createStagingIntent, loadStagingIntent, cancelStagingIntent } from './staging-intents.ts';
+import type { StagingIntent } from './staging-intents.ts';
 
 const ANCHOR_KEY = 'coordinator.anchor.v1';
 const constructionKey = Symbol('WorkspaceCoordinator construction');
@@ -237,6 +239,24 @@ export class WorkspaceCoordinator {
   readStorageBudget(): StorageBudget {
     return this.#locked(() => transaction(this.#handle, false,
       () => readWorkspaceBudget(this.#handle.db), () => this.#guard()));
+  }
+  /** SPEC-24: reserve logical pre-file capacity only. No writer or filesystem authority. */
+  reserveStaging(bindingInput: unknown, requestInput: unknown): StagingIntent {
+    const binding = stagingBinding(bindingInput, this.workspace), request = parseStagingIntentRequest(requestInput);
+    return this.#locked(() => transaction(this.#handle, true,
+      () => createStagingIntent(this.#handle.db, binding, request, { owner_id: this.owner_id, process_instance: this.process_instance }),
+      () => this.#guard()));
+  }
+  readStaging(bindingInput: unknown, idInput: unknown): StagingIntent | null {
+    const binding = stagingBinding(bindingInput, this.workspace), id = entityId(idInput);
+    return this.#locked(() => transaction(this.#handle, false,
+      () => loadStagingIntent(this.#handle.db, binding, id), () => this.#guard()));
+  }
+  cancelStaging(bindingInput: unknown, idInput: unknown): boolean {
+    const binding = stagingBinding(bindingInput, this.workspace), id = entityId(idInput);
+    return this.#locked(() => transaction(this.#handle, true,
+      () => cancelStagingIntent(this.#handle.db, binding, id, { owner_id: this.owner_id, process_instance: this.process_instance }),
+      () => this.#guard()));
   }
   readOwner(idInput: unknown): StorageOwner | null {
     const id = entityId(idInput);
