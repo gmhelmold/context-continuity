@@ -91,7 +91,10 @@ function contender(f, request) {
   const params = { directory: f.directory, workspace, binding: f.b, request };
   const program = `import {WorkspaceCoordinator} from ${JSON.stringify(moduleURL)};
     const p=${JSON.stringify(params)};
-    process.once('message',()=>{let c,result;try{c=WorkspaceCoordinator.open(p.directory,p.workspace);c.reserveStaging(p.binding,p.request);result='committed'}catch(error){result=error.code}finally{try{c?.close()}catch(error){if(error.code!=='E_CAPABILITY')result=error.code}process.send({phase:'result',result},()=>process.disconnect())}});
+    let c,finished=false;
+    const finish=result=>{if(finished)return;finished=true;try{c?.close()}catch(error){if(error.code!=='E_CAPABILITY')result=error.code}process.send({phase:'result',result},()=>process.disconnect())};
+    const reserve=()=>{try{c??=WorkspaceCoordinator.open(p.directory,p.workspace);c.reserveStaging(p.binding,p.request);finish('committed')}catch(error){if(error.code==='E_CONFLICT'){setImmediate(reserve);return}finish(error.code)}};
+    process.once('message',reserve);
     process.send({phase:'ready'});`;
   const child = spawn(process.execPath, ['--experimental-strip-types', '--input-type=module', '-e', program],
     { env: environment(), stdio: ['ignore', 'ignore', 'pipe', 'ipc'] });
