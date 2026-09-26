@@ -9,17 +9,21 @@ import { StorageError, storageFailure } from './errors.ts';
 export type WorkspaceIdentity = Readonly<{ installation_id: string; workspace_id: string }>;
 export type SQLiteHandle = Readonly<{ db: DatabaseSync; identity: WorkspaceIdentity; guard: () => void }>;
 export const APPLICATION_ID = 0x43434c44;
-export const SCHEMA_VERSION = 1;
-const DDL = readFileSync(new URL('./schema-v1.sql', import.meta.url), 'utf8');
-const DDL_DIGEST = hashSource(Buffer.from(DDL));
+export const SCHEMA_VERSION = 2;
+const DDL_V1 = readFileSync(new URL('./schema-v1.sql', import.meta.url), 'utf8');
+const DDL_V2 = readFileSync(new URL('./schema-v2.sql', import.meta.url), 'utf8');
+const DDL_V1_DIGEST = hashSource(Buffer.from(DDL_V1));
+const DDL_DIGEST = hashSource(Buffer.from(DDL_V1 + DDL_V2));
 const OPEN_OPTIONS = { enableForeignKeyConstraints: true, enableDoubleQuotedStringLiterals: false, allowExtension: false };
 function shape(db: DatabaseSync): string {
   return hashPayload(db.prepare("SELECT type,name,tbl_name,sql FROM sqlite_schema WHERE name NOT GLOB 'sqlite_*' ORDER BY type,name").all());
 }
-const EXPECTED_SHAPE = (() => {
+function expectedShape(ddl: string): string {
   const db = new DatabaseSync(':memory:', OPEN_OPTIONS);
-  try { db.exec(DDL); return shape(db); } finally { db.close(); }
-})();
+  try { db.exec(ddl); return shape(db); } finally { db.close(); }
+}
+const V1_SHAPE = expectedShape(DDL_V1);
+const EXPECTED_SHAPE = expectedShape(DDL_V1 + DDL_V2);
 export function workspaceIdentity(input: unknown): WorkspaceIdentity {
   const v = closedRecord(input, ['installation_id', 'workspace_id'], ['installation_id', 'workspace_id'], 'workspace');
   return Object.freeze({ installation_id: entityId(v.installation_id), workspace_id: entityId(v.workspace_id) });
@@ -56,24 +60,27 @@ function configure(db: DatabaseSync): void {
     throw new StorageError('E_CAPABILITY', 'required SQLite settings unavailable');
   }
 }
-function inspect(db: DatabaseSync, identity: WorkspaceIdentity): void {
+function inspect(db: DatabaseSync, identity: WorkspaceIdentity, expectedVersion?: number): number {
   // Metadata, schema and integrity must describe one committed SQLite snapshot.
   // Keep this read transaction separate from journal negotiation and bootstrap.
   db.exec('BEGIN');
   try {
-    inspectState(db, identity);
+    const version = expectedVersion ?? scalar(db, 'user_version');
+    if (version !== 1 && version !== SCHEMA_VERSION) throw new StorageError('E_CAPABILITY', 'unsupported or incomplete database schema');
+    inspectState(db, identity, version, false);
     db.exec('COMMIT');
+    return version;
   } catch (error) {
     if (db.isTransaction) db.exec('ROLLBACK');
     throw error;
   }
 }
-function inspectState(db: DatabaseSync, identity: WorkspaceIdentity): void {
-  if (scalar(db, 'user_version') !== SCHEMA_VERSION || scalar(db, 'application_id') !== APPLICATION_ID) {
+function inspectState(db: DatabaseSync, identity: WorkspaceIdentity, version = SCHEMA_VERSION, checkVersion = true): void {
+  if ((checkVersion && scalar(db, 'user_version') !== version) || scalar(db, 'application_id') !== APPLICATION_ID) {
     throw new StorageError('E_CAPABILITY', 'unsupported or incomplete database schema');
   }
-  if (shape(db) !== EXPECTED_SHAPE) throw new StorageError('E_STORAGE', 'schema structure mismatch');
-  for (const [key, value] of Object.entries({ ...identity, schema_digest: DDL_DIGEST })) {
+  if (shape(db) !== (version === 1 ? V1_SHAPE : EXPECTED_SHAPE)) throw new StorageError('E_STORAGE', 'schema structure mismatch');
+  for (const [key, value] of Object.entries({ ...identity, schema_digest: version === 1 ? DDL_V1_DIGEST : DDL_DIGEST })) {
     if (db.prepare('SELECT value FROM meta WHERE key=?').get(key)?.value !== value) {
       throw new StorageError(key === 'schema_digest' ? 'E_STORAGE' : 'E_SCOPE', 'workspace metadata mismatch');
     }
@@ -81,6 +88,18 @@ function inspectState(db: DatabaseSync, identity: WorkspaceIdentity): void {
   if (db.prepare('PRAGMA quick_check').get()?.quick_check !== 'ok' || db.prepare('PRAGMA foreign_key_check').get()) {
     throw new StorageError('E_STORAGE', 'database integrity check failed');
   }
+}
+function migrate(db: DatabaseSync, identity: WorkspaceIdentity, version: number): void {
+  if (version !== 1) return;
+  db.exec('BEGIN IMMEDIATE');
+  try {
+    inspectState(db, identity, 1);
+    db.exec(DDL_V2);
+    db.prepare("UPDATE meta SET value=? WHERE key='schema_digest'").run(DDL_DIGEST);
+    db.exec(`PRAGMA user_version=${SCHEMA_VERSION}`);
+    inspectState(db, identity);
+    db.exec('COMMIT');
+  } catch (error) { if (db.isTransaction) db.exec('ROLLBACK'); throw error; }
 }
 /** create is exclusive; open never initializes an absent/foreign/incomplete database. */
 export function connectSQLite(directoryInput: unknown, identityInput: unknown, create: boolean): SQLiteHandle {
@@ -109,10 +128,14 @@ export function connectSQLite(directoryInput: unknown, identityInput: unknown, c
       if (file.dev !== original.dev || file.ino !== original.ino) throw new StorageError('E_STORAGE', 'database replaced');
       for (const suffix of ['-wal', '-shm', '-journal']) privateFile(path + suffix, false);
     };
+    let sourceVersion = SCHEMA_VERSION;
     if (!create) {
-      // Inspection precedes write connection/journal negotiation. No automatic migration.
+      // Read-only inspection rejects foreign and future files before any writer opens them.
       const reader = new DatabaseSync(path, { ...OPEN_OPTIONS, readOnly: true });
-      try { reader.exec('PRAGMA busy_timeout=250; PRAGMA trusted_schema=OFF;'); inspect(reader, identity); }
+      try {
+        reader.exec('PRAGMA busy_timeout=250; PRAGMA trusted_schema=OFF;');
+        sourceVersion = inspect(reader, identity);
+      }
       finally { reader.close(); }
     }
     db = new DatabaseSync(path, OPEN_OPTIONS);
@@ -120,18 +143,19 @@ export function connectSQLite(directoryInput: unknown, identityInput: unknown, c
     if (create) {
       db.exec('BEGIN IMMEDIATE');
       try {
-        db.exec(DDL);
+        db.exec(DDL_V1);
+        db.exec(DDL_V2);
         for (const [key, value] of Object.entries({ ...identity, schema_digest: DDL_DIGEST, clock_high_water_ms: '0' })) {
           db.prepare('INSERT INTO meta(key,value) VALUES (?,?)').run(key, value);
         }
         db.exec(`PRAGMA application_id=${APPLICATION_ID}; PRAGMA user_version=${SCHEMA_VERSION}; COMMIT`);
       } catch (error) { if (db.isTransaction) db.exec('ROLLBACK'); throw error; }
-      // SQLite synchronizes pages/WAL; sync the directory entry as well.
-      const fd = openSync(path, constants.O_RDONLY | constants.O_NOFOLLOW);
-      try { if (fstatSync(fd).ino !== original.ino) throw new StorageError('E_STORAGE', 'database replaced'); fsyncSync(fd); }
-      finally { closeSync(fd); }
-      syncDirectory(directory);
-    }
+    } else migrate(db, identity, sourceVersion);
+    // SQLite synchronizes pages/WAL; sync the directory entry as well.
+    const fd = openSync(path, constants.O_RDONLY | constants.O_NOFOLLOW);
+    try { if (fstatSync(fd).ino !== original.ino) throw new StorageError('E_STORAGE', 'database replaced'); fsyncSync(fd); }
+    finally { closeSync(fd); }
+    syncDirectory(directory);
     inspect(db, identity); guard();
     return Object.freeze({ db, identity, guard });
   } catch (error) {

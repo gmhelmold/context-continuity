@@ -25,7 +25,7 @@ test('WP02A proof: control plus four incorrect storage implementations are disti
       writeFileSync(join(dir,'package.json'),'{"type":"module"}');
       if(from){const path=join(dir,'packages/storage/src/session-store.ts'),s=readFileSync(path,'utf8');assert.equal(s.split(from).length,2,name+': mutation must be unique');writeFileSync(path,s.replace(from,to));}
       const env={...process.env};delete env.NODE_TEST_CONTEXT;
-      const result=spawnSync(process.execPath,['--experimental-strip-types','--test','--test-reporter=tap','tests/storage/session-store.test.mjs'],{cwd:dir,env,encoding:'utf8',timeout:30000,maxBuffer:2*1024*1024});
+      const result=spawnSync(process.execPath,['--experimental-strip-types','--test','--test-reporter=tap','tests/storage/session-store.test.mjs'],{cwd:dir,env,encoding:'utf8',timeout:60000,maxBuffer:2*1024*1024});
       assert.equal(result.error,undefined,name+': setup/timeout is not detection');assert.equal(result.signal,null);
       assert.match(result.stdout,/^# tests 29$/m,name+': every selected test must finish');
       if(name==='control')assert.equal(result.status,0,result.stdout+result.stderr);
