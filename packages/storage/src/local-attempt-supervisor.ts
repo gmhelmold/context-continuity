@@ -5,7 +5,7 @@ import { parseSessionBinding } from '../../core/src/identity.ts';
 import { parseJobContextRef } from '../../core/src/job-context.ts';
 import type { JobContextRef } from '../../core/src/job-context.ts';
 import { closedRecord } from '../../core/src/validation.ts';
-import { parseAttemptBudget, parseAttemptResult } from './job-records.ts';
+import { parseAttemptBudget, parseAttemptRef, parseAttemptResult } from './job-records.ts';
 import type { AttemptResult, StoredJob, AttemptRef } from './job-records.ts';
 import { SqliteSessionStore } from './session-store.ts';
 import type { OwnerLease } from './session-store.ts';
@@ -51,6 +51,15 @@ export class LocalAttemptSupervisor {
     catch (cause) { try { coordinator.close(); } catch { /* Preserve admission failure. */ } return storageFailure(cause); }
   }
   #available(): void { if (this.#closed) throw new StorageError('E_OWNER', 'supervisor closed'); }
+  #lease(lease: OwnerLease): OwnerLease {
+    const session = this.store.readSession(lease.binding);
+    if (!session || session.owner_id !== this.store.owner_id || canonical({ binding: session.binding, owner_id: session.owner_id,
+      owner_fence: session.owner_fence, lease_until_ms: session.lease_until_ms }) !== canonical(lease)) {
+      throw new StorageError('E_OWNER', 'supervisor lease mismatch');
+    }
+    return Object.freeze({ binding: session.binding, owner_id: session.owner_id,
+      owner_fence: session.owner_fence, lease_until_ms: session.lease_until_ms! });
+  }
   /** Exactly one invocation. This does not grant network permission to an unvalidated adapter. */
   start(lease: OwnerLease, expectedInput: unknown, budgetInput: unknown, operation: LocalAttemptOperation): Promise<StoredJob> {
     this.#available(); adapter(operation);
@@ -59,20 +68,14 @@ export class LocalAttemptSupervisor {
     if (!session || this.#tasks.has(session.binding.session_key) || this.#pendingCompletions.has(session.binding.session_key)) {
       throw new StorageError('E_CONFLICT', 'local operation or completion already tracked');
     }
-    // Immutable current lease data are copied instead of retaining a caller-mutable object.
-    if (session.owner_id !== this.store.owner_id || canonical({ binding: session.binding, owner_id: session.owner_id,
-      owner_fence: session.owner_fence, lease_until_ms: session.lease_until_ms }) !== canonical(lease)) {
-      throw new StorageError('E_OWNER', 'supervisor lease mismatch');
-    }
-    const owned = Object.freeze({ binding: session.binding, owner_id: session.owner_id,
-      owner_fence: session.owner_fence, lease_until_ms: session.lease_until_ms! });
+    const owned = this.#lease(lease);
     const attempt = this.#coordinator.withWorkspaceLock(hold => this.store.reserveJobAttempt(owned, expected, budget, hold));
     // The same identity was bound atomically with the reservation. Storage rechecks it on receipt.
     const ownership: AttemptOwnership = Object.freeze({ schema_version: 1, binding: owned.binding, job: expected, attempt,
       session_owner_id: owned.owner_id, owner_fence: owned.owner_fence,
       storage_owner_id: this.#coordinator.owner_id, process_instance: this.#coordinator.process_instance });
     const task: Task = { attempt, lease: owned, expected, ownership, controller: new AbortController() };
-    this.#tasks.set(session.binding.session_key, task);
+    this.#tasks.set(owned.binding.session_key, task);
     try {
       this.#coordinator.withWorkspaceLock(hold => this.store.markJobAttemptDispatched(owned, expected, attempt, hold));
     } catch (cause) {
@@ -86,9 +89,30 @@ export class LocalAttemptSupervisor {
           }
         });
       } catch { /* Keep the original failure; the durable record remains conservative. */ }
-      this.#tasks.delete(session.binding.session_key);
+      this.#tasks.delete(owned.binding.session_key);
       return Promise.reject(cause);
     }
+    return this.#perform(task, operation);
+  }
+  /** Starts one existing supervised reservation. It neither reserves nor admits work. */
+  adopt(lease: OwnerLease, expectedInput: unknown, attemptInput: unknown, operation: LocalAttemptOperation): Promise<StoredJob> {
+    this.#available(); adapter(operation);
+    const expected = parseJobContextRef(expectedInput), attempt = parseAttemptRef(attemptInput), owned = this.#lease(lease);
+    if (this.#tasks.has(owned.binding.session_key) || this.#pendingCompletions.has(owned.binding.session_key)) {
+      throw new StorageError('E_CONFLICT', 'local operation or completion already tracked');
+    }
+    const ownership = this.store.readAttemptOwnership(owned.binding, expected, attempt);
+    if (!ownership || canonical(ownership.job) !== canonical(expected) || canonical(ownership.attempt) !== canonical(attempt) ||
+        ownership.session_owner_id !== owned.owner_id || ownership.owner_fence !== owned.owner_fence ||
+        ownership.storage_owner_id !== this.#coordinator.owner_id || ownership.process_instance !== this.#coordinator.process_instance) {
+      throw new StorageError('E_OWNER', 'attempt is not owned by this supervisor');
+    }
+    const task: Task = { attempt, lease: owned, expected, ownership, controller: new AbortController() };
+    // Dispatch rechecks lease, ownership, live hold, current context, and reserved attempt atomically.
+    this.#coordinator.withWorkspaceLock(hold => {
+      this.store.markJobAttemptDispatched(owned, expected, attempt, hold);
+    });
+    this.#tasks.set(owned.binding.session_key, task);
     return this.#perform(task, operation);
   }
   async #perform(task: Task, operation: LocalAttemptOperation): Promise<StoredJob> {

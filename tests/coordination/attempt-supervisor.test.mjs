@@ -46,6 +46,30 @@ test('Supervisor: reservation binds both owner identities before the single invo
  assert.equal(calls,1);assert.equal(done.status,'ready');assert.equal(done.attempts[0].local_state,'stopped');
  assert.equal(done.attempts[0].remote_state,'confirmed');assert.notEqual(ownership.storage_owner_id,ownership.session_owner_id);
 }));
+test('Supervisor: adopts exact retained reservation without reserving again',()=>supervised(async f=>{
+  const prototype=Object.getPrototypeOf(f.store),dispatched=prototype.markJobAttemptDispatched,cancelled=prototype.cancelJob;
+  let calls=0;
+  prototype.markJobAttemptDispatched=function(){throw Error('synthetic dispatch refusal');};
+  prototype.cancelJob=function(){throw Error('synthetic reconcile refusal');};
+  try{await rejects(f.supervisor.start(f.lease,f.job.ref,amount,async()=>{calls++;return result();}),'E_STORAGE');}
+  finally{prototype.markJobAttemptDispatched=dispatched;prototype.cancelJob=cancelled;}
+  const before=f.store.readJob(f.b,f.job.ref),attempt=before.attempts[0],counters=sql(f,'SELECT counters_json FROM sessions');
+  assert.equal(attempt.state,'reserved');assert.equal(before.attempts.length,1);assert.equal(calls,0);
+  let adopted;await assert.doesNotReject(async()=>{adopted=await f.supervisor.adopt(f.lease,f.job.ref,attempt.ref,async()=>{calls++;return result();});});
+  assert.equal(calls,1);assert.equal(adopted.status,'ready');assert.equal(adopted.attempts.length,1);
+  assert.equal(adopted.attempts[0].ref.attempt_id,attempt.ref.attempt_id);
+  assert.deepEqual(sql(f,'SELECT counters_json FROM sessions'),counters);
+}));
+test('Supervisor: rejected adoption leaves foreign reservation unchanged and never invokes adapter',()=>supervised(async f=>{
+  const coordinator=WorkspaceCoordinator.open(f.directory,workspace);let calls=0;
+  try{
+   const attempt=coordinator.withWorkspaceLock(hold=>f.store.reserveJobAttempt(f.lease,f.job.ref,amount,hold));
+   const before={job:f.store.readJob(f.b,f.job.ref),attempts:sql(f,'SELECT * FROM attempts'),runs:sql(f,'SELECT * FROM aux_runs'),counters:sql(f,'SELECT counters_json FROM sessions')};
+   reject(()=>f.supervisor.adopt(f.lease,f.job.ref,attempt,async()=>{calls++;return result();}),'E_OWNER');
+   assert.equal(calls,0);assert.deepEqual(f.store.readJob(f.b,f.job.ref),before.job);assert.deepEqual(sql(f,'SELECT * FROM attempts'),before.attempts);
+   assert.deepEqual(sql(f,'SELECT * FROM aux_runs'),before.runs);assert.deepEqual(sql(f,'SELECT counters_json FROM sessions'),before.counters);
+  }finally{coordinator.close();}
+}));
 test('Supervisor: cancel persists quarantine and keeps its owner until pending cleanup ends',()=>supervised(async f=>{
  const d=deferred();let signal;
  const done=f.supervisor.start(f.lease,f.job.ref,amount,async s=>{signal=s;return d.promise;});
