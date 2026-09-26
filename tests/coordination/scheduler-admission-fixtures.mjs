@@ -1,5 +1,5 @@
 import {WorkspaceCoordinator} from '../../packages/storage/src/index.ts';
-import {fixture as jobFixture,amount,binding,id,proposal,response,sql,exec,workspace} from './job-fixtures.mjs';
+import {fixture as jobFixture,amount,binding,id,proposal,response,sql,exec,workspace} from '../storage/job-fixtures.mjs';
 
 export {amount,binding,id,proposal,response,sql,exec,workspace};
 export function fixture(fn,settings={}) {
