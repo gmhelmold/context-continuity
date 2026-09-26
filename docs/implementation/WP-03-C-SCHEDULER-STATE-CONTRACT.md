@@ -18,9 +18,11 @@ Admissão automática exige lease/fence, sessão ativa, armed, ausência de job 
 
 `observePrimaryAndRearm(lease,input)` é a fatia atômica de `primary_terminal`: revalida lease/fence, incarnation, tuple atual e configuração resolvida persistida; calcula L/T/N pela configuração atual; grava U/tempo; só marca low-water com `U < L`; e rearma estado desarmado por low-water válido com `U >= T`, ou por crescimento >=N, cooldown inclusivo e coverage diferente da última tentativa. Retorna `{state, reason}` congelado. Não cria nem altera job, attempt, reserva ou `structured_task`.
 
+`admitPrimarySchedulerJob(lease,{context,expected,observation,selected_interval_tokens,attempt_budget,owner_hold})` é a admissão primary isolada. Na mesma transação revalida lease/fence/incarnation/configuração/tupla/U/estado armado/última observação, exige `selected_interval_tokens >= 2*M` para M derivado de U atual, cria job, reserva `attempt_budget`, vincula owner do attempt, persiste as quatro colunas `last_attempt_*` e desarma. Não aceita `structured_task`, não executa dispatch/rede/projeção nem prova seleção; `selected_interval_tokens` é fato validado pelo chamador.
+
 ## Limites
 
-Não há admissão automática, job, attempt, reserva, tokenizer, rede, dispatch, projeção, prova runtime ou homologação. Rearmar somente muda `armed`; este contrato não conclui WP-03 nem T04/T14/T15/T16/T17/T35/T37/T40.
+Não há integração de eventos, `structured_task`, tokenizer, rede, dispatch, projeção, prova runtime ou homologação. A admissão primary recebe contexto e intervalo já validados; não seleciona intervalo nem prova sua semântica. Este contrato não conclui WP-03 nem T04/T14/T15/T16/T17/T35/T37/T40.
 
 ## Evidência desta entrega
 
