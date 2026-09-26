@@ -6,7 +6,7 @@ import { parseSessionBinding, createSessionBinding, digestValue, entityId, newEn
 import type { SessionBinding } from '../../core/src/identity.ts';
 import { resolveConfig } from '../../core/src/config.ts';
 import type { ResolvedConfiguration } from '../../core/src/config.ts';
-import { deriveTriggerBudget } from '../../core/src/scheduler-budget.ts';
+import { deriveTriggerBudget, evaluateTrigger } from '../../core/src/scheduler-budget.ts';
 import { boolean, choice, closedRecord, ContractError, integer } from '../../core/src/validation.ts';
 import { connectSQLite } from './sqlite-database.ts';
 import type { WorkspaceIdentity } from './sqlite-database.ts';
@@ -46,6 +46,7 @@ export type PrimaryRearmObservation = Readonly<{
   configuration: ResolvedConfiguration; eligible_tokens: number; observed_at_ms: number;
 }>;
 export type PrimaryRearmResult = Readonly<{ state: SchedulerState; reason: 'low_water' | 'growth' | null }>;
+export type PrimarySchedulerAdmission = Readonly<{ job: StoredJob; attempt: AttemptRef; state: SchedulerState }>;
 function configuration(input: unknown): ResolvedConfiguration {
   const v = closedRecord(input, ['settings', 'limits'], ['settings', 'limits'], 'configuration');
   const result = resolveConfig(v.settings, v.limits);
@@ -76,6 +77,16 @@ function rearmObservation(input: unknown): PrimaryRearmObservation {
     config_digest: digestValue(v.config_digest, 'observation.config_digest'), configuration: configuration(v.configuration),
     eligible_tokens: integer(v.eligible_tokens, 0, Number.MAX_SAFE_INTEGER, 'observation.eligible_tokens'),
     observed_at_ms: integer(v.observed_at_ms, 0, MAX_TIME, 'observation.observed_at_ms') });
+}
+function schedulerAdmission(input: unknown): Readonly<{
+  context: unknown; expected: JobContextRef; observation: PrimaryRearmObservation;
+  selected_interval_tokens: number; attempt_budget: jobs.AttemptBudget; owner_hold: unknown;
+}> {
+  const fields = ['context', 'expected', 'observation', 'selected_interval_tokens', 'attempt_budget', 'owner_hold'];
+  const v = closedRecord(input, fields, fields, 'primary_scheduler_admission');
+  return Object.freeze({ context: v.context, expected: parseJobContextRef(v.expected), observation: rearmObservation(v.observation),
+    selected_interval_tokens: integer(v.selected_interval_tokens, 0, Number.MAX_SAFE_INTEGER, 'selected_interval_tokens'),
+    attempt_budget: jobs.parseAttemptBudget(v.attempt_budget), owner_hold: v.owner_hold });
 }
 export class SqliteSessionStore {
   readonly owner_id: string;
@@ -292,6 +303,50 @@ export class SqliteSessionStore {
       }
       this.#owned(lease, this.#now());
       return Object.freeze({ state: this.#scheduler(this.#require(binding))!, reason });
+    });
+  }
+  /** C-SCHED primary-only admission. This records intent; it neither dispatches nor projects. */
+  admitPrimarySchedulerJob(leaseInput: unknown, input: unknown): PrimarySchedulerAdmission {
+    const lease = leaseValue(leaseInput), binding = this.#scope(lease.binding), value = schedulerAdmission(input);
+    const context = assertJobContext(binding, value.context, value.expected);
+    return this.#jobWrite(lease, (row, now) => {
+      assertWorkspaceHold(this.workspace, value.owner_hold);
+      if (canonical(value.observation.configuration) !== canonical(row.config) || value.observation.host_epoch !== binding.host_epoch ||
+          value.observation.host_epoch !== row.binding.host_epoch || value.observation.policy_revision !== row.policy_revision ||
+          value.observation.observed_at_ms > now) {
+        throw new StorageError('E_CONFLICT', 'primary scheduler observation is not current');
+      }
+      const budget = evaluateTrigger(row.config, { effective_input_tokens: value.observation.eligible_tokens }).budget;
+      if (value.observation.eligible_tokens < budget.trigger_threshold || value.selected_interval_tokens < 2 * budget.minimum_gain_floor) {
+        throw new StorageError('E_BUDGET', 'primary scheduler opportunity is below threshold');
+      }
+      const scheduler = this.#scheduler(row);
+      if (!scheduler || !scheduler.armed || scheduler.last_observed_eligible_tokens !== value.observation.eligible_tokens ||
+          scheduler.last_observed_at_ms !== value.observation.observed_at_ms ||
+          (scheduler.last_attempt !== null && scheduler.last_attempt.host_epoch === value.observation.host_epoch &&
+            scheduler.last_attempt.coverage_digest === value.observation.coverage_digest &&
+            scheduler.last_attempt.policy_revision === value.observation.policy_revision &&
+            scheduler.last_attempt.config_digest === value.observation.config_digest)) {
+        throw new StorageError('E_CONFLICT', 'primary scheduler state is not admissible');
+      }
+      const snapshot = context.record.snapshot;
+      if (snapshot.host_epoch !== value.observation.host_epoch || snapshot.coverage_digest !== value.observation.coverage_digest ||
+          snapshot.policy_revision !== value.observation.policy_revision || snapshot.config_digest !== value.observation.config_digest) {
+        throw new StorageError('E_CONFLICT', 'job context does not match scheduler opportunity');
+      }
+      jobs.admitJob(this.#db, row, context, value.expected, now);
+      const attempt = jobs.reserveJobAttempt(this.#db, row, value.expected, value.attempt_budget, now);
+      bindAttemptOwner(this.#db, lease, value.expected, attempt, value.owner_hold);
+      assertWorkspaceHold(this.workspace, value.owner_hold);
+      const changed = this.#db.prepare(`UPDATE scheduler_state SET armed=0,last_attempt_host_epoch=?,last_attempt_coverage_digest=?,
+        last_attempt_policy_revision=?,last_attempt_config_digest=? WHERE session_key=? AND incarnation=? AND armed=1 AND
+        last_observed_eligible_tokens=? AND last_observed_at_ms=?`).run(value.observation.host_epoch, value.observation.coverage_digest,
+        value.observation.policy_revision, value.observation.config_digest, binding.session_key, binding.incarnation,
+        value.observation.eligible_tokens, value.observation.observed_at_ms);
+      if (changed.changes !== 1) throw new StorageError('E_CONFLICT', 'scheduler admission state changed');
+      const stored = jobs.requireJob(this.#db, binding, value.expected);
+      if (stored.status !== 'running' || stored.attempts.length !== 1) throw new StorageError('E_STORAGE', 'scheduler admission record invalid');
+      return Object.freeze({ job: stored, attempt, state: this.#scheduler(this.#require(binding))! });
     });
   }
   renewLease(input: unknown): OwnerLease {
