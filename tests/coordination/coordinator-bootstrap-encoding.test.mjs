@@ -8,7 +8,7 @@ import {mkdtempSync, openSync, closeSync, readFileSync, rmSync, existsSync} from
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {hashSource} from '../../packages/core/src/identity.ts';
-import {connectSQLite, APPLICATION_ID, SCHEMA_VERSION} from '../../packages/storage/src/sqlite-database.ts';
+import {connectSQLite, APPLICATION_ID} from '../../packages/storage/src/sqlite-database.ts';
 import {WorkspaceCoordinator} from '../../packages/storage/src/workspace-coordinator.ts';
 import {workspace, sql} from './coordinator-fixtures.mjs';
 
@@ -33,7 +33,7 @@ function encodedLedger(encoding, action) {
         schema_digest: hashSource(Buffer.from(ddl)),
         clock_high_water_ms: '0',
       })) db.prepare('INSERT INTO meta(key,value) VALUES (?,?)').run(key, value);
-      db.exec(`PRAGMA application_id=${APPLICATION_ID}; PRAGMA user_version=${SCHEMA_VERSION};`);
+      db.exec(`PRAGMA application_id=${APPLICATION_ID}; PRAGMA user_version=1;`);
       assert.equal(db.prepare('PRAGMA encoding').get().encoding, encoding, 'fixture encoding must be real');
     } finally { db.close(); }
 
