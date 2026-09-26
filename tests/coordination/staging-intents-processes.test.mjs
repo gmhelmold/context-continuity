@@ -104,8 +104,8 @@ function contender(f, request) {
     const p=${JSON.stringify(params)};
     let finished=false;
     const c=WorkspaceCoordinator.open(p.directory,p.workspace);
-    const finish=result=>{if(finished)return;finished=true;try{c?.close()}catch(error){if(error.code!=='E_CAPABILITY')result=error.code}process.send({phase:'result',result},()=>process.disconnect())};
-    const reserve=()=>{try{c.reserveStaging(p.binding,p.request);finish('committed')}catch(error){finish(error.code)}};
+    const finish=result=>{if(finished)return;finished=true;try{c?.close()}catch(error){if(error.code!=='E_CAPABILITY'&&error.code!=='E_CONFLICT')result=error.code}process.send({phase:'result',result},()=>process.disconnect())};
+    const reserve=()=>{try{c.reserveStaging(p.binding,p.request);finish('committed')}catch(error){if(error.code==='E_CONFLICT'){setImmediate(reserve);return}finish(error.code)}};
     process.once('message',reserve);
     process.send({phase:'ready',owner_id:c.owner_id,process_instance:c.process_instance});`;
   const child = spawn(process.execPath, ['--experimental-strip-types', '--input-type=module', '-e', program],
