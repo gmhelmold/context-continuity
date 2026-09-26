@@ -102,11 +102,12 @@ function contender(f, request) {
   const params = { directory: f.directory, workspace, binding: f.b, request };
   const program = `import {WorkspaceCoordinator} from ${JSON.stringify(moduleURL)};
     const p=${JSON.stringify(params)};
-    let c,finished=false;
-    const finish=result=>{if(finished)return;finished=true;try{c?.close()}catch(error){if(error.code!=='E_CAPABILITY')result=error.code}process.send({phase:'result',result},()=>process.disconnect())};
-    const reserve=()=>{try{c??=WorkspaceCoordinator.open(p.directory,p.workspace);c.reserveStaging(p.binding,p.request);finish('committed')}catch(error){if(error.code==='E_CONFLICT'){setImmediate(reserve);return}finish(error.code)}};
+    let finished=false;
+    const c=WorkspaceCoordinator.open(p.directory,p.workspace);
+    const finish=result=>{if(finished)return;finished=true;let close_code=null;try{c?.close()}catch(error){close_code=error.code;if(error.code!=='E_CAPABILITY'&&error.code!=='E_CONFLICT')result=error.code}process.send({phase:'result',result,close_code,reservation_id:p.request.reservation_id},()=>process.disconnect())};
+    const reserve=()=>{try{c.reserveStaging(p.binding,p.request);finish('committed')}catch(error){if(error.code==='E_CONFLICT'&&error.reason==='workspace lock busy'){setImmediate(reserve);return}finish(error.code)}};
     process.once('message',reserve);
-    process.send({phase:'ready'});`;
+    process.send({phase:'ready',owner_id:c.owner_id,process_instance:c.process_instance});`;
   const child = spawn(process.execPath, ['--experimental-strip-types', '--input-type=module', '-e', program],
     { env: environment(), stdio: ['ignore', 'ignore', 'pipe', 'ipc'] });
   let stderr = '', spawnError;
@@ -125,11 +126,18 @@ function contender(f, request) {
 test('Staging process: two live owners contest final shared capacity after one IPC start', { timeout: 45000 }, () => stagingFixture(async f => {
   const used = f.coordinator.readStorageBudget().used_bytes;
   sql(f, "INSERT INTO blobs(digest,size_bytes,created_at) VALUES (?,?,?)", 'e'.repeat(64), QUOTA - used - 1, '2026-01-01T00:00:00.000Z');
-  const participants = [contender(f, f.request), contender(f, { ...f.request,
-    reservation_id: '00000000-0000-4000-8000-000000009999', operation_id: '00000000-0000-4000-8000-000000009998' })];
+  const participants = [contender(f, f.request)];
   try {
+    // Opening owners uses a nonblocking workspace lock; only reserve starts concurrently.
+    const first = await deadline(participants[0].ready, 'first staging contender readiness');
+    participants.push(contender(f, { ...f.request,
+      reservation_id: '00000000-0000-4000-8000-000000009999', operation_id: '00000000-0000-4000-8000-000000009998' }));
     const ready = await deadline(Promise.all(participants.map(participant => participant.ready)), 'staging contender readiness');
     assert.ok(ready.every(message => message.phase === 'ready'));
+    assert.notEqual(first.owner_id, f.coordinator.owner_id);
+    assert.notEqual(first.owner_id, ready[1].owner_id);
+    assert.notEqual(ready[1].owner_id, f.coordinator.owner_id);
+    assert.notEqual(first.process_instance, ready[1].process_instance);
     const results = participants.map(participant => Promise.race([once(participant.child, 'message').then(([message]) => message),
       participant.exit.then(() => { throw Error('staging contender exited without result: ' + participant.details().stderr); })]));
     for (const participant of participants) participant.child.send('go');
@@ -140,6 +148,12 @@ test('Staging process: two live owners contest final shared capacity after one I
       assert.deepEqual(exits[index], { code: 0, signal: null }, participants[index].details().stderr);
     }
     assert.deepEqual(values.map(value => value.result).sort(), ['E_BUDGET', 'committed']);
+    const winner = values.findIndex(value => value.result === 'committed');
+    assert.ok(['E_CONFLICT', 'E_CAPABILITY'].includes(values[winner].close_code));
+    const intent = f.coordinator.readStaging(f.b, values[winner].reservation_id);
+    assert.ok(intent);
+    assert.equal(intent.owner_id, ready[winner].owner_id);
+    assert.equal(intent.process_instance, ready[winner].process_instance);
     assert.equal(f.coordinator.readStorageBudget().used_bytes, QUOTA);
   } finally {
     for (const participant of participants) if (participant.child.exitCode === null && participant.child.signalCode === null) participant.child.kill('SIGKILL');
