@@ -8,7 +8,7 @@ Estado é indexado por `session_key` e validado contra `incarnation` atual. Tupl
 
 Somente `primary_terminal` registra U/tempo ou low-water. Low-water é booleano limitado a epoch/policy/config atuais. `structured_task` não altera essa evidência; worker e manutenção são ignorados. Tentativa física não é terminal: terminal é estado final do job inteiro.
 
-Admissão automática exige lease/fence, sessão ativa, `U >= T`, armed, ausência de job ativo/quarantine e tupla diferente da última tentativa. Mesma transação cria job/reserva, persiste tupla e desarma estado. Rearmamento requer low-water válido e `U >= T`, ou crescimento de pelo menos N, cooldown inclusivo exato e `coverage_digest` diferente.
+Admissão automática exige lease/fence, sessão ativa, armed, ausência de job ativo/quarantine e tupla diferente da última tentativa. Exige `U >= T`, exceto `structured_task` com `task_trigger=true`, intervalo seguro >=2M, crescimento elegível >=N e cooldown satisfeito. Mesma transação cria job/reserva, persiste tupla e desarma estado. Rearmamento requer low-water válido e `U >= T`, ou crescimento de pelo menos N, cooldown inclusivo exato e `coverage_digest` diferente.
 
 ## Limites
 
