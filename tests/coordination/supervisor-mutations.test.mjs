@@ -32,6 +32,8 @@ const cases=[
  ['premature-stop','local-attempt-supervisor.ts',cancellation,
   'const job = this.#coordinator.withWorkspaceLock(hold => { const value = this.store.cancelJob(lease, expected); return task ? this.store.confirmJobAttemptStopped(lease, expected, task.attempt, hold) : value; });',
   'Supervisor: cancel ordering is observed outside the adapter and before settlement'],
+  ['adoption-reserves','local-attempt-supervisor.ts','this.store.markJobAttemptDispatched(owned, expected, attempt, hold);','this.store.reserveJobAttempt(owned, expected, { input_tokens: 1, output_tokens: 1 }, hold);',
+   'Supervisor: adopts exact retained reservation without reserving again'],
 ];
 for(const [name,file,from,to,expected] of cases){
  test(`Supervisor proof: ${name} distinguishes its positive control and incorrect implementation`,{timeout:90000},()=>{
