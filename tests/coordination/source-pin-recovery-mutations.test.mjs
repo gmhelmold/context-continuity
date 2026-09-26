@@ -7,6 +7,14 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 const root=fileURLToPath(new URL('../../',import.meta.url));
+const pinRecoveryStart='  recoverSourcePin(bindingInput: unknown, idInput: unknown): SourcePinRecovery {';
+const pinRecoveryEnd='\n  /** Retirement is only storage-record reconciliation, never permission to clean a job. */';
+function pinRecoveryRegion(source){
+ const start=source.indexOf(pinRecoveryStart),end=source.indexOf(pinRecoveryEnd,start);
+ assert.notEqual(start,-1,'recoverSourcePin: declaration exists');assert.equal(source.indexOf(pinRecoveryStart,start+1),-1,'recoverSourcePin: declaration unique');
+ assert.notEqual(end,-1,'recoverSourcePin: bounded end exists');
+ return [source.slice(0,start),source.slice(start,end),source.slice(end)];
+}
 const cases=[
  ['busy','if (!recoveryFile.tryLock())','if (false)','Pin recovery: live original owner remains held regardless of elapsed session time'],
  ['identity','if (!sameFile(recoveryFile.identity, original.identity)) return capability();','void original.identity;','Pin recovery: a different inode at the same pathname cannot authorize release'],
@@ -24,8 +32,10 @@ for(const [name,from,to,selected] of cases)test(`Pin recovery mutation: ${name} 
    cpSync(join(root,'tests/storage/job-fixtures.mjs'),join(directory,'tests/storage/job-fixtures.mjs'));
    for(const file of ['source-pin-recovery.test.mjs','source-pin-fixtures.mjs','coordinator-fixtures.mjs'])cpSync(join(root,'tests/coordination',file),join(directory,'tests/coordination',file));
    writeFileSync(join(directory,'package.json'),'{"type":"module"}');
-   const path=join(directory,'packages/storage/src/workspace-coordinator.ts'),source=readFileSync(path,'utf8');
-   assert.equal(source.split(from).length-1,1,name+': unique mutation anchor');if(mutant)writeFileSync(path,source.replace(from,to));
+    const path=join(directory,'packages/storage/src/workspace-coordinator.ts'),source=readFileSync(path,'utf8');
+    const [before,recovery,after]=pinRecoveryRegion(source);
+    assert.equal(recovery.split(from).length-1,1,name+': unique recoverSourcePin mutation anchor');
+    if(mutant){const changed=before+recovery.replace(from,to)+after;assert.equal(changed.slice(0,before.length),before,name+': staging recovery unchanged');writeFileSync(path,changed);}
    const pattern='^'+selected.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'$',env={...process.env};delete env.NODE_TEST_CONTEXT;
    const result=spawnSync(process.execPath,['--experimental-strip-types','--test','--test-reporter=tap','--test-name-pattern='+pattern,'tests/coordination/source-pin-recovery.test.mjs'],{cwd:directory,env,encoding:'utf8',timeout:30000,maxBuffer:2*1024*1024});
    assert.equal(result.error,undefined,name+': setup or timeout is not detection');assert.equal(result.signal,null);assert.match(result.stdout,/^# tests 1$/m);
