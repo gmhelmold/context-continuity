@@ -4,4 +4,4 @@ Implementação F3 e evidência local isolada cobrem `recoverStaging`: API estri
 
 F3 limita-se a exceção de autoridade de recuperação identificada, pré-arquivo, de uma reserva staging comprovadamente sem detentor. Não implementa cancelamento cross-owner geral, recovery geral de owner, aposentadoria/adoção, cleanup físico, writer, staging path, blobs, jobs, View, GC, rede ou inferência. WP-02 permanece aberto.
 
-Execução da matriz herdada completa e evidência Actions requerida por SPEC-25 §5 permanecem pendentes. Não declarar F3, staging físico, recuperação geral de owner ou WP-02 completos por estes testes.
+PR #55 executou os checks aplicáveis no Actions, incluindo a matriz de coordenação e campanhas de mutação. Esta evidência incremental não declara F3, staging físico, recuperação geral de owner ou WP-02 completos.
