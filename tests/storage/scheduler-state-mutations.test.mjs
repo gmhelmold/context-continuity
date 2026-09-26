@@ -13,6 +13,8 @@ const cases=[
   ['primary-update-clobbers-authority','UPDATE scheduler_state SET last_observed_eligible_tokens=?,last_observed_at_ms=?,low_water_observed=','UPDATE scheduler_state SET armed=0,last_observed_eligible_tokens=?,last_observed_at_ms=?,low_water_observed=', 'C-SCHED-01 observation: closed input, frozen state, primary fields and valid low-water persist',2],
   ['low-water-cleared','validLow ? 1 : 0,','0,', 'C-SCHED-01 observation: closed input, frozen state, primary fields and valid low-water persist',1],
   ['migration-authority-bypassed',"if (db.prepare('SELECT value FROM meta WHERE key=?').get(key)?.value !== value)",'if (false)', 'C-SCHED-01 migration: v1 authority is verified before upgrade',1],
+  ['growth-rearm-bypassed','value.eligible_tokens - prior.last_observed_eligible_tokens >= budget.new_tokens','true', 'C-SCHED rearm: rejects stale config and retains disarmed state without exact growth proof',1],
+  ['coverage-rearm-bypassed','value.coverage_digest !== prior.last_attempt.coverage_digest','true', 'C-SCHED rearm: growth never rearms unchanged last-attempt coverage',1],
 ];
 test('C-SCHED-01 proof: control plus incorrect observation implementations are distinguished',{timeout:90000},()=>{
   for(const [name,from,to,expected,count] of cases){const dir=mkdtempSync(join(tmpdir(),'cc-scheduler-mutation-'));try{
@@ -20,7 +22,7 @@ test('C-SCHED-01 proof: control plus incorrect observation implementations are d
     cpSync(join(root,'tests/storage/scheduler-state.test.mjs'),join(dir,'tests/storage/scheduler-state.test.mjs'));writeFileSync(join(dir,'package.json'),'{"type":"module"}');
     if(from){const path=join(dir,'packages/storage/src',name==='migration-authority-bypassed'?'sqlite-database.ts':'session-store.ts'),text=readFileSync(path,'utf8'),matches=text.split(from).length-1;assert.equal(matches,count,name+': mutation target count');writeFileSync(path,text.replaceAll(from,to));}
     const env={...process.env};delete env.NODE_TEST_CONTEXT;const result=spawnSync(process.execPath,['--experimental-strip-types','--test','--test-reporter=tap','tests/storage/scheduler-state.test.mjs'],{cwd:dir,env,encoding:'utf8',timeout:30000});
-    assert.equal(result.error,undefined,name+': setup/timeout not detection');assert.match(result.stdout,/^# tests 7$/m,name+': all tests finish\n'+result.stderr);
+    assert.equal(result.error,undefined,name+': setup/timeout not detection');assert.match(result.stdout,/^# tests 11$/m,name+': all tests finish\n'+result.stderr);
     if(name==='control')assert.equal(result.status,0,result.stdout+result.stderr);else {assert.equal(result.status,1,name+': incorrect implementation survived');assert.ok(result.stdout.split('\n').some(line=>line.startsWith('not ok ')&&line.endsWith(' - '+expected)),name+': unrelated failure');}
   }finally{rmSync(dir,{recursive:true,force:true});}}
 });

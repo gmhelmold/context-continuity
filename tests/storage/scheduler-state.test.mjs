@@ -16,6 +16,7 @@ const binding=createSessionBinding({...workspace,adapter_id:'scheduler-fixture',
 const config=()=>resolveConfig({}, {context_window:100000,output_reserve:4096});
 const digest=n=>n.toString(16).padStart(64,'0');
 const input=(patch={})=>({host_epoch:0,coverage_digest:digest(1),policy_revision:0,config_digest:digest(2),eligible_tokens:100,observed_at_ms:100000,below_rearm_threshold:false,...patch});
+const rearm=(patch={})=>{const {configuration=config(),...rest}=patch,value=input(rest);delete value.below_rearm_threshold;return {...value,configuration};};
 const reject=(fn,code)=>assert.throws(fn,error=>error.code===code);
 function fixture(fn){const directory=mkdtempSync(join(tmpdir(),'cc-scheduler-')),handles=[];let now=100000;
   const create=()=>{const s=SqliteSessionStore.create(directory,workspace,()=>now);handles.push(s);return s;};
@@ -61,4 +62,27 @@ test('C-SCHED-01 observation: stale scheduler incarnation never receives primary
 test('C-SCHED-01 observation: false clears stale low-water scope but never arms or records attempt',()=>fixture(f=>{
   const s=f.create();s.createSession(binding,config());const lease=s.acquireLease(binding);s.recordPrimaryObservation(lease,input({below_rearm_threshold:true}));
   f.advance(1);const result=s.recordPrimaryObservation(lease,input({config_digest:digest(3),observed_at_ms:100001}));assert.equal(result.low_water,null);assert.equal(result.armed,true);assert.equal(result.last_attempt,null);
+}));
+test('C-SCHED rearm: atomically records U and rearms from low-water only at T',()=>fixture(f=>{
+  const s=f.create();s.createSession(binding,config());const lease=s.acquireLease(binding);
+  const initial=s.observePrimaryAndRearm(lease,rearm({eligible_tokens:40000}));assert.equal(initial.reason,null);assert.equal(initial.state.low_water,null);
+  f.advance(1);const low=s.observePrimaryAndRearm(lease,rearm({eligible_tokens:39999,observed_at_ms:100001}));assert.deepEqual(low.state.low_water,{host_epoch:0,policy_revision:0,config_digest:digest(2)});
+  const db=new DatabaseSync(f.path);db.prepare('UPDATE scheduler_state SET armed=0 WHERE session_key=?').run(binding.session_key);db.close();
+  f.advance(1);const result=s.observePrimaryAndRearm(lease,rearm({eligible_tokens:50000,observed_at_ms:100002}));assert.equal(result.reason,'low_water');assert.equal(result.state.armed,true);assert.ok(Object.isFrozen(result));assert.ok(Object.isFrozen(result.state));assert.equal(result.state.last_attempt,null);
+}));
+test('C-SCHED rearm: growth needs N, inclusive cooldown, and changed last-attempt coverage',()=>fixture(f=>{
+  const s=f.create();s.createSession(binding,config());const lease=s.acquireLease(binding);s.observePrimaryAndRearm(lease,rearm());
+  const db=new DatabaseSync(f.path);db.prepare(`UPDATE scheduler_state SET armed=0,last_attempt_host_epoch=0,last_attempt_coverage_digest=?,last_attempt_policy_revision=0,last_attempt_config_digest=? WHERE session_key=?`).run(digest(1),digest(2),binding.session_key);db.close();
+  f.advance(29999);const renewed=s.renewLease(lease);f.advance(1);const result=s.observePrimaryAndRearm(renewed,rearm({coverage_digest:digest(3),eligible_tokens:5100,observed_at_ms:130000}));assert.equal(result.reason,'growth');assert.equal(result.state.armed,true);
+}));
+test('C-SCHED rearm: rejects stale config and retains disarmed state without exact growth proof',()=>fixture(f=>{
+  const s=f.create();s.createSession(binding,config());const lease=s.acquireLease(binding);s.observePrimaryAndRearm(lease,rearm());
+  const db=new DatabaseSync(f.path);db.prepare(`UPDATE scheduler_state SET armed=0,last_attempt_host_epoch=0,last_attempt_coverage_digest=?,last_attempt_policy_revision=0,last_attempt_config_digest=? WHERE session_key=?`).run(digest(1),digest(2),binding.session_key);db.close();
+  reject(()=>s.observePrimaryAndRearm(lease,rearm({configuration:resolveConfig({cooldown_ms:0},{context_window:100000,output_reserve:4096})})),'E_CONFLICT');
+  f.advance(29999);const renewed=s.renewLease(lease);f.advance(1);const result=s.observePrimaryAndRearm(renewed,rearm({coverage_digest:digest(3),eligible_tokens:5099,observed_at_ms:130000}));assert.equal(result.reason,null);assert.equal(result.state.armed,false);assert.equal(result.state.last_observed_eligible_tokens,5099);
+}));
+test('C-SCHED rearm: growth never rearms unchanged last-attempt coverage',()=>fixture(f=>{
+  const s=f.create();s.createSession(binding,config());const lease=s.acquireLease(binding);s.observePrimaryAndRearm(lease,rearm());
+  const db=new DatabaseSync(f.path);db.prepare(`UPDATE scheduler_state SET armed=0,last_attempt_host_epoch=0,last_attempt_coverage_digest=?,last_attempt_policy_revision=0,last_attempt_config_digest=? WHERE session_key=?`).run(digest(1),digest(2),binding.session_key);db.close();
+  f.advance(29999);const renewed=s.renewLease(lease);f.advance(1);const result=s.observePrimaryAndRearm(renewed,rearm({eligible_tokens:5100,observed_at_ms:130000}));assert.equal(result.reason,null);assert.equal(result.state.armed,false);
 }));

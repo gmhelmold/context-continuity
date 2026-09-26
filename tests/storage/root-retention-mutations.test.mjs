@@ -12,7 +12,7 @@ const cases=[
  ['catalog-check','root-records.ts','if (before.catalog_digest !== input.expected_catalog_digest)','if (false)','WP02B: stale catalog rejects the whole batch before source insertion',1],
  ['source-hash','source-records.ts','hashSource(bytes) !== ref.digest','false','WP02B: mismatched supplied source hash is rejected before writes',2],
  ['source-read-integrity','source-records.ts','row.size_bytes !== bytes.length || hashSource(bytes) !== ref.digest','false','WP02B: corrupt retained bytes are not returned or accepted as root provenance',1],
- ['owner-check','session-store.ts','this.#owned(lease, this.#now());','void lease;','WP02B: expired and superseded owners cannot retain data',4],
+ ['owner-check','session-store.ts','this.#owned(lease, this.#now());','void lease;','WP02B: expired and superseded owners cannot retain data',5],
 ];
 const pattern='stale catalog rejects|mismatched supplied source hash|corrupt retained bytes|expired and superseded owners';
 test('WP02B: positive control and four incorrect retention implementations are distinguished',{timeout:180000},()=>{

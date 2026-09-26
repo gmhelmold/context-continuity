@@ -20,6 +20,7 @@ const binding=createSessionBinding({...workspace,adapter_id:'scheduler-process-f
 const config=()=>resolveConfig({}, {context_window:100000,output_reserve:4096});
 const digest=n=>n.toString(16).padStart(64,'0');
 const observation={host_epoch:0,coverage_digest:digest(1),policy_revision:0,config_digest:digest(2),eligible_tokens:100,observed_at_ms:100000,below_rearm_threshold:true};
+const rearmObservation={host_epoch:0,coverage_digest:digest(1),policy_revision:0,config_digest:digest(2),configuration:config(),eligible_tokens:40000,observed_at_ms:100000};
 function fixture(fn){const directory=mkdtempSync(join(tmpdir(),'cc-scheduler-process-'));try{return fn({directory,path:join(directory,'ledger.sqlite')});}finally{rmSync(directory,{recursive:true,force:true});}}
 function makeV1(directory){const path=join(directory,'ledger.sqlite'),ddl=readFileSync(join(root,'packages/storage/src/schema-v1.sql'),'utf8');
   const db=new DatabaseSync(path);db.exec(ddl);const schema_digest=createHash('sha256').update(ddl).digest('hex');
@@ -51,6 +52,12 @@ test('C-SCHED-01 process: separate store cannot mutate primary state with foreig
   const result=child(stateProgram(f.directory,`try{store.recordPrimaryObservation(${JSON.stringify(lease)},observation);process.exitCode=1;}catch(error){console.log(error.code);}store.close();`));
   assert.equal(result.status,0,result.stderr);assert.equal(result.stdout.trim(),'E_OWNER');
   const reopened=SqliteSessionStore.open(f.directory,workspace,()=>100000);try{assert.equal(reopened.readSchedulerState(binding),null);}finally{reopened.close();}
+}));
+
+test('C-SCHED rearm process: committed primary observation survives independent reopen',()=>fixture(f=>{
+  const initial=SqliteSessionStore.create(f.directory,workspace,()=>100000);initial.createSession(binding,config());const lease=initial.acquireLease(binding);
+  const result=initial.observePrimaryAndRearm(lease,rearmObservation);assert.equal(result.reason,null);initial.close();
+  const reopened=SqliteSessionStore.open(f.directory,workspace,()=>100000);try{assert.deepEqual(reopened.readSchedulerState(binding),{binding,armed:true,last_attempt:null,low_water:null,last_observed_eligible_tokens:40000,last_observed_at_ms:100000});}finally{reopened.close();}
 }));
 
 test('C-SCHED-01 process: crash after confirmed observation preserves state on reopen',{timeout:30000},async()=>{
