@@ -48,7 +48,7 @@ Qualquer registro managed_files da operação — staging, complete ou cleanup_p
 
 A remoção da reserva e o CAS do envelope para cancelled devem ser confirmados juntos. Falha antes do commit conserva a reserva e a cobrança. Erro posterior ao commit pode deixar o cancelamento confirmado: repetição explícita reconhece o histórico, sem nova liberação ou repetição automática. ID desconhecido é conflito; diagnóstico null não autoriza cancelamento fictício.
 
-Fechamento com reserva ativa segue SPEC-18: pode recusar aposentadoria, revogar recursos locais e conservar registro/cobrança. Outra instância pode consultar o binding original, mas não recebe poder de cancelar por saber IDs, encontrar lock livre ou observar idade/owner retired. Descoberta e recuperação identificada são serviços posteriores; não habilitar o fluxo físico enquanto suas dependências estiverem ausentes.
+Fechamento com reserva ativa segue SPEC-18: pode recusar aposentadoria, revogar recursos locais e conservar registro/cobrança. Outra instância pode consultar o binding original, mas não recebe poder de cancelar por saber IDs, encontrar lock livre ou observar idade/owner retired. Exceção única: [SPEC-25 §3](25-staging-intent-recovery.md#3-ordem-e-liveness-identificado) concede autoridade F3 somente para uma intenção pré-arquivo identificada, após binding, owner/inode/process e lock de inspeção originais exatos, até o mesmo COMMIT; não é poder geral de cancelamento, descoberta ou recuperação de owner. Não habilitar fluxo físico enquanto suas dependências estiverem ausentes.
 
 ## 6. Plano de validação obrigatório
 

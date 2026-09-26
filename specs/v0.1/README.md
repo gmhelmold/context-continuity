@@ -29,9 +29,12 @@
 | [SPEC-21](21-source-pins.md) | Pins de leitura/exportação inline, replay e liberação pelo owner; sem GC ou reader de blobs. |
 | [SPEC-22](22-source-pin-discovery.md) | Descoberta limitada e paginada de pins ativos por workspace; diagnóstico sem leitura de conteúdo ou limpeza automática. |
 | [SPEC-23](23-storage-budget.md) | Diagnóstico de quota lógica por workspace e contabilidade compartilhada com admissão inline; não é reserva de staging. |
-| [SPEC-24](24-staging-intents.md) | Contrato futuro F2: reserva de capacidade pré-arquivo; implementação e gate pendentes na issue #47. |
+| [SPEC-24](24-staging-intents.md) | Reservas de capacidade pré-arquivo (WP-02/F2); implementação merged, evidência incremental; WP-02 permanece aberto. |
+| [SPEC-25](25-staging-intent-recovery.md) | Contrato futuro F3: recuperação identificada de intenção pré-arquivo; não é staging físico nem recuperação geral de owner. |
 | [Work packages](WORK-PACKAGES.md) | Oito pacotes com cinco axiomas e DoDs sem dependências retroativas. |
 | [traceability.json](traceability.json) | Fonte única do mapa requisito/casos/donos/dependências. |
+
+Este índice lista somente contratos presentes nesta árvore; não reivindica ou antecipa documentos futuros ausentes.
 
 ## Decisões que substituem ambiguidades anteriores
 
