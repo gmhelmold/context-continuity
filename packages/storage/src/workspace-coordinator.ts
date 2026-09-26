@@ -16,7 +16,7 @@ import { pinBinding, parseSourcePinRequest, createSourcePin, loadSourcePin, rele
   parseSourcePinPageRequest, listSourcePins as listActiveSourcePins } from './source-pins.ts';
 import type { SourcePin, SourcePinPage } from './source-pins.ts';
 import type { RetainedSource } from './source-records.ts';
-import { stagingBinding, parseStagingIntentRequest, createStagingIntent, loadStagingIntent, cancelStagingIntent } from './staging-intents.ts';
+import { stagingBinding, parseStagingIntentRequest, createStagingIntent, loadStagingIntent, cancelStagingIntent, recoverStagingIntent } from './staging-intents.ts';
 import type { StagingIntent } from './staging-intents.ts';
 
 const ANCHOR_KEY = 'coordinator.anchor.v1';
@@ -31,6 +31,7 @@ declare const holdBrand: unique symbol;
 export type WorkspaceHold = Readonly<{ workspace: WorkspaceIdentity; owner_id: string; process_instance: string; [holdBrand]: true }>;
 export type OwnerInspection = Readonly<{ state: 'absent' | 'held' | 'retired'; owner: StorageOwner | null }>;
 export type SourcePinRecovery = Readonly<{ state: 'held' | 'released'; pin: SourcePin }>;
+export type StagingRecovery = Readonly<{ state: 'held' | 'cancelled'; intent: StagingIntent }>;
 const holds = new WeakMap<object, () => void>();
 const equal = (a: unknown, b: unknown): boolean => canonical(a) === canonical(b);
 function capability(): never { throw new StorageError('E_CAPABILITY', 'coordinator identity unavailable or inconsistent'); }
@@ -257,6 +258,34 @@ export class WorkspaceCoordinator {
     return this.#locked(() => transaction(this.#handle, true,
       () => cancelStagingIntent(this.#handle.db, binding, id, { owner_id: this.owner_id, process_instance: this.process_instance }),
       () => this.#guard()));
+  }
+  /** SPEC-25: reconcile one proven-unheld foreign pre-file reservation only. */
+  recoverStaging(bindingInput: unknown, idInput: unknown): StagingRecovery {
+    const binding = stagingBinding(bindingInput, this.workspace), id = entityId(idInput);
+    return this.#locked(() => {
+      let recoveryFile: OwnerFile | undefined, original: StorageOwner | undefined;
+      try {
+        return transaction(this.#handle, true, () => {
+          const intent = loadStagingIntent(this.#handle.db, binding, id);
+          if (!intent) throw new StorageError('E_CONFLICT', 'staging intent not found');
+          if (intent.state === 'cancelled') return Object.freeze({ state: 'cancelled' as const, intent });
+          original = readOwner(this.#handle, intent.owner_id) ?? undefined;
+          if (!original || original.process_instance !== intent.process_instance || original.state !== 'active') return capability();
+          if (original.owner_id === this.owner_id) return Object.freeze({ state: 'held' as const, intent });
+          recoveryFile = this.#resources.owner(original.owner_id, false);
+          if (!sameFile(recoveryFile.identity, original.identity)) return capability();
+          if (!recoveryFile.tryLock()) return Object.freeze({ state: 'held' as const, intent });
+          return Object.freeze({ state: 'cancelled' as const,
+            intent: recoverStagingIntent(this.#handle.db, binding, id, original) });
+        }, () => {
+          this.#guard(); recoveryFile?.guard();
+          if (original) {
+            const current = readOwner(this.#handle, original.owner_id);
+            if (!current || current.state !== 'active' || current.process_instance !== original.process_instance || !sameFile(current.identity, original.identity)) return capability();
+          }
+        });
+      } finally { recoveryFile?.close(); }
+    });
   }
   readOwner(idInput: unknown): StorageOwner | null {
     const id = entityId(idInput);

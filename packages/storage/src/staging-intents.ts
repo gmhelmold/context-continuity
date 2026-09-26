@@ -181,3 +181,20 @@ export function cancelStagingIntent(db: DatabaseSync, binding: SessionBinding, i
   if (deleted.changes !== 1 || updated.changes !== 1) throw new StorageError('E_CONFLICT', 'staging intent cancellation changed');
   return true;
 }
+
+/** SPEC-25: caller proved the exact foreign owner lock is unheld and keeps it through COMMIT.
+ * This is one identified pre-file reservation, never general owner recovery. */
+export function recoverStagingIntent(db: DatabaseSync, binding: SessionBinding, id: string, owner: StagingOwner): StagingIntent {
+  const intent = loadStagingIntent(db, binding, id);
+  if (!intent) throw new StorageError('E_CONFLICT', 'staging intent not found');
+  if (intent.state === 'cancelled') return intent;
+  if (intent.owner_id !== owner.owner_id || intent.process_instance !== owner.process_instance) return invalid();
+  rejectManagedOperation(db, intent.operation_id);
+  const deleted = db.prepare(`DELETE FROM storage_reservations WHERE reservation_id=? AND owner_id=? AND operation_id=?
+    AND kind='staging' AND staging_path_key IS NULL AND blob_digest IS NULL`).run(id, owner.owner_id, intent.operation_id);
+  const cancelled = Object.freeze({ ...intent, state: 'cancelled' as const });
+  const updated = db.prepare('UPDATE meta SET value=? WHERE key=? AND value=?')
+    .run(envelope(cancelled), stagingIntentMetaKey(id), envelope(intent));
+  if (deleted.changes !== 1 || updated.changes !== 1) throw new StorageError('E_CONFLICT', 'staging intent recovery changed');
+  return loadStagingIntent(db, binding, id)!;
+}
