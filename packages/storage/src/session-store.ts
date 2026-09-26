@@ -2,11 +2,11 @@
 import type { DatabaseSync } from 'node:sqlite';
 import { parseJSON } from '../../core/src/canonical.mjs';
 import { canonical } from '../../core/src/canonical.mjs';
-import { parseSessionBinding, createSessionBinding, entityId, newEntityId } from '../../core/src/identity.ts';
+import { parseSessionBinding, createSessionBinding, digestValue, entityId, newEntityId } from '../../core/src/identity.ts';
 import type { SessionBinding } from '../../core/src/identity.ts';
 import { resolveConfig } from '../../core/src/config.ts';
 import type { ResolvedConfiguration } from '../../core/src/config.ts';
-import { choice, closedRecord, ContractError, integer } from '../../core/src/validation.ts';
+import { boolean, choice, closedRecord, ContractError, integer } from '../../core/src/validation.ts';
 import { connectSQLite } from './sqlite-database.ts';
 import type { WorkspaceIdentity } from './sqlite-database.ts';
 import { StorageError, storageFailure } from './errors.ts';
@@ -30,6 +30,16 @@ export type SessionRecord = Readonly<{
   mode: 'complete' | 'assisted' | 'unsupported'; paused: boolean; dispatch_blocked: boolean;
 }>;
 export type OwnerLease = Readonly<{ binding: SessionBinding; owner_id: string; owner_fence: number; lease_until_ms: number }>;
+export type SchedulerState = Readonly<{
+  binding: SessionBinding; armed: boolean;
+  last_attempt: Readonly<{ host_epoch: number; coverage_digest: string; policy_revision: number; config_digest: string }> | null;
+  low_water: Readonly<{ host_epoch: number; policy_revision: number; config_digest: string }> | null;
+  last_observed_eligible_tokens: number | null; last_observed_at_ms: number | null;
+}>;
+export type PrimaryObservation = Readonly<{
+  host_epoch: number; coverage_digest: string; policy_revision: number; config_digest: string;
+  eligible_tokens: number; observed_at_ms: number; below_rearm_threshold: boolean;
+}>;
 function configuration(input: unknown): ResolvedConfiguration {
   const v = closedRecord(input, ['settings', 'limits'], ['settings', 'limits'], 'configuration');
   const result = resolveConfig(v.settings, v.limits);
@@ -43,6 +53,14 @@ function leaseValue(input: unknown): OwnerLease {
   const v = closedRecord(input, fields, fields, 'lease');
   return Object.freeze({ binding: parseSessionBinding(v.binding), owner_id: entityId(v.owner_id),
     owner_fence: integer(v.owner_fence, 1, Number.MAX_SAFE_INTEGER, 'lease.fence'), lease_until_ms: integer(v.lease_until_ms, 1, MAX_TIME + OWNER_LEASE_MS, 'lease.until') });
+}
+function observation(input: unknown): PrimaryObservation {
+  const fields = ['host_epoch', 'coverage_digest', 'policy_revision', 'config_digest', 'eligible_tokens', 'observed_at_ms', 'below_rearm_threshold'];
+  const v = closedRecord(input, fields, fields, 'primary_observation');
+  return Object.freeze({ host_epoch: integer(v.host_epoch, 0, Number.MAX_SAFE_INTEGER, 'observation.host_epoch'),
+    coverage_digest: digestValue(v.coverage_digest, 'observation.coverage_digest'), policy_revision: integer(v.policy_revision, 0, Number.MAX_SAFE_INTEGER, 'observation.policy_revision'),
+    config_digest: digestValue(v.config_digest, 'observation.config_digest'), eligible_tokens: integer(v.eligible_tokens, 0, Number.MAX_SAFE_INTEGER, 'observation.eligible_tokens'),
+    observed_at_ms: integer(v.observed_at_ms, 0, MAX_TIME, 'observation.observed_at_ms'), below_rearm_threshold: boolean(v.below_rearm_threshold, 'observation.below_rearm_threshold') });
 }
 export class SqliteSessionStore {
   readonly owner_id: string;
@@ -179,6 +197,52 @@ export class SqliteSessionStore {
     if (lease.owner_id !== this.owner_id || row.owner_id !== lease.owner_id || row.owner_fence !== lease.owner_fence ||
         row.lease_until_ms !== lease.lease_until_ms || lease.lease_until_ms <= now) throw new StorageError('E_OWNER', 'lease expired or superseded');
     return lease;
+  }
+  #scheduler(row: SessionRecord): SchedulerState | null {
+    const r = this.#db.prepare('SELECT * FROM scheduler_state WHERE session_key=?').get(row.binding.session_key);
+    if (!r) return null;
+    if (r.incarnation !== row.binding.incarnation) throw new StorageError('E_CONFLICT', 'scheduler state incarnation mismatch');
+    const attemptNull = r.last_attempt_host_epoch === null;
+    if (attemptNull !== (r.last_attempt_coverage_digest === null) || attemptNull !== (r.last_attempt_policy_revision === null) || attemptNull !== (r.last_attempt_config_digest === null)) throw new StorageError('E_STORAGE', 'scheduler attempt state invalid');
+    const low = integer(r.low_water_observed, 0, 1, 'scheduler.low_water') === 1;
+    if (low !== (r.low_water_host_epoch !== null) || low !== (r.low_water_policy_revision !== null) || low !== (r.low_water_config_digest !== null)) throw new StorageError('E_STORAGE', 'scheduler low-water state invalid');
+    const observedNull = r.last_observed_eligible_tokens === null;
+    if (observedNull !== (r.last_observed_at_ms === null)) throw new StorageError('E_STORAGE', 'scheduler observation state invalid');
+    return Object.freeze({ binding: row.binding, armed: integer(r.armed, 0, 1, 'scheduler.armed') === 1,
+      last_attempt: attemptNull ? null : Object.freeze({ host_epoch: integer(r.last_attempt_host_epoch, 0, Number.MAX_SAFE_INTEGER, 'scheduler.attempt.epoch'), coverage_digest: digestValue(r.last_attempt_coverage_digest, 'scheduler.attempt.coverage'), policy_revision: integer(r.last_attempt_policy_revision, 0, Number.MAX_SAFE_INTEGER, 'scheduler.attempt.policy'), config_digest: digestValue(r.last_attempt_config_digest, 'scheduler.attempt.config') }),
+      low_water: low ? Object.freeze({ host_epoch: integer(r.low_water_host_epoch, 0, Number.MAX_SAFE_INTEGER, 'scheduler.low.epoch'), policy_revision: integer(r.low_water_policy_revision, 0, Number.MAX_SAFE_INTEGER, 'scheduler.low.policy'), config_digest: digestValue(r.low_water_config_digest, 'scheduler.low.config') }) : null,
+      last_observed_eligible_tokens: observedNull ? null : integer(r.last_observed_eligible_tokens, 0, Number.MAX_SAFE_INTEGER, 'scheduler.observed.tokens'), last_observed_at_ms: observedNull ? null : integer(r.last_observed_at_ms, 0, MAX_TIME, 'scheduler.observed.at') });
+  }
+  readSchedulerState(input: unknown): SchedulerState | null {
+    const b = this.#scope(input);
+    return this.#transaction(false, () => this.#scheduler(this.#require(b)));
+  }
+  /** Primary terminal observation only. This neither arms nor admits work. */
+  recordPrimaryObservation(leaseInput: unknown, input: unknown): SchedulerState {
+    const lease = leaseValue(leaseInput), binding = this.#scope(lease.binding), value = observation(input);
+    return this.#transaction(true, () => {
+      const now = this.#now(), row = this.#require(binding); this.#owned(lease, now);
+      if (value.host_epoch !== binding.host_epoch || value.host_epoch !== row.binding.host_epoch || value.policy_revision !== row.policy_revision || value.observed_at_ms > now) throw new StorageError('E_CONFLICT', 'primary observation is not current');
+      const prior = this.#scheduler(row);
+      if (prior && prior.last_observed_at_ms !== null && value.observed_at_ms < prior.last_observed_at_ms) throw new StorageError('E_CONFLICT', 'primary observation clock regressed');
+      if (!prior) {
+        this.#db.prepare(`INSERT INTO scheduler_state(session_key,incarnation,armed,last_observed_eligible_tokens,last_observed_at_ms,low_water_observed,low_water_host_epoch,low_water_policy_revision,low_water_config_digest)
+          VALUES (?,?,1,?,?,?, ?,?,?)`).run(binding.session_key, binding.incarnation, value.eligible_tokens, value.observed_at_ms, value.below_rearm_threshold ? 1 : 0,
+          value.below_rearm_threshold ? value.host_epoch : null, value.below_rearm_threshold ? value.policy_revision : null, value.below_rearm_threshold ? value.config_digest : null);
+      } else if (value.below_rearm_threshold) {
+        this.#db.prepare(`UPDATE scheduler_state SET last_observed_eligible_tokens=?,last_observed_at_ms=?,low_water_observed=1,low_water_host_epoch=?,low_water_policy_revision=?,low_water_config_digest=?
+          WHERE session_key=? AND incarnation=?`).run(value.eligible_tokens, value.observed_at_ms, value.host_epoch, value.policy_revision, value.config_digest, binding.session_key, binding.incarnation);
+      } else {
+        const validLow = prior.low_water !== null && prior.low_water.host_epoch === value.host_epoch &&
+          prior.low_water.policy_revision === value.policy_revision && prior.low_water.config_digest === value.config_digest;
+        this.#db.prepare(`UPDATE scheduler_state SET last_observed_eligible_tokens=?,last_observed_at_ms=?,low_water_observed=?,low_water_host_epoch=?,low_water_policy_revision=?,low_water_config_digest=?
+          WHERE session_key=? AND incarnation=?`).run(value.eligible_tokens, value.observed_at_ms, validLow ? 1 : 0,
+          validLow ? prior.low_water!.host_epoch : null, validLow ? prior.low_water!.policy_revision : null, validLow ? prior.low_water!.config_digest : null,
+          binding.session_key, binding.incarnation);
+      }
+      this.#owned(lease, this.#now());
+      return this.#scheduler(this.#require(binding))!;
+    });
   }
   renewLease(input: unknown): OwnerLease {
     const parsed = leaseValue(input); this.#scope(parsed.binding);

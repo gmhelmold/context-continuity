@@ -46,7 +46,7 @@ A [ADR-001](../../docs/decisions/ADR-001-terminal-boundary.md) escolhe para a pr
 
 Gatilho padrão 50%, reservas e quotas versionadas, um job/run local por sessão. Até duas tentativas HTTP auxiliares admitidas antes da conexão. Retry do pai pertence ao host e é contabilizado separadamente. Quarantine local e remote_state unknown não viram sucesso nem reembolso fictício.
 
-C-SCHED-01 fixa estado persistido por sessão/incarnation, tupla explícita `host_epoch`/`coverage_digest`/`policy_revision`/`config_digest`, rearmamento e admissão atômica. É contrato futuro: não há scheduler, migração executável, prova runtime ou conclusão de WP-03.
+C-SCHED-01 fixa estado persistido por sessão/incarnation, tupla explícita `host_epoch`/`coverage_digest`/`policy_revision`/`config_digest`, rearmamento e admissão atômica. Fundação storage v2 migra atomicamente e registra somente observação primary; não há scheduler, prova runtime ou conclusão de WP-03.
 
 Ledger tem Manifest congelado com refs tipadas. Correção/supersessão invalida dependências content transitivamente; exclusão também limpa derivados/cópias gerenciadas e impede recaptura. Restore parcial expande o replacement inteiro somente após consentimento; leitura arbitrária de trecho é context_read. Operações humanas não fabricam jobs LLM.
 
