@@ -36,17 +36,27 @@ test('C-SCHED-01 migration: v2 failure rolls back DDL, metadata and version toge
   const db=new DatabaseSync(f.path);try{assert.equal(db.prepare('PRAGMA user_version').get().user_version,1);assert.equal(db.prepare("SELECT count(*) AS n FROM sqlite_schema WHERE name='scheduler_state'").get().n,0);}
   finally{db.close();}
 }));
+test('C-SCHED-01 migration: v1 authority is verified before upgrade',()=>fixture(f=>{
+  makeV1(f.directory);const db=new DatabaseSync(f.path);db.prepare("UPDATE meta SET value='forged' WHERE key='schema_digest'").run();db.close();
+  reject(()=>f.open(),'E_STORAGE');const unchanged=new DatabaseSync(f.path);try{assert.equal(unchanged.prepare('PRAGMA user_version').get().user_version,1);assert.equal(unchanged.prepare("SELECT count(*) AS n FROM sqlite_schema WHERE name='scheduler_state'").get().n,0);}
+  finally{unchanged.close();}
+}));
 test('C-SCHED-01 observation: closed input, frozen state, primary fields and valid low-water persist',()=>fixture(f=>{
   const s=f.create();s.createSession(binding,config());const lease=s.acquireLease(binding);
   reject(()=>s.recordPrimaryObservation(lease,{...input(),extra:true}),'E_SCHEMA');
   const low=s.recordPrimaryObservation(lease,input({below_rearm_threshold:true}));assert.equal(low.armed,true);assert.deepEqual(low.low_water,{host_epoch:0,policy_revision:0,config_digest:digest(2)});assert.ok(Object.isFrozen(low));assert.ok(Object.isFrozen(low.low_water));
-  f.advance(1);const next=s.recordPrimaryObservation(lease,input({eligible_tokens:101,observed_at_ms:100001}));assert.equal(next.last_observed_eligible_tokens,101);assert.deepEqual(next.low_water,low.low_water);assert.equal(next.last_attempt,null);
+  f.advance(1);const next=s.recordPrimaryObservation(lease,input({eligible_tokens:101,observed_at_ms:100001}));assert.equal(next.last_observed_eligible_tokens,101);assert.equal(next.armed,true);assert.deepEqual(next.low_water,low.low_water);assert.equal(next.last_attempt,null);
 }));
 test('C-SCHED-01 observation: stale control, lease and backward observation roll back',()=>fixture(f=>{
   const s=f.create();s.createSession(binding,config());const lease=s.acquireLease(binding);s.recordPrimaryObservation(lease,input({below_rearm_threshold:true}));
   reject(()=>s.recordPrimaryObservation({...lease,owner_fence:lease.owner_fence+1},input({observed_at_ms:100001})),'E_OWNER');
   reject(()=>s.recordPrimaryObservation(lease,input({host_epoch:1,observed_at_ms:100001})),'E_CONFLICT');
   reject(()=>s.recordPrimaryObservation(lease,input({observed_at_ms:99999})),'E_CONFLICT');assert.equal(s.readSchedulerState(binding).last_observed_at_ms,100000);
+}));
+test('C-SCHED-01 observation: stale scheduler incarnation never receives primary update',()=>fixture(f=>{
+  const s=f.create();s.createSession(binding,config());const lease=s.acquireLease(binding);s.recordPrimaryObservation(lease,input());
+  const db=new DatabaseSync(f.path);db.prepare('UPDATE scheduler_state SET incarnation=? WHERE session_key=?').run(id(4),binding.session_key);db.close();
+  reject(()=>s.recordPrimaryObservation(lease,input({observed_at_ms:100001})),'E_CONFLICT');reject(()=>s.readSchedulerState(binding),'E_CONFLICT');
 }));
 test('C-SCHED-01 observation: false clears stale low-water scope but never arms or records attempt',()=>fixture(f=>{
   const s=f.create();s.createSession(binding,config());const lease=s.acquireLease(binding);s.recordPrimaryObservation(lease,input({below_rearm_threshold:true}));
