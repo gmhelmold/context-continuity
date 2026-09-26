@@ -104,8 +104,8 @@ function contender(f, request) {
     const p=${JSON.stringify(params)};
     let finished=false;
     const c=WorkspaceCoordinator.open(p.directory,p.workspace);
-    const finish=result=>{if(finished)return;finished=true;try{c?.close()}catch(error){if(error.code!=='E_CAPABILITY'&&error.code!=='E_CONFLICT')result=error.code}process.send({phase:'result',result},()=>process.disconnect())};
-    const reserve=()=>{try{c.reserveStaging(p.binding,p.request);finish('committed')}catch(error){if(error.code==='E_CONFLICT'){setImmediate(reserve);return}finish(error.code)}};
+    const finish=result=>{if(finished)return;finished=true;let close_code=null;try{c?.close()}catch(error){close_code=error.code;if(error.code!=='E_CAPABILITY'&&error.code!=='E_CONFLICT')result=error.code}process.send({phase:'result',result,close_code,reservation_id:p.request.reservation_id},()=>process.disconnect())};
+    const reserve=()=>{try{c.reserveStaging(p.binding,p.request);finish('committed')}catch(error){if(error.code==='E_CONFLICT'&&error.reason==='workspace lock busy'){setImmediate(reserve);return}finish(error.code)}};
     process.once('message',reserve);
     process.send({phase:'ready',owner_id:c.owner_id,process_instance:c.process_instance});`;
   const child = spawn(process.execPath, ['--experimental-strip-types', '--input-type=module', '-e', program],
@@ -148,6 +148,12 @@ test('Staging process: two live owners contest final shared capacity after one I
       assert.deepEqual(exits[index], { code: 0, signal: null }, participants[index].details().stderr);
     }
     assert.deepEqual(values.map(value => value.result).sort(), ['E_BUDGET', 'committed']);
+    const winner = values.findIndex(value => value.result === 'committed');
+    assert.ok(['E_CONFLICT', 'E_CAPABILITY'].includes(values[winner].close_code));
+    const intent = f.coordinator.readStaging(f.b, values[winner].reservation_id);
+    assert.ok(intent);
+    assert.equal(intent.owner_id, ready[winner].owner_id);
+    assert.equal(intent.process_instance, ready[winner].process_instance);
     assert.equal(f.coordinator.readStorageBudget().used_bytes, QUOTA);
   } finally {
     for (const participant of participants) if (participant.child.exitCode === null && participant.child.signalCode === null) participant.child.kill('SIGKILL');
