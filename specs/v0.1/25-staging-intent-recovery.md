@@ -1,10 +1,10 @@
 # SPEC-25 — recuperação identificada de intenção pré-arquivo (WP-02/F3)
 
-**Contrato futuro; nenhuma API F3 está habilitada por este documento nem há evidência runtime.** Refina [SPEC-03 §3](03-ledger.md#3-blobs-quota-e-exclusão-mútua-de-workspace), [§8](03-ledger.md#8-recibos-e-reconciliação-de-reservas-c09c11), [SPEC-18 §§1, 3 e 4](18-workspace-coordinator.md#inicialização-e-identidade-durável) e [SPEC-24 §§3--5](24-staging-intents.md#3-registro-e-identidade). F3 é recuperação identificada de uma intenção *pré-arquivo*; não é staging físico, writer, GC, descoberta/listagem/scan nem recuperação geral de owner morto. Nenhuma limpeza física existe em F3.
+**Contrato futuro; nenhuma API F3 está habilitada por este documento nem há evidência runtime.** Refina [SPEC-03 §3](03-ledger.md#3-blobs-quota-e-exclusão-mútua-de-workspace), [§8](03-ledger.md#8-recibos-e-reconciliação-de-reservas-c09c11), [SPEC-18 §§1, 3 e 4](18-workspace-coordinator.md#inicialização-e-identidade-durável) e [SPEC-24 §§3--5](24-staging-intents.md#3-registro-e-identidade). F3 é exceção estreita de autoridade de recuperação à vedação de cancelamento cross-owner em [SPEC-24 §5](24-staging-intents.md#5-cancelamento-e-retomada): só vale para uma intenção *pré-arquivo* identificada após prova de §3, até o mesmo COMMIT. Não é staging físico, writer, GC, descoberta/listagem/scan nem recuperação geral de owner morto. Nenhuma limpeza física existe em F3.
 
 ## 1. API e fronteira
 
-`WorkspaceCoordinator.recoverStaging(binding, reservation_id): StagingRecovery` aceita somente binding original completo e UUID canônico. Retorna objeto profundamente imutável `{state: 'held' | 'cancelled', intent: StagingIntent}`. `intent` preserva registro imutável original, inclusive no estado `cancelled` e no histórico; nenhum dado controlado pelo chamador substitui campos persistidos.
+`WorkspaceCoordinator.recoverStaging(binding, reservation_id): StagingRecovery` aceita somente binding original completo e UUID canônico. Retorna objeto profundamente imutável `{state: 'held' | 'cancelled', intent: StagingIntent}`. `intent` preserva registro imutável original, inclusive no estado `cancelled` e no histórico; nenhum dado controlado pelo chamador substitui campos persistidos. Método é autoridade F3 excepcional, não cancelamento cross-owner genérico.
 
 Não há listagem, descoberta, scan ou TTL. `readStaging` que devolve `null` não autoriza recuperação. ID ausente devolve `E_CONFLICT`; binding divergente devolve `E_SCOPE`. `null`, lock de workspace disponível, PID, owner retired, idade ou timeout não demonstram liveness nem autorizam cancelamento.
 
@@ -47,6 +47,8 @@ Falha antes de `COMMIT`, inclusive guarda final/CAS/rollback, preserva reserva, 
 | Contraprovas | Controle nomeado e mutantes para owner lock/identidade, owner match, fence pré-arquivo e CAS atômico, cada qual reprovado pela assertion correspondente. |
 
 Vínculo normativo: F3 pertence ao [WP-02](WORK-PACKAGES.md#wp-02--ledger-e-persistência-transacional) e cobre somente fronteira pré-arquivo da rastreabilidade existente R19 / [T19.storage](06-acceptance.md#t19--fonte-antes-da-poda). Não cria R/T, não altera seus donos/status `not_run` e não declara execução. Não contar setup/import/timeout/sinal como detecção. Executar matriz herdada completa somente no Actions. Verde documental não aprova API, recuperação física, staging nem WP-02 completo.
+
+Revisão contratual executa todos os gates documentais de [README §Verificações desta etapa](README.md#verificações-desta-etapa): `check-spec.py`, `check-reference-model.py`, `test-spec-check.py`, `check-canonical.py`, `check-storage-contracts.py` e componentes OpenCode. Implementação futura acrescenta provas desta tabela, contraprovas com controle positivo e matriz herdada no Actions; gates documentais não contam como evidência runtime.
 
 ## 6. Cinco axiomas
 
