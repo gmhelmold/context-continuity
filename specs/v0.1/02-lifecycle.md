@@ -51,13 +51,19 @@ Exemplo sintético: C=1000000, I=900000, R=16000, H=650000 → B=650000; G=65000
 
 ## 3. Disparo e rearmamento
 
-Na primeira sessão elegível, `armed=true`. No ponto terminal, após seal e projeção da View vigente da chamada primary, observar U. Hooks parciais apenas capturam identidade. Se U≥T, armed e sem job ativo, reservar o job atomicamente. Eventos de workers apenas acordam essa avaliação; não criam inferências soltas.
+Na primeira sessão elegível, `armed=true`. Estado do scheduler é persistido por `session_key` e toda leitura/escrita compara sua `incarnation` com a sessão atual; divergência não reutiliza estado anterior. A tupla de oportunidade é sempre colunas separadas `(host_epoch, coverage_digest, policy_revision, config_digest)`, nunca digest opaco da tupla.
 
-Após qualquer tentativa terminal, persistir armed=false e registrar `last_attempt_digest`, número de unidades elegíveis observadas e tempo. Não repetir a mesma combinação `(epoch, coverage_digest, policy_revision, config_digest)` automaticamente.
+Somente há dois tipos de evento de entrada: `primary_terminal` e `structured_task`. Worker e manutenção são ignorados; não acordam, não atualizam estado e não criam inferência. No `primary_terminal`, após seal e projeção da View vigente da chamada primary, observar U. Hooks parciais apenas capturam identidade. Somente essa observação pode gravar `last_observed_eligible_tokens`, `last_observed_at_ms` ou marcar evidência `low_water_observed`; nenhum `structured_task`, worker, manutenção, tentativa física ou callback tardio pode fazê-lo.
 
-Rearmar quando (a) a visão ficou abaixo de L e voltou a crescer até T; OU (b) desde a última tentativa entraram pelo menos N tokens elegíveis novos, passaram cooldown_ms e existe intervalo diferente. Mudança de política permite uma nova tentativa após cooldown. O botão “compactar agora” pode ignorar ratio/cooldown, mas não ignora orçamento, identidade, intervalo seguro, fontes ou concorrência.
+`low_water_observed` é booleano associado explicitamente a `(host_epoch, policy_revision, config_digest)`. Vale somente enquanto esses três valores forem os da oportunidade atual; mudança de qualquer um invalida a evidência. A observação primary terminal com `U < L` é única forma de marcá-lo. Antes de substituir `last_observed_eligible_tokens` e `last_observed_at_ms`, a transação conserva seus valores anteriores para avaliar crescimento.
 
-`task_trigger=true` habilita oportunidade abaixo de T somente quando o fluxo fornece um evento estruturado, existe intervalo seguro com tamanho ≥2M, crescimento ≥N e cooldown satisfeito. Não inferir conclusão de tarefa por texto “pronto”. Eventos repetidos/simultâneos coalescem. Eventos da manutenção são ignorados.
+Admissão automática exige, na mesma transação: lease atual e fence detido; sessão não pausada nem `dispatch_blocked`; `armed=true`; nenhum job ativo nem `aux_run` em quarantine; tupla atual diferente da última tupla admitida; e `U >= T` OU a condição estruturada de tarefa abaixo. A condição abaixo exige evento `structured_task`, `task_trigger=true`, intervalo seguro com tamanho >=2M, crescimento elegível >=N e cooldown satisfeito. A transação cria job e reserva, persiste a tupla como última tentativa e muda `armed=false`. Falha de qualquer precondição não cria job, reserva ou chamada. Índices únicos não substituem essas revalidações.
+
+Rearmar somente em `primary_terminal`, com sessão/incarnation/fence ainda válidos, por uma das condições: (a) `low_water_observed` ainda vale para epoch/policy/config atuais e U voltou a `U >= T`; OU (b) U aumentou pelo menos N sobre a observação primary terminal anterior, `at_ms - last_observed_at_ms >= cooldown_ms` na fronteira inclusiva exata, e `coverage_digest` atual difere do da última tentativa. Rearmamento apenas muda `armed=true`; admissão posterior continua exigindo todas as precondições acima. Tentativa física terminada não é terminal para este efeito: terminal é o estado terminal do job inteiro (`published`, `rejected`, `failed` ou `cancelled`).
+
+`task_trigger=true` habilita oportunidade abaixo de T somente para `structured_task`, quando a condição estruturada de tarefa abaixo está satisfeita. Não infere conclusão por texto “pronto”, não altera observação/evidência primária e continua sujeito a lease/fence, pause/bloqueio, concorrência, tupla e admissão atômica. Eventos repetidos/simultâneos coalescem.
+
+Botão “compactar agora” pode ignorar ratio/cooldown, mas não ignora orçamento, identidade, intervalo seguro, fontes ou concorrência.
 
 ## 4. Seleção determinística do intervalo
 
