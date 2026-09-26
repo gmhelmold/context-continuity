@@ -16,10 +16,12 @@ Admissão automática exige lease/fence, sessão ativa, armed, ausência de job 
 
 `readSchedulerState(binding)` retorna estado estritamente revalidado e congelado. `recordPrimaryObservation(lease,input)` aceita somente campos fechados, revalida sessão/incarnation/lease/fence, avança clock por `#now`, atualiza observação e grava low-water somente quando solicitado. Não muda `armed`, nem grava tentativa.
 
+`observePrimaryAndRearm(lease,input)` é a fatia atômica de `primary_terminal`: revalida lease/fence, incarnation, tuple atual e configuração resolvida persistida; calcula L/T/N pela configuração atual; grava U/tempo; só marca low-water com `U < L`; e rearma estado desarmado por low-water válido com `U >= T`, ou por crescimento >=N, cooldown inclusivo e coverage diferente da última tentativa. Retorna `{state, reason}` congelado. Não cria nem altera job, attempt, reserva ou `structured_task`.
+
 ## Limites
 
-Não há scheduler, job admission, rearm, reserva, tokenizer, rede, dispatch, projeção, prova runtime ou homologação. Este contrato não conclui WP-03 nem T04/T14/T15/T16/T17/T35/T37/T40.
+Não há admissão automática, job, attempt, reserva, tokenizer, rede, dispatch, projeção, prova runtime ou homologação. Rearmar somente muda `armed`; este contrato não conclui WP-03 nem T04/T14/T15/T16/T17/T35/T37/T40.
 
 ## Evidência desta entrega
 
-Storage tests cover atomic migration, strict parse/frozen read, owner/fence/current-control rejection, monotonic observations and low-water preservation. Mutation test includes positive control and wrong implementations. Gates do not validate scheduler admission or host runtime.
+Storage/process tests cover atomic migration, strict parse/frozen read, owner/fence/current-control rejection, monotonic observations, persisted rearm state, L/T boundaries, N, cooldown inclusivo e coverage. Mutation test includes positive control plus N/coverage bypasses. Gates do not validate scheduler admission or host runtime.

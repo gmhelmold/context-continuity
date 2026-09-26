@@ -6,6 +6,7 @@ import { parseSessionBinding, createSessionBinding, digestValue, entityId, newEn
 import type { SessionBinding } from '../../core/src/identity.ts';
 import { resolveConfig } from '../../core/src/config.ts';
 import type { ResolvedConfiguration } from '../../core/src/config.ts';
+import { deriveTriggerBudget } from '../../core/src/scheduler-budget.ts';
 import { boolean, choice, closedRecord, ContractError, integer } from '../../core/src/validation.ts';
 import { connectSQLite } from './sqlite-database.ts';
 import type { WorkspaceIdentity } from './sqlite-database.ts';
@@ -40,6 +41,11 @@ export type PrimaryObservation = Readonly<{
   host_epoch: number; coverage_digest: string; policy_revision: number; config_digest: string;
   eligible_tokens: number; observed_at_ms: number; below_rearm_threshold: boolean;
 }>;
+export type PrimaryRearmObservation = Readonly<{
+  host_epoch: number; coverage_digest: string; policy_revision: number; config_digest: string;
+  configuration: ResolvedConfiguration; eligible_tokens: number; observed_at_ms: number;
+}>;
+export type PrimaryRearmResult = Readonly<{ state: SchedulerState; reason: 'low_water' | 'growth' | null }>;
 function configuration(input: unknown): ResolvedConfiguration {
   const v = closedRecord(input, ['settings', 'limits'], ['settings', 'limits'], 'configuration');
   const result = resolveConfig(v.settings, v.limits);
@@ -61,6 +67,15 @@ function observation(input: unknown): PrimaryObservation {
     coverage_digest: digestValue(v.coverage_digest, 'observation.coverage_digest'), policy_revision: integer(v.policy_revision, 0, Number.MAX_SAFE_INTEGER, 'observation.policy_revision'),
     config_digest: digestValue(v.config_digest, 'observation.config_digest'), eligible_tokens: integer(v.eligible_tokens, 0, Number.MAX_SAFE_INTEGER, 'observation.eligible_tokens'),
     observed_at_ms: integer(v.observed_at_ms, 0, MAX_TIME, 'observation.observed_at_ms'), below_rearm_threshold: boolean(v.below_rearm_threshold, 'observation.below_rearm_threshold') });
+}
+function rearmObservation(input: unknown): PrimaryRearmObservation {
+  const fields = ['host_epoch', 'coverage_digest', 'policy_revision', 'config_digest', 'configuration', 'eligible_tokens', 'observed_at_ms'];
+  const v = closedRecord(input, fields, fields, 'primary_rearm_observation');
+  return Object.freeze({ host_epoch: integer(v.host_epoch, 0, Number.MAX_SAFE_INTEGER, 'observation.host_epoch'),
+    coverage_digest: digestValue(v.coverage_digest, 'observation.coverage_digest'), policy_revision: integer(v.policy_revision, 0, Number.MAX_SAFE_INTEGER, 'observation.policy_revision'),
+    config_digest: digestValue(v.config_digest, 'observation.config_digest'), configuration: configuration(v.configuration),
+    eligible_tokens: integer(v.eligible_tokens, 0, Number.MAX_SAFE_INTEGER, 'observation.eligible_tokens'),
+    observed_at_ms: integer(v.observed_at_ms, 0, MAX_TIME, 'observation.observed_at_ms') });
 }
 export class SqliteSessionStore {
   readonly owner_id: string;
@@ -242,6 +257,41 @@ export class SqliteSessionStore {
       }
       this.#owned(lease, this.#now());
       return this.#scheduler(this.#require(binding))!;
+    });
+  }
+  /** Atomic primary-only observation and rearm. It never admits or mutates jobs. */
+  observePrimaryAndRearm(leaseInput: unknown, input: unknown): PrimaryRearmResult {
+    const lease = leaseValue(leaseInput), binding = this.#scope(lease.binding), value = rearmObservation(input);
+    return this.#transaction(true, () => {
+      const now = this.#now(), row = this.#require(binding); this.#owned(lease, now);
+      if (canonical(value.configuration) !== canonical(row.config) || value.host_epoch !== binding.host_epoch || value.host_epoch !== row.binding.host_epoch ||
+          value.policy_revision !== row.policy_revision || value.observed_at_ms > now) throw new StorageError('E_CONFLICT', 'primary rearm observation is not current');
+      const prior = this.#scheduler(row);
+      if (prior && prior.last_observed_at_ms !== null && value.observed_at_ms < prior.last_observed_at_ms) throw new StorageError('E_CONFLICT', 'primary observation clock regressed');
+      const budget = deriveTriggerBudget(row.config);
+      const lowWater = value.eligible_tokens < budget.rearm_threshold;
+      const validLow = prior !== null && prior.low_water !== null && prior.low_water.host_epoch === value.host_epoch &&
+        prior.low_water.policy_revision === value.policy_revision && prior.low_water.config_digest === value.config_digest;
+      const lowWaterRearm = validLow && value.eligible_tokens >= budget.trigger_threshold;
+      const growthRearm = prior !== null && prior.last_observed_eligible_tokens !== null && prior.last_observed_at_ms !== null && prior.last_attempt !== null &&
+        value.eligible_tokens - prior.last_observed_eligible_tokens >= budget.new_tokens &&
+        value.observed_at_ms - prior.last_observed_at_ms >= row.config.settings.cooldown_ms &&
+        value.coverage_digest !== prior.last_attempt.coverage_digest;
+      const reason: PrimaryRearmResult['reason'] = !prior || prior.armed ? null : lowWaterRearm ? 'low_water' : growthRearm ? 'growth' : null;
+      const armed = reason !== null || !prior ? 1 : prior.armed ? 1 : 0;
+      const retainLow = lowWater || validLow;
+      if (!prior) {
+        this.#db.prepare(`INSERT INTO scheduler_state(session_key,incarnation,armed,last_observed_eligible_tokens,last_observed_at_ms,low_water_observed,low_water_host_epoch,low_water_policy_revision,low_water_config_digest)
+          VALUES (?,?,1,?,?,?, ?,?,?)`).run(binding.session_key, binding.incarnation, value.eligible_tokens, value.observed_at_ms, lowWater ? 1 : 0,
+          lowWater ? value.host_epoch : null, lowWater ? value.policy_revision : null, lowWater ? value.config_digest : null);
+      } else {
+        this.#db.prepare(`UPDATE scheduler_state SET armed=?,last_observed_eligible_tokens=?,last_observed_at_ms=?,low_water_observed=?,low_water_host_epoch=?,low_water_policy_revision=?,low_water_config_digest=?
+          WHERE session_key=? AND incarnation=?`).run(armed, value.eligible_tokens, value.observed_at_ms, retainLow ? 1 : 0,
+          retainLow ? value.host_epoch : null, retainLow ? value.policy_revision : null, retainLow ? value.config_digest : null,
+          binding.session_key, binding.incarnation);
+      }
+      this.#owned(lease, this.#now());
+      return Object.freeze({ state: this.#scheduler(this.#require(binding))!, reason });
     });
   }
   renewLease(input: unknown): OwnerLease {
