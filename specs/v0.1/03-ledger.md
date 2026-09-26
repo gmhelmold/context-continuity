@@ -216,6 +216,34 @@ O índice textual é derivado e reconstruível. No MVP pode ser SQLite FTS5 quan
 
 `availability=captured` exige exatamente um dos dois conteúdos, inclusive BLOB vazio válido de tamanho zero. Blobs externos são privados e seu hash é conferido ao ler. As outras disponibilidades não fornecem conteúdo fictício; seu motivo fica no manifesto de fontes. Não confundir NULL com texto vazio capturado.
 
+### Migração lógica v2 — estado do scheduler
+
+DDL v1 acima permanece byte a byte e sem nova coluna. A migração v2 é explícita, ordenada e transacional; cria estado novo sem reinterpretar ou preencher estado de sessões existentes. Não há executável de migração, implementação de storage ou scheduler nesta entrega.
+
+```text
+CREATE TABLE scheduler_state (
+  session_key TEXT PRIMARY KEY REFERENCES sessions(session_key) ON DELETE CASCADE,
+  incarnation TEXT NOT NULL,
+  armed INTEGER NOT NULL CHECK(armed IN (0,1)),
+  last_attempt_host_epoch INTEGER CHECK(last_attempt_host_epoch IS NULL OR last_attempt_host_epoch>=0),
+  last_attempt_coverage_digest TEXT,
+  last_attempt_policy_revision INTEGER CHECK(last_attempt_policy_revision IS NULL OR last_attempt_policy_revision>=0),
+  last_attempt_config_digest TEXT,
+  low_water_observed INTEGER NOT NULL DEFAULT 0 CHECK(low_water_observed IN (0,1)),
+  low_water_host_epoch INTEGER CHECK(low_water_host_epoch IS NULL OR low_water_host_epoch>=0),
+  low_water_policy_revision INTEGER CHECK(low_water_policy_revision IS NULL OR low_water_policy_revision>=0),
+  low_water_config_digest TEXT,
+  last_observed_eligible_tokens INTEGER CHECK(last_observed_eligible_tokens IS NULL OR last_observed_eligible_tokens>=0),
+  last_observed_at_ms INTEGER CHECK(last_observed_at_ms IS NULL OR last_observed_at_ms>=0),
+  CHECK((last_attempt_host_epoch IS NULL AND last_attempt_coverage_digest IS NULL AND last_attempt_policy_revision IS NULL AND last_attempt_config_digest IS NULL) OR
+        (last_attempt_host_epoch IS NOT NULL AND last_attempt_coverage_digest IS NOT NULL AND last_attempt_policy_revision IS NOT NULL AND last_attempt_config_digest IS NOT NULL)),
+  CHECK((low_water_observed=0 AND low_water_host_epoch IS NULL AND low_water_policy_revision IS NULL AND low_water_config_digest IS NULL) OR
+        (low_water_observed=1 AND low_water_host_epoch IS NOT NULL AND low_water_policy_revision IS NOT NULL AND low_water_config_digest IS NOT NULL))
+);
+```
+
+`scheduler_state.incarnation` é conferida contra `sessions.incarnation` em toda transação; chave por `session_key` não autoriza estado de encarnação anterior. `last_attempt_*` persiste as quatro colunas da tupla, sem digest composto. `low_water_*` persiste somente escopo epoch/policy/config exigido para rearmamento; `coverage_digest` não participa desse fato. `last_observed_eligible_tokens` e `last_observed_at_ms` são ambos null antes da primeira observação primary terminal e são atualizados juntos somente por ela. A migração não inventa observação, low-water, tentativa ou armed: sessão v1 é inicializada pelo fluxo elegível posterior, sob validação da incarnation atual.
+
 ## 3. Blobs, quota e exclusão mútua de workspace
 
 Até 256 KiB inline, acima blob. Fonte >16 MiB fica inelegível até consentimento de limite maior; não truncar. Quota inicial 2 GiB inclui bytes inline/blob/staging e reservas; deduplicação só dentro do workspace. Disco externo/driver sem lock confiável não é suporte anunciado.
@@ -238,7 +266,7 @@ Inicialização cria Session+View0+config/counters atomicos. incarnation e tombs
 
 Owner lease: BEGIN IMMEDIATE, 30s, renovação cada 10s e fence crescente. Só proprietário escreve/gera; outro processo consulta ou envia comando pela integração autorizada, nunca disputa publicação. Fencing revalidado em cada transação. Não confundir lease de sessão com lock de arquivos do workspace.
 
-Job admission cria snapshot/Manifest congelados e índices únicos. Attempts reservam custos antes de conexão. Preparar ready exige fontes completas. Publicação cria Operation, Chapter, dependências, View revision+1, publication_seq+1 e estado do job na mesma transação, com CAS de revision/fence/incarnation. Zero-row CAS é rollback. Manifest no Chapter é exatamente o do job; cópia pequena é intencional e seu digest é validado.
+Job admission cria snapshot/Manifest congelados e índices únicos. A admissão automática também lê `scheduler_state` sob a incarnation atual, revalida lease/fence e precondições de SPEC-02 §3, cria job/reserva, grava `last_attempt_*` e muda `armed=false` na mesma transação. Attempts reservam custos antes de conexão. Preparar ready exige fontes completas. Publicação cria Operation, Chapter, dependências, View revision+1, publication_seq+1 e estado do job na mesma transação, com CAS de revision/fence/incarnation. Zero-row CAS é rollback. Manifest no Chapter é exatamente o do job; cópia pequena é intencional e seu digest é validado.
 
 Mutation de bloco usa SPEC-07: View nova com versões/ordinais e policy+1, invalida derivados, cancela jobs mesmo em pause. Ordinal vem de sessions.activation_seq, não created_at da versão. Não há flag blocks.active autoritativa paralela.
 
